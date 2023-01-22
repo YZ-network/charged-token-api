@@ -19,8 +19,8 @@ export class ChargedToken extends AbstractLoader {
       name: await ins.name(),
       symbol: await ins.symbol(),
       decimals: await ins.decimals(),
-      durationCliff: (await ins.durationCliff()).toNumber(),
-      durationLinearVesting: (await ins.durationLinearVesting()).toNumber(),
+      durationCliff: await ins.durationCliff(),
+      durationLinearVesting: await ins.durationLinearVesting(),
       fractionInitialUnlockPerThousand:
         await ins.fractionInitialUnlockPerThousand(),
       maxWithdrawFeesPerThousand: await ins.maxWithdrawFeesPerThousandForLT(),
@@ -31,9 +31,7 @@ export class ChargedToken extends AbstractLoader {
       totalLocked: await ins.balanceOf(this.address),
       totalTokenAllocated: await ins.totalTokenAllocated(),
       stakedLT: await ins.stakedLT(),
-      withdrawFeesPerThousandForLT: (
-        await ins.withdrawFeesPerThousandForLT()
-      ).toNumber(),
+      withdrawFeesPerThousandForLT: await ins.withdrawFeesPerThousandForLT(),
       interfaceAddress: await ins.interfaceProjectToken(),
     };
   }

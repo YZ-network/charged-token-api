@@ -18,22 +18,39 @@ export class Directory extends AbstractLoader {
     const whitelistCount = (
       await ins.countWhitelistedProjectOwners()
     ).toNumber();
-
-    const whitelist = [];
-    const projectNames = [];
+    const whitelistedProjectOwners: string[] = [];
+    const projects: string[] = [];
+    const whitelist: Record<string, string> = {};
     for (let i = 0; i < whitelistCount; i++) {
-      whitelist.push(await ins.getWhitelistedProjectOwner(i));
-      projectNames.push(await ins.getWhitelistedProjectName(i));
+      const projectOwner = await ins.getWhitelistedProjectOwner(i);
+      const projectName = await ins.getWhitelistedProjectName(i);
+      whitelistedProjectOwners.push(projectOwner);
+      projects.push(projectName);
+      whitelist[projectOwner] = await ins.whitelist(projectOwner);
     }
 
-    whitelist.forEach(
+    const contractsCount = (await ins.countLTContracts()).toNumber();
+    const directory: string[] = [];
+    const projectRelatedToLT: Record<string, string> = {};
+    for (let i = 0; i < contractsCount; i++) {
+      const ctAddress = await ins.getLTContract(i);
+      directory.push(ctAddress);
+      projectRelatedToLT[ctAddress] = await ins.projectRelatedToLT(ctAddress);
+    }
+
+    directory.forEach(
       (address) => (this.ct[address] = new ChargedToken(this.provider, address))
     );
 
     return {
       address: this.address,
       owner: await ins.owner(),
+      directory,
+      whitelistedProjectOwners,
+      projects,
+      projectRelatedToLT,
       whitelist,
+      areUserFunctionsDisabled: await ins.areUserFunctionsDisabled(),
     };
   }
 }
