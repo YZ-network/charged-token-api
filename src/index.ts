@@ -2,17 +2,18 @@ import { ethers } from "ethers";
 import { ChargedToken } from "./loaders";
 import { Directory } from "./loaders/Directory";
 
-const JSON_RPC_URL = "http://localhost:7545";
-const DIRECTORY_ADDRESS = "0x20a0382057CDEB3ECEabA65FA23B86840BDaA659";
+console.log("Starting worker on environment", process.env.ENVIRONMENT);
 
-const provider = new ethers.providers.JsonRpcProvider(JSON_RPC_URL);
+const provider = new ethers.providers.StaticJsonRpcProvider(
+  process.env.JSON_RPC_URL
+);
 
-const directory = new Directory(provider, DIRECTORY_ADDRESS);
+const directory = new Directory(provider, process.env.DIRECTORY_ADDRESS!);
 
 directory
   .load()
   .then((data: Record<string, any>) => {
-    console.log("Read directory", DIRECTORY_ADDRESS, "data :");
+    console.log("Read directory", data.address, "data :");
     console.log(JSON.stringify(data, null, 2));
 
     Promise.all(
