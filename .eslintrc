@@ -1,0 +1,11 @@
+{
+  "env": {
+    "es6": true,
+    "node": true
+  },
+  "extends": ["eslint-config-babel", "eslint-config-prettier"],
+  "plugins": ["prettier"],
+  "rules": {
+    "prettier/prettier": "error"
+  }
+}
