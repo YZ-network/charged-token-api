@@ -5,8 +5,6 @@ import { Directory } from "./loaders/Directory";
 import { IChargedToken, IDirectory } from "./models";
 
 export async function worker(provider: ethers.providers.JsonRpcProvider) {
-  await mongoose.connect("mongodb://localhost:27017/test");
-
   const directory = new Directory(provider, process.env.DIRECTORY_ADDRESS!);
   const dirData: IDirectory = await directory.load();
 
