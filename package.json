@@ -34,6 +34,7 @@
     "ethereumjs-tx": "^2.1.2",
     "ethers": "^5.7.2",
     "express": "^4.18.2",
+    "express-graphql": "^0.12.0",
     "graphql": "^16.6.0",
     "mongoose": "^6.8.4",
     "web3": "^1.8.1"
