@@ -1,5 +1,8 @@
 import { ethers } from "ethers";
+import { HydratedDocument } from "mongoose";
 import { contracts } from "../contracts";
+import { DirectoryModel } from "../models";
+import { DirectoryData } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
 
@@ -10,7 +13,7 @@ export class Directory extends AbstractLoader {
     super(provider, address, contracts.ContractsDirectory);
   }
 
-  async load(): Promise<Record<string, any>> {
+  async load(): Promise<DirectoryData> {
     console.log("Reading directory @", this.address);
 
     const ins = this.instance;
@@ -52,5 +55,17 @@ export class Directory extends AbstractLoader {
       whitelist,
       areUserFunctionsDisabled: await ins.areUserFunctionsDisabled(),
     };
+  }
+
+  async saveOrUpdate(data: DirectoryData): Promise<void> {
+    if (!(await DirectoryModel.exists({ address: data.address }))) {
+      await this.toModel(data).save();
+    } else {
+      await DirectoryModel.updateOne({ address: data.address }, data);
+    }
+  }
+
+  toModel(data: DirectoryData): HydratedDocument<DirectoryData> {
+    return (DirectoryModel as any).toModel(data);
   }
 }
