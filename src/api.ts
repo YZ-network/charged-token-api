@@ -1,10 +1,21 @@
-import express from "express";
-import { graphqlHTTP } from "express-graphql";
-import { buildSchema } from "graphql";
+import { createPubSub, createSchema, createYoga } from "graphql-yoga";
+import { createServer } from "http";
 import mongoose from "mongoose";
 import { DirectoryModel, IDirectory } from "./models";
 
-const schema = buildSchema(`
+function recordToEntryList(
+  record: Record<string, string>
+): { key: string; value: string }[] {
+  return Object.entries(record).map(([key, value]) => ({
+    key,
+    value,
+  }));
+}
+
+const pubSub = createPubSub();
+
+const schema = createSchema({
+  typeDefs: `
   type IEntry {
     key: String!
     value: String!
@@ -16,6 +27,7 @@ const schema = buildSchema(`
   }
 
   type IDirectory implements IOwnable {
+    count: Int
     address: String!
     owner: String!
     directory: [String!]!
@@ -29,50 +41,70 @@ const schema = buildSchema(`
   type Query {
     Directory: IDirectory
   }
-`);
 
-function recordToEntryList(
-  record: Record<string, string>
-): { key: string; value: string }[] {
-  return Object.entries(record).map(([key, value]) => ({
-    key,
-    value,
-  }));
-}
+  type Subscription {
+    Directory: IDirectory
+  }
+`,
+  resolvers: {
+    Query: {
+      Directory: async () => {
+        const directory = await DirectoryModel.findOne().exec();
 
-const rootValue = {
-  Directory: async () => {
-    const directory = await DirectoryModel.findOne().exec();
+        if (directory === null) {
+          throw new Error("No directory yet.");
+        }
 
-    if (directory === null) {
-      throw new Error("No directory yet.");
-    }
+        const jsonDirectory: IDirectory = directory.toJSON();
 
-    const jsonDirectory: IDirectory = directory.toJSON();
+        return {
+          ...jsonDirectory,
+          projectRelatedToLT: recordToEntryList(
+            jsonDirectory.projectRelatedToLT
+          ),
+          whitelist: recordToEntryList(jsonDirectory.projectRelatedToLT),
+        };
+      },
+    },
 
-    return {
+    Subscription: {
+      Directory: {
+        subscribe: () => pubSub.subscribe("Directory"),
+        resolve: (payload) => payload,
+      },
+    },
+  },
+});
+
+const yoga = createYoga({ schema });
+const server = createServer(yoga);
+
+async function pushDirUpdatesUsingPubSub() {
+  let count = 0;
+  const directory = await DirectoryModel.findOne().exec();
+
+  if (directory === null) {
+    throw new Error("No directory yet.");
+  }
+
+  const jsonDirectory: IDirectory = directory.toJSON();
+
+  setInterval(() => {
+    pubSub.publish("Directory", {
+      count: count++,
       ...jsonDirectory,
       projectRelatedToLT: recordToEntryList(jsonDirectory.projectRelatedToLT),
       whitelist: recordToEntryList(jsonDirectory.projectRelatedToLT),
-    };
-  },
-};
-
-const app = express();
-app.use(
-  "/",
-  graphqlHTTP({
-    schema,
-    rootValue,
-    graphiql: true,
-  })
-);
+    });
+  }, 1000);
+}
 
 mongoose
   .connect("mongodb://localhost:27017/test")
   .then(() => {
-    app.listen(4000);
+    server.listen(4000, () => {
+      console.log("Running a GraphQL API server at http://localhost:4000/");
+      pushDirUpdatesUsingPubSub();
+    });
   })
   .catch((err) => console.error("Error connecting to database :", err));
-
-console.log("Running a GraphQL API server at http://localhost:4000/");
