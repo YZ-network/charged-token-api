@@ -56,6 +56,10 @@ export class Directory extends AbstractLoader {
     };
   }
 
+  subscribeToEvents() {
+    // this.instance.
+  }
+
   async saveOrUpdate(data: IDirectory): Promise<void> {
     if (!(await DirectoryModel.exists({ address: data.address }))) {
       await this.toModel(data).save();
