@@ -1,5 +1,4 @@
 import { ethers } from "ethers";
-import { HydratedDocument } from "mongoose";
 import { contracts } from "../contracts";
 import { ChargedTokenModel, IChargedToken } from "../models";
 import { AbstractLoader } from "./AbstractLoader";
@@ -12,7 +11,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     super(provider, address, contracts.LiquidityToken);
   }
 
-  async load(): Promise<IChargedToken> {
+  async load() {
     console.log("Reading charged token @", this.address);
 
     const ins = this.instance;
@@ -74,7 +73,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     };
   }
 
-  async saveOrUpdate(data: IChargedToken): Promise<void> {
+  async saveOrUpdate(data: IChargedToken) {
     if (!(await ChargedTokenModel.exists({ address: data.address }))) {
       await this.toModel(data).save();
     } else {
@@ -82,7 +81,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     }
   }
 
-  toModel(data: IChargedToken): HydratedDocument<IChargedToken> {
+  toModel(data: IChargedToken) {
     return (ChargedTokenModel as any).toModel(data);
   }
 }

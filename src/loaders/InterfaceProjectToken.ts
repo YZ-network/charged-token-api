@@ -1,5 +1,4 @@
 import { ethers } from "ethers";
-import { HydratedDocument } from "mongoose";
 import { contracts } from "../contracts";
 import { ChargedTokenModel } from "../models";
 import { IInterfaceProjectToken } from "../models/InterfaceProjectToken";
@@ -10,7 +9,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     super(provider, address, contracts.LiquidityToken);
   }
 
-  async load(): Promise<IInterfaceProjectToken> {
+  async load() {
     console.log("Reading interface project token @", this.address);
 
     const ins = this.instance;
@@ -31,7 +30,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     };
   }
 
-  async saveOrUpdate(data: IInterfaceProjectToken): Promise<void> {
+  async saveOrUpdate(data: IInterfaceProjectToken) {
     if (!(await ChargedTokenModel.exists({ address: data.address }))) {
       await this.toModel(data).save();
     } else {
@@ -39,9 +38,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     }
   }
 
-  toModel(
-    data: IInterfaceProjectToken
-  ): HydratedDocument<IInterfaceProjectToken> {
+  toModel(data: IInterfaceProjectToken) {
     return (ChargedTokenModel as any).toModel(data);
   }
 }
