@@ -1,15 +1,17 @@
 import mongoose, { HydratedDocument } from "mongoose";
-import { IErc20, IOwnable } from "../types";
+import { IErc20 } from "../types";
 
-export interface IDelegableToLT extends IOwnable, IErc20 {
+export interface IDelegableToLT extends IErc20 {
   validatedInterfaceProjectToken: string[];
   isListOfInterfaceProjectTokenComplete: boolean;
 }
 
 const delegableToLTSchema = new mongoose.Schema<IDelegableToLT>(
   {
-    // ownable
+    // contract
+    lastUpdateBlock: { type: Number, required: true },
     address: { type: String, required: true },
+    // ownable
     owner: { type: String, required: true },
     // erc20
     name: { type: String, required: true },

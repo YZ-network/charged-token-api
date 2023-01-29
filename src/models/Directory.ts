@@ -14,6 +14,7 @@ const { Schema } = mongoose;
 
 const directorySchema = new Schema<IDirectory>(
   {
+    lastUpdateBlock: { type: Number, required: true },
     address: { type: String, required: true },
     owner: { type: String, required: true },
     directory: [String],

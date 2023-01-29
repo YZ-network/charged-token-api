@@ -53,8 +53,10 @@ export interface IChargedToken
 
 const chargedTokenSchema = new mongoose.Schema<IChargedToken>(
   {
-    // ownable
+    // contract
+    lastUpdateBlock: { type: Number, required: true },
     address: { type: String, required: true },
+    // ownable
     owner: { type: String, required: true },
     // erc20
     name: { type: String, required: true },

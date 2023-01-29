@@ -9,9 +9,13 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   }
 
   async init(): Promise<void> {
-    const ptData = await this.load();
-    await this.saveOrUpdate(ptData);
+    await super.init();
+
     this.subscribeToEvents();
+  }
+
+  async get() {
+    return await DelegableToLTModel.findOne({ address: this.address });
   }
 
   async load() {
@@ -30,8 +34,10 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     }
 
     return {
-      // ownable
+      // contract
+      lastUpdateBlock: this.actualBlock,
       address: this.address,
+      // ownable
       owner: await ins.owner(),
       // erc20
       name: await ins.name(),
@@ -47,12 +53,21 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   }
 
   async saveOrUpdate(data: IDelegableToLT) {
+    let result;
     if (!(await DelegableToLTModel.exists({ address: data.address }))) {
-      await this.toModel(data).save();
+      result = await this.toModel(data).save();
     } else {
-      await DelegableToLTModel.updateOne({ address: data.address }, data);
+      result = await DelegableToLTModel.updateOne(
+        { address: data.address },
+        data
+      );
     }
+    this.lastUpdateBlock = this.actualBlock;
+    this.lastState = result.toJSON();
+    return result;
   }
+
+  syncEvents(fromBlock: number): Promise<void> {}
 
   subscribeToEvents(): void {
     // ERC20 events

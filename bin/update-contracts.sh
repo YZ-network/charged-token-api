@@ -49,7 +49,7 @@ echo
 npm run build
 [ $? != 0 ] && exit 4
 
-cp $(ls build/*.json | grep -vE 'contracts|realInput') ../../src/contracts
+cp $(ls build/*.json | grep -vE 'contracts|realInput|ProjectToken|Set|SafeMath') ../../src/contracts
 [ $? != 0 ] && exit 5
 
 cd $PROJECT_DIR

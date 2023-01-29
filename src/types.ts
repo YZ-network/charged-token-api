@@ -1,5 +1,9 @@
-export interface IOwnable {
+export interface IContract {
   address: string;
+  lastUpdateBlock: number;
+}
+
+export interface IOwnable extends IContract {
   owner: string;
 }
 

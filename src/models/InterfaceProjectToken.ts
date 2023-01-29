@@ -12,8 +12,10 @@ export interface IInterfaceProjectToken extends IOwnable {
 
 const interfaceProjectTokenSchema = new mongoose.Schema<IInterfaceProjectToken>(
   {
-    // ownable
+    // contract
+    lastUpdateBlock: { type: Number, required: true },
     address: { type: String, required: true },
+    // ownable
     owner: { type: String, required: true },
     // other
     liquidityToken: String,

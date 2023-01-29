@@ -16,15 +16,21 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   }
 
   async init() {
-    const inData = await this.load();
-    await this.saveOrUpdate(inData);
+    await super.init();
 
-    if (inData.projectToken !== EMPTY_ADDRESS) {
-      this.projectToken = new DelegableToLT(this.provider, inData.projectToken);
+    if (this.lastState!.projectToken !== EMPTY_ADDRESS) {
+      this.projectToken = new DelegableToLT(
+        this.provider,
+        this.lastState!.projectToken
+      );
       await this.projectToken.init();
     }
 
     this.subscribeToEvents();
+  }
+
+  async get() {
+    return await InterfaceProjectTokenModel.findOne({ address: this.address });
   }
 
   async load() {
@@ -33,8 +39,10 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     const ins = this.instance;
 
     return {
-      // ownable
+      // contract
+      lastUpdateBlock: this.actualBlock,
       address: this.address,
+      // ownable
       owner: await ins.owner(),
       // other
       liquidityToken: await ins.liquidityToken(),
@@ -49,15 +57,21 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   }
 
   async saveOrUpdate(data: IInterfaceProjectToken) {
+    let result;
     if (!(await InterfaceProjectTokenModel.exists({ address: data.address }))) {
-      await this.toModel(data).save();
+      result = await this.toModel(data).save();
     } else {
-      await InterfaceProjectTokenModel.updateOne(
+      result = await InterfaceProjectTokenModel.updateOne(
         { address: data.address },
         data
       );
     }
+    this.lastUpdateBlock = this.actualBlock;
+    this.lastState = result.toJSON();
+    return result;
   }
+
+  syncEvents(fromBlock: number): Promise<void> {}
 
   subscribeToEvents(): void {
     /*

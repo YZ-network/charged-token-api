@@ -12,14 +12,21 @@ export class Directory extends AbstractLoader<IDirectory> {
   }
 
   async init() {
-    const dirData = await this.load();
-    await this.saveOrUpdate(dirData);
+    await super.init();
+
+    this.lastState!.directory.forEach(
+      (address) => (this.ct[address] = new ChargedToken(this.provider, address))
+    );
 
     await Promise.all(
       Object.values(this.ct).map((ct: ChargedToken) => ct.init())
     );
 
     this.subscribeToEvents();
+  }
+
+  async get() {
+    return await DirectoryModel.findOne({ address: this.address });
   }
 
   async load() {
@@ -53,11 +60,8 @@ export class Directory extends AbstractLoader<IDirectory> {
       );
     }
 
-    directory.forEach(
-      (address) => (this.ct[address] = new ChargedToken(this.provider, address))
-    );
-
     return {
+      lastUpdateBlock: this.actualBlock,
       address: this.address,
       owner: await ins.owner(),
       directory,
@@ -69,16 +73,22 @@ export class Directory extends AbstractLoader<IDirectory> {
     };
   }
 
+  syncEvents(fromBlock: number): Promise<void> {}
+
   subscribeToEvents() {
     // this.instance.
   }
 
   async saveOrUpdate(data: IDirectory) {
+    let result;
     if (!(await DirectoryModel.exists({ address: data.address }))) {
-      await this.toModel(data).save();
+      result = await this.toModel(data).save();
     } else {
-      await DirectoryModel.updateOne({ address: data.address }, data);
+      result = await DirectoryModel.updateOne({ address: data.address }, data);
     }
+    this.lastUpdateBlock = this.actualBlock;
+    this.lastState = result.toJSON();
+    return result;
   }
 
   toModel(data: IDirectory) {

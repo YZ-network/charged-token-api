@@ -13,18 +13,22 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   }
 
   async init() {
-    const ctData = await this.load();
-    await this.saveOrUpdate(ctData);
+    await super.init();
 
-    if (ctData.interfaceProjectToken !== EMPTY_ADDRESS) {
+    if (this.lastState!.interfaceProjectToken !== EMPTY_ADDRESS) {
       this.interface = new InterfaceProjectToken(
         this.provider,
-        ctData.interfaceProjectToken
+        this.lastState!.interfaceProjectToken
       );
+
       await this.interface.init();
     }
 
     this.subscribeToEvents();
+  }
+
+  async get() {
+    return await ChargedTokenModel.findOne({ address: this.address });
   }
 
   async load() {
@@ -33,8 +37,10 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     const ins = this.instance;
 
     return {
-      // ownable
+      // contract
+      lastUpdateBlock: this.actualBlock,
       address: this.address,
+      // ownable
       owner: await ins.owner(),
       // erc20
       name: await ins.name(),
@@ -91,32 +97,76 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   }
 
   async saveOrUpdate(data: IChargedToken) {
+    let result;
     if (!(await ChargedTokenModel.exists({ address: data.address }))) {
-      await this.toModel(data).save();
+      result = await this.toModel(data).save();
     } else {
-      await ChargedTokenModel.updateOne({ address: data.address }, data);
+      result = await ChargedTokenModel.updateOne(
+        { address: data.address },
+        data
+      );
     }
+    this.lastUpdateBlock = this.actualBlock;
+    this.lastState = result.toJSON();
+    return result;
   }
+
+  syncEvents(fromBlock: number): Promise<void> {}
 
   subscribeToEvents(): void {
     // ERC20 events
     // event Transfer(address indexed from, address indexed to, uint256 value);
-    this.instance.on("Transfer", (event) => {
-      console.log("received Transfer event :", event);
+    this.instance.on("Transfer", (from, to, value) => {
+      console.log(
+        "received Transfer event :",
+        from,
+        "=>",
+        to,
+        ":",
+        value.toString()
+      );
     });
 
     // self events
-    this.instance.on("LTAllocatedByOwner", (event) => {
-      console.log("received LTAllocatedByOwner event :", event);
-    });
-    this.instance.on("LTAllocatedThroughSale", (event) => {
-      console.log("received LTAllocatedThroughSale event :", event);
-    });
-    this.instance.on("LTReceived", (event) => {
-      console.log("received LTReceived event :", event);
-    });
-    this.instance.on("LTDeposited", (event) => {
-      console.log("received LTDeposited event :", event);
+    this.instance.on(
+      "LTAllocatedByOwner",
+      (user, value, hodlRewards, isAllocationStaked) => {
+        console.log(
+          "received LTAllocatedByOwner event :",
+          user,
+          value.toString(),
+          hodlRewards.toString(),
+          isAllocationStaked
+        );
+      }
+    );
+    this.instance.on(
+      "LTAllocatedThroughSale",
+      (user, valueLT, valuePayment, hodlRewards) => {
+        console.log(
+          "received LTAllocatedThroughSale event :",
+          user,
+          valueLT.toString(),
+          valuePayment.toString(),
+          hodlRewards.toString()
+        );
+      }
+    );
+    this.instance.on(
+      "LTReceived",
+      (user, value, totalFees, feesToRewardHodlers, hodlRewards) => {
+        console.log(
+          "received LTReceived event :",
+          user,
+          value.toString(),
+          totalFees.toString(),
+          feesToRewardHodlers.toString(),
+          hodlRewards.toString()
+        );
+      }
+    );
+    this.instance.on("LTDeposited", (user, value, hodlRewards) => {
+      console.log("received LTDeposited event :", user, value, hodlRewards);
     });
     /*
       event LTAllocatedByOwner(address _user, uint _value, uint _hodlRewards, bool _isAllocationStaked);

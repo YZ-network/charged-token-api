@@ -1,11 +1,15 @@
 import { ethers } from "ethers";
-import { HydratedDocument } from "mongoose";
+import { FlattenMaps, HydratedDocument } from "mongoose";
+import { IContract } from "../types";
 
-export abstract class AbstractLoader<T> {
+export abstract class AbstractLoader<T extends IContract> {
   protected readonly provider: ethers.providers.JsonRpcProvider;
   protected readonly address: string;
   protected readonly contract: any;
   protected readonly instance: ethers.Contract;
+  protected lastUpdateBlock: number = 0;
+  protected actualBlock: number = 0;
+  protected lastState: FlattenMaps<T> | undefined;
 
   protected constructor(
     provider: ethers.providers.JsonRpcProvider,
@@ -19,15 +23,32 @@ export abstract class AbstractLoader<T> {
     this.instance = new ethers.Contract(address, contract.abi, provider);
   }
 
-  abstract init(): Promise<void>;
+  async init(): Promise<void> {
+    this.actualBlock = await this.provider.getBlockNumber();
+
+    const existing = await this.get();
+
+    if (existing != null) {
+      this.lastUpdateBlock = existing.lastUpdateBlock;
+      this.lastState = existing.toJSON();
+    }
+
+    if (this.lastUpdateBlock === 0) {
+      await this.saveOrUpdate(await this.load());
+    } else {
+      await this.syncEvents(this.lastUpdateBlock);
+    }
+  }
 
   abstract load(): Promise<T>;
 
-  abstract saveOrUpdate(data: T): Promise<void>;
+  abstract get(): Promise<HydratedDocument<T> | null>;
+
+  abstract saveOrUpdate(data: T): Promise<HydratedDocument<T>>;
 
   abstract toModel(data: T): HydratedDocument<T>;
 
-  subscribeToEvents() {
-    // this.instance.
-  }
+  abstract syncEvents(fromBlock: number): Promise<void>;
+
+  abstract subscribeToEvents(): void;
 }
