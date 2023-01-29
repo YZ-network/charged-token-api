@@ -3,8 +3,11 @@ import { HydratedDocument } from "mongoose";
 import { contracts } from "../contracts";
 import { ChargedTokenModel, IChargedToken } from "../models";
 import { AbstractLoader } from "./AbstractLoader";
+import { InterfaceProjectToken } from "./InterfaceProjectToken";
 
-export class ChargedToken extends AbstractLoader {
+export class ChargedToken extends AbstractLoader<IChargedToken> {
+  interface: InterfaceProjectToken | undefined;
+
   constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
     super(provider, address, contracts.LiquidityToken);
   }

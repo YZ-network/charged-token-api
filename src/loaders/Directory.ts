@@ -5,7 +5,7 @@ import { DirectoryModel, IDirectory } from "../models";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
 
-export class Directory extends AbstractLoader {
+export class Directory extends AbstractLoader<IDirectory> {
   readonly ct: Record<string, ChargedToken> = {};
 
   constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
