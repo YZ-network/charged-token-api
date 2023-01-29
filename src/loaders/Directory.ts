@@ -21,8 +21,6 @@ export class Directory extends AbstractLoader<IDirectory> {
     await Promise.all(
       Object.values(this.ct).map((ct: ChargedToken) => ct.init())
     );
-
-    this.subscribeToEvents();
   }
 
   async get() {
@@ -72,14 +70,6 @@ export class Directory extends AbstractLoader<IDirectory> {
       areUserFunctionsDisabled: await ins.areUserFunctionsDisabled(),
     };
   }
-
-  async syncEvents(fromBlock: number): Promise<void> {}
-
-  subscribeToEvents() {
-    // this.instance.
-  }
-
-  onEvent(name: string, ...args: any[]): void {}
 
   async saveOrUpdate(data: IDirectory) {
     let result;

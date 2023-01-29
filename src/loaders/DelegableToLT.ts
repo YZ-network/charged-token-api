@@ -5,13 +5,7 @@ import { AbstractLoader } from "./AbstractLoader";
 
 export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
-    super(provider, address, contracts.DelegableToLT);
-  }
-
-  async init(): Promise<void> {
-    await super.init();
-
-    this.subscribeToEvents();
+    super(provider, address, contracts.DelegableToLT, ["Transfer"]);
   }
 
   async get() {
@@ -65,29 +59,6 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     this.lastUpdateBlock = this.actualBlock;
     this.lastState = result.toJSON();
     return result;
-  }
-
-  async syncEvents(fromBlock: number): Promise<void> {}
-
-  onEvent(name: string, ...args: any[]): void {}
-
-  subscribeToEvents(): void {
-    // ERC20 events
-    // event Transfer(address indexed from, address indexed to, uint256 value);
-    this.instance.on("Transfer", (event) => {
-      console.log("received Transfer event :", event);
-    });
-
-    // self events
-    /*
-      event LTAllocatedByOwner(address _user, uint _value, uint _hodlRewards, bool _isAllocationStaked);
-
-  event LTAllocatedThroughSale(address _user, uint _valueLT, uint _valuePayment, uint _hodlRewards);
-
-  event LTReceived(address _user, uint _value, uint _totalFees, uint _feesToRewardHodlers, uint _hodlRewards);
-
-  event LTDeposited(address _user, uint _value, uint _hodlRewards);
-*/
   }
 
   toModel(data: IDelegableToLT) {

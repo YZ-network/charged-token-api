@@ -12,7 +12,11 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   projectToken: DelegableToLT | undefined;
 
   constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
-    super(provider, address, contracts.InterfaceProjectToken);
+    super(provider, address, contracts.InterfaceProjectToken, [
+      "StartSet",
+      "ProjectTokenReceived",
+      "LTRecharged",
+    ]);
   }
 
   async init() {
@@ -23,10 +27,9 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         this.provider,
         this.lastState!.projectToken
       );
+
       await this.projectToken.init();
     }
-
-    this.subscribeToEvents();
   }
 
   async get() {
@@ -69,20 +72,6 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     this.lastUpdateBlock = this.actualBlock;
     this.lastState = result.toJSON();
     return result;
-  }
-
-  async syncEvents(fromBlock: number): Promise<void> {}
-
-  onEvent(name: string, ...args: any[]): void {}
-
-  subscribeToEvents(): void {
-    /*
-    event StartSet(uint _dateLaunch, uint _dateEndCliff);
-
-  event ProjectTokenReceived(address _user, uint _value, uint _fees, uint _hodlRewards);
-
-  event LTRecharged(address _user, uint _value, uint _valueProjectToken, uint _hodlRewards);
-     */
   }
 
   toModel(data: IInterfaceProjectToken) {

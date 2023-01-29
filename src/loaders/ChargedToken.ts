@@ -9,7 +9,13 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   interface: InterfaceProjectToken | undefined;
 
   constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
-    super(provider, address, contracts.LiquidityToken);
+    super(provider, address, contracts.LiquidityToken, [
+      "Transfer",
+      "LTAllocatedByOwner",
+      "LTAllocatedThroughSale",
+      "LTReceived",
+      "LTDeposited",
+    ]);
   }
 
   async init() {
@@ -23,8 +29,6 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
 
       await this.interface.init();
     }
-
-    this.subscribeToEvents();
   }
 
   async get() {
@@ -111,49 +115,29 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     return result;
   }
 
-  onEvent(name: string, ...args: any[]): void {
-    const eventHandlerName = `on${name}Event` as
-      | "onTransferEvent"
-      | "onLTAllocatedByOwner"
-      | "onLTAllocatedThroughSale"
-      | "onLTReceived"
-      | "onLTDeposited";
-    this[eventHandlerName](...args);
-  }
-
-  onTransferEvent(from: string, to: string, value: BigNumber): void {}
-  onLTAllocatedByOwner(
-    user: string,
-    value: BigNumber,
-    hodlRewards: BigNumber,
-    isAllocationStaked: boolean
-  ): void {}
-  onLTAllocatedThroughSale(
-    user: string,
-    valueLT: BigNumber,
-    valuePayment: BigNumber,
-    hodlRewards: BigNumber
-  ): void {}
-  onLTReceived(
-    user: string,
-    value: BigNumber,
-    totalFees: BigNumber,
-    feesToRewardHodlers: BigNumber,
-    hodlRewards: BigNumber
-  ): void {}
-  onLTDeposited(user: string, value: BigNumber, hodlRewards: BigNumber): void {}
-
-  subscribeToEvents(): void {
-    [
-      "Transfer",
-      "LTAllocatedByOwner",
-      "LTAllocatedThroughSale",
-      "LTReceived",
-      "LTDeposited",
-    ].forEach((event) => this.subscribeToEvent(event));
-  }
-
   toModel(data: IChargedToken) {
     return (ChargedTokenModel as any).toModel(data);
   }
+
+  onTransferEvent([from, to, value]: any[]): void {}
+  onLTAllocatedByOwner([
+    user,
+    value,
+    hodlRewards,
+    isAllocationStaked,
+  ]: any[]): void {}
+  onLTAllocatedThroughSale([
+    user,
+    valueLT,
+    valuePayment,
+    hodlRewards,
+  ]: any[]): void {}
+  onLTReceived([
+    user,
+    value,
+    totalFees,
+    feesToRewardHodlers,
+    hodlRewards,
+  ]: any[]): void {}
+  onLTDeposited(user: string, value: BigNumber, hodlRewards: BigNumber): void {}
 }
