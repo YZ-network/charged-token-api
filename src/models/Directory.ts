@@ -1,4 +1,3 @@
-import { BigNumber } from "ethers";
 import mongoose, { HydratedDocument } from "mongoose";
 import { IOwnable } from "../types";
 
@@ -29,11 +28,7 @@ const directorySchema = new Schema<IDirectory>(
       toModel(data: IDirectory): HydratedDocument<IDirectory> {
         const model = new this();
         Object.keys(data).forEach((key) => {
-          if (data[key] instanceof BigNumber) {
-            model[key] = data[key].toString();
-          } else {
-            model[key] = data[key];
-          }
+          model[key] = data[key].toString();
         });
         return model;
       },
