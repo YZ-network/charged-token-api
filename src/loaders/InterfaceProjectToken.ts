@@ -1,12 +1,17 @@
 import { ethers } from "ethers";
 import { contracts } from "../contracts";
-import { ChargedTokenModel } from "../models";
-import { IInterfaceProjectToken } from "../models/InterfaceProjectToken";
+import {
+  IInterfaceProjectToken,
+  InterfaceProjectTokenModel,
+} from "../models/InterfaceProjectToken";
 import { AbstractLoader } from "./AbstractLoader";
+import { DelegableToLT } from "./DelegableToLT";
 
 export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken> {
+  projectToken: DelegableToLT | undefined;
+
   constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
-    super(provider, address, contracts.LiquidityToken);
+    super(provider, address, contracts.InterfaceProjectToken);
   }
 
   async load() {
@@ -31,14 +36,17 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   }
 
   async saveOrUpdate(data: IInterfaceProjectToken) {
-    if (!(await ChargedTokenModel.exists({ address: data.address }))) {
+    if (!(await InterfaceProjectTokenModel.exists({ address: data.address }))) {
       await this.toModel(data).save();
     } else {
-      await ChargedTokenModel.updateOne({ address: data.address }, data);
+      await InterfaceProjectTokenModel.updateOne(
+        { address: data.address },
+        data
+      );
     }
   }
 
   toModel(data: IInterfaceProjectToken) {
-    return (ChargedTokenModel as any).toModel(data);
+    return (InterfaceProjectTokenModel as any).toModel(data);
   }
 }

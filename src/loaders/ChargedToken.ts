@@ -17,9 +17,10 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     const ins = this.instance;
 
     return {
-      // erc20
+      // ownable
       address: this.address,
       owner: await ins.owner(),
+      // erc20
       name: await ins.name(),
       symbol: await ins.symbol(),
       decimals: (await ins.decimals()).toString(),

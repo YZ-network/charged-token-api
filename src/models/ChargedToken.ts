@@ -53,9 +53,10 @@ export interface IChargedToken
 
 const chargedTokenSchema = new mongoose.Schema<IChargedToken>(
   {
-    // erc20
+    // ownable
     address: { type: String, required: true },
     owner: { type: String, required: true },
+    // erc20
     name: { type: String, required: true },
     symbol: { type: String, required: true },
     decimals: Number,
