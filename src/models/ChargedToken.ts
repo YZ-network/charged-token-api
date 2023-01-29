@@ -33,8 +33,8 @@ interface IUserLiquiToken {
 }
 
 export interface IChargedTokenMaps {
-  claimedRewardPerShare1e18: Record<string, string>;
-  userLiquiToken: Record<string, IUserLiquiToken>;
+  claimedRewardPerShare1e18: Map<string, string>;
+  userLiquiToken: Map<string, IUserLiquiToken>;
 }
 
 export interface IChargedToken

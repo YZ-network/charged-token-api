@@ -8,6 +8,7 @@ const provider = new ethers.providers.StaticJsonRpcProvider(
   process.env.JSON_RPC_URL
 );
 
+mongoose.set("strictQuery", true);
 mongoose
   .connect("mongodb://localhost:27017/test")
   .then(() => {

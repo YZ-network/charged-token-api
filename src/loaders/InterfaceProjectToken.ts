@@ -23,6 +23,8 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       this.projectToken = new DelegableToLT(this.provider, inData.projectToken);
       await this.projectToken.init();
     }
+
+    this.subscribeToEvents();
   }
 
   async load() {
@@ -42,7 +44,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       claimFeesPerThousandForPT: (
         await ins.claimFeesPerThousandForPT()
       ).toString(),
-      valueProjectTokenToFullRecharge: {},
+      valueProjectTokenToFullRecharge: new Map(),
     };
   }
 

@@ -18,6 +18,8 @@ export class Directory extends AbstractLoader<IDirectory> {
     await Promise.all(
       Object.values(this.ct).map((ct: ChargedToken) => ct.init())
     );
+
+    this.subscribeToEvents();
   }
 
   async load() {
@@ -30,22 +32,25 @@ export class Directory extends AbstractLoader<IDirectory> {
     ).toNumber();
     const whitelistedProjectOwners: string[] = [];
     const projects: string[] = [];
-    const whitelist: Record<string, string> = {};
+    const whitelist: Map<string, string> = new Map();
     for (let i = 0; i < whitelistCount; i++) {
       const projectOwner = await ins.getWhitelistedProjectOwner(i);
       const projectName = await ins.getWhitelistedProjectName(i);
       whitelistedProjectOwners.push(projectOwner);
       projects.push(projectName);
-      whitelist[projectOwner] = await ins.whitelist(projectOwner);
+      whitelist.set(projectOwner, await ins.whitelist(projectOwner));
     }
 
     const contractsCount = (await ins.countLTContracts()).toNumber();
     const directory: string[] = [];
-    const projectRelatedToLT: Record<string, string> = {};
+    const projectRelatedToLT: Map<string, string> = new Map();
     for (let i = 0; i < contractsCount; i++) {
       const ctAddress = await ins.getLTContract(i);
       directory.push(ctAddress);
-      projectRelatedToLT[ctAddress] = await ins.projectRelatedToLT(ctAddress);
+      projectRelatedToLT.set(
+        ctAddress,
+        await ins.projectRelatedToLT(ctAddress)
+      );
     }
 
     directory.forEach(

@@ -5,8 +5,8 @@ export interface IDirectory extends IOwnable {
   directory: string[];
   whitelistedProjectOwners: string[];
   projects: string[];
-  projectRelatedToLT: Record<string, string>;
-  whitelist: Record<string, string>;
+  projectRelatedToLT: Map<string, string>;
+  whitelist: Map<string, string>;
   areUserFunctionsDisabled: boolean;
 }
 
@@ -28,7 +28,7 @@ const directorySchema = new Schema<IDirectory>(
       toModel(data: IDirectory): HydratedDocument<IDirectory> {
         const model = new this();
         Object.keys(data).forEach((key) => {
-          model[key] = data[key].toString();
+          model[key] = data[key];
         });
         return model;
       },

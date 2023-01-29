@@ -23,6 +23,8 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       );
       await this.interface.init();
     }
+
+    this.subscribeToEvents();
   }
 
   async load() {
@@ -75,8 +77,8 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         await ins.withdrawFeesPerThousandForLT()
       ).toString(),
       // maps
-      claimedRewardPerShare1e18: {},
-      userLiquiToken: {},
+      claimedRewardPerShare1e18: new Map(),
+      userLiquiToken: new Map(),
       // staking
       stakingStartDate: (await ins.stakingStartDate()).toString(),
       stakingDuration: (await ins.stakingDuration()).toString(),
@@ -104,6 +106,18 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     });
 
     // self events
+    this.instance.on("LTAllocatedByOwner", (event) => {
+      console.log("received LTAllocatedByOwner event :", event);
+    });
+    this.instance.on("LTAllocatedThroughSale", (event) => {
+      console.log("received LTAllocatedThroughSale event :", event);
+    });
+    this.instance.on("LTReceived", (event) => {
+      console.log("received LTReceived event :", event);
+    });
+    this.instance.on("LTDeposited", (event) => {
+      console.log("received LTDeposited event :", event);
+    });
     /*
       event LTAllocatedByOwner(address _user, uint _value, uint _hodlRewards, bool _isAllocationStaked);
 

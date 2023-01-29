@@ -11,6 +11,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   async init(): Promise<void> {
     const ptData = await this.load();
     await this.saveOrUpdate(ptData);
+    this.subscribeToEvents();
   }
 
   async load() {

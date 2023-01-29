@@ -7,7 +7,7 @@ export interface IInterfaceProjectToken extends IOwnable {
   dateLaunch: string;
   dateEndCliff: string;
   claimFeesPerThousandForPT: string;
-  valueProjectTokenToFullRecharge: Record<string, string>;
+  valueProjectTokenToFullRecharge: Map<string, string>;
 }
 
 const interfaceProjectTokenSchema = new mongoose.Schema<IInterfaceProjectToken>(
@@ -21,7 +21,7 @@ const interfaceProjectTokenSchema = new mongoose.Schema<IInterfaceProjectToken>(
     dateLaunch: String,
     dateEndCliff: String,
     claimFeesPerThousandForPT: String,
-    valueProjectTokenToFullRecharge: { type: Map, of: string },
+    valueProjectTokenToFullRecharge: { type: Map, of: String },
   },
   {
     statics: {
