@@ -9,7 +9,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   interface: InterfaceProjectToken | undefined;
 
   constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
-    super(provider, address, contracts.LiquidityToken, [
+    super(provider, address, contracts.LiquidityToken, ChargedTokenModel, [
       "Transfer",
       "LTAllocatedByOwner",
       "LTAllocatedThroughSale",
@@ -31,8 +31,8 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     }
   }
 
-  async get() {
-    return await ChargedTokenModel.findOne({ address: this.address });
+  toModel(data: IChargedToken) {
+    return (ChargedTokenModel as any).toModel(data);
   }
 
   async load() {
@@ -98,25 +98,6 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       campaignStakingRewards: (await ins.campaignStakingRewards()).toString(),
       totalStakingRewards: (await ins.totalStakingRewards()).toString(),
     };
-  }
-
-  async saveOrUpdate(data: IChargedToken) {
-    let result;
-    if (!(await ChargedTokenModel.exists({ address: data.address }))) {
-      result = await this.toModel(data).save();
-    } else {
-      result = await ChargedTokenModel.updateOne(
-        { address: data.address },
-        data
-      );
-    }
-    this.lastUpdateBlock = this.actualBlock;
-    this.lastState = result.toJSON();
-    return result;
-  }
-
-  toModel(data: IChargedToken) {
-    return (ChargedTokenModel as any).toModel(data);
   }
 
   onTransferEvent([from, to, value]: any[]): void {}

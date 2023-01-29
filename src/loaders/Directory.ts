@@ -8,7 +8,7 @@ export class Directory extends AbstractLoader<IDirectory> {
   readonly ct: Record<string, ChargedToken> = {};
 
   constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
-    super(provider, address, contracts.ContractsDirectory);
+    super(provider, address, contracts.ContractsDirectory, DirectoryModel);
   }
 
   async init() {
@@ -23,8 +23,8 @@ export class Directory extends AbstractLoader<IDirectory> {
     );
   }
 
-  async get() {
-    return await DirectoryModel.findOne({ address: this.address });
+  toModel(data: IDirectory) {
+    return (DirectoryModel as any).toModel(data);
   }
 
   async load() {
@@ -69,21 +69,5 @@ export class Directory extends AbstractLoader<IDirectory> {
       whitelist,
       areUserFunctionsDisabled: await ins.areUserFunctionsDisabled(),
     };
-  }
-
-  async saveOrUpdate(data: IDirectory) {
-    let result;
-    if (!(await DirectoryModel.exists({ address: data.address }))) {
-      result = await this.toModel(data).save();
-    } else {
-      result = await DirectoryModel.updateOne({ address: data.address }, data);
-    }
-    this.lastUpdateBlock = this.actualBlock;
-    this.lastState = result.toJSON();
-    return result;
-  }
-
-  toModel(data: IDirectory) {
-    return (DirectoryModel as any).toModel(data);
   }
 }

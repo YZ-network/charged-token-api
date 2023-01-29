@@ -5,11 +5,13 @@ import { AbstractLoader } from "./AbstractLoader";
 
 export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
-    super(provider, address, contracts.DelegableToLT, ["Transfer"]);
+    super(provider, address, contracts.DelegableToLT, DelegableToLTModel, [
+      "Transfer",
+    ]);
   }
 
-  async get() {
-    return await DelegableToLTModel.findOne({ address: this.address });
+  toModel(data: IDelegableToLT) {
+    return (DelegableToLTModel as any).toModel(data);
   }
 
   async load() {
@@ -44,24 +46,5 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
       isListOfInterfaceProjectTokenComplete:
         await ins.isListOfInterfaceProjectTokenComplete(),
     };
-  }
-
-  async saveOrUpdate(data: IDelegableToLT) {
-    let result;
-    if (!(await DelegableToLTModel.exists({ address: data.address }))) {
-      result = await this.toModel(data).save();
-    } else {
-      result = await DelegableToLTModel.updateOne(
-        { address: data.address },
-        data
-      );
-    }
-    this.lastUpdateBlock = this.actualBlock;
-    this.lastState = result.toJSON();
-    return result;
-  }
-
-  toModel(data: IDelegableToLT) {
-    return (DelegableToLTModel as any).toModel(data);
   }
 }
