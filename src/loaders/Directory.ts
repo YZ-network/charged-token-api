@@ -73,11 +73,13 @@ export class Directory extends AbstractLoader<IDirectory> {
     };
   }
 
-  syncEvents(fromBlock: number): Promise<void> {}
+  async syncEvents(fromBlock: number): Promise<void> {}
 
   subscribeToEvents() {
     // this.instance.
   }
+
+  onEvent(name: string, ...args: any[]): void {}
 
   async saveOrUpdate(data: IDirectory) {
     let result;

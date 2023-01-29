@@ -48,7 +48,35 @@ export abstract class AbstractLoader<T extends IContract> {
 
   abstract toModel(data: T): HydratedDocument<T>;
 
-  abstract syncEvents(fromBlock: number): Promise<void>;
+  async syncEvents(fromBlock: number): Promise<void> {
+    const eventFilter = this.instance.filters.ContractEvent();
+    const missedEvents = await this.instance.queryFilter(
+      eventFilter,
+      fromBlock
+    );
+
+    for (const event of missedEvents) {
+      const name = event.event!;
+      const args =
+        event.args === undefined
+          ? []
+          : Object.entries(event.args)
+              .filter(([key, value]) => !isNaN(Number(key)))
+              .map(([key, value]) => value);
+      await this.onEvent(name, ...args);
+    }
+
+    this.lastUpdateBlock = this.actualBlock;
+  }
 
   abstract subscribeToEvents(): void;
+
+  abstract onEvent(name: string, ...args: any[]): void;
+
+  subscribeToEvent(name: string) {
+    this.instance.on(name, (...args) => {
+      console.log("received", name, "event :", ...args);
+      this.onEvent(name, ...args);
+    });
+  }
 }

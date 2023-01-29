@@ -67,7 +67,9 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     return result;
   }
 
-  syncEvents(fromBlock: number): Promise<void> {}
+  async syncEvents(fromBlock: number): Promise<void> {}
+
+  onEvent(name: string, ...args: any[]): void {}
 
   subscribeToEvents(): void {
     // ERC20 events

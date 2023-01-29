@@ -71,7 +71,9 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     return result;
   }
 
-  syncEvents(fromBlock: number): Promise<void> {}
+  async syncEvents(fromBlock: number): Promise<void> {}
+
+  onEvent(name: string, ...args: any[]): void {}
 
   subscribeToEvents(): void {
     /*

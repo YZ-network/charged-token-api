@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { contracts } from "../contracts";
 import { ChargedTokenModel, IChargedToken } from "../models";
 import { EMPTY_ADDRESS } from "../types";
@@ -111,72 +111,46 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     return result;
   }
 
-  syncEvents(fromBlock: number): Promise<void> {}
+  onEvent(name: string, ...args: any[]): void {
+    const eventHandlerName = `on${name}Event` as
+      | "onTransferEvent"
+      | "onLTAllocatedByOwner"
+      | "onLTAllocatedThroughSale"
+      | "onLTReceived"
+      | "onLTDeposited";
+    this[eventHandlerName](...args);
+  }
+
+  onTransferEvent(from: string, to: string, value: BigNumber): void {}
+  onLTAllocatedByOwner(
+    user: string,
+    value: BigNumber,
+    hodlRewards: BigNumber,
+    isAllocationStaked: boolean
+  ): void {}
+  onLTAllocatedThroughSale(
+    user: string,
+    valueLT: BigNumber,
+    valuePayment: BigNumber,
+    hodlRewards: BigNumber
+  ): void {}
+  onLTReceived(
+    user: string,
+    value: BigNumber,
+    totalFees: BigNumber,
+    feesToRewardHodlers: BigNumber,
+    hodlRewards: BigNumber
+  ): void {}
+  onLTDeposited(user: string, value: BigNumber, hodlRewards: BigNumber): void {}
 
   subscribeToEvents(): void {
-    // ERC20 events
-    // event Transfer(address indexed from, address indexed to, uint256 value);
-    this.instance.on("Transfer", (from, to, value) => {
-      console.log(
-        "received Transfer event :",
-        from,
-        "=>",
-        to,
-        ":",
-        value.toString()
-      );
-    });
-
-    // self events
-    this.instance.on(
+    [
+      "Transfer",
       "LTAllocatedByOwner",
-      (user, value, hodlRewards, isAllocationStaked) => {
-        console.log(
-          "received LTAllocatedByOwner event :",
-          user,
-          value.toString(),
-          hodlRewards.toString(),
-          isAllocationStaked
-        );
-      }
-    );
-    this.instance.on(
       "LTAllocatedThroughSale",
-      (user, valueLT, valuePayment, hodlRewards) => {
-        console.log(
-          "received LTAllocatedThroughSale event :",
-          user,
-          valueLT.toString(),
-          valuePayment.toString(),
-          hodlRewards.toString()
-        );
-      }
-    );
-    this.instance.on(
       "LTReceived",
-      (user, value, totalFees, feesToRewardHodlers, hodlRewards) => {
-        console.log(
-          "received LTReceived event :",
-          user,
-          value.toString(),
-          totalFees.toString(),
-          feesToRewardHodlers.toString(),
-          hodlRewards.toString()
-        );
-      }
-    );
-    this.instance.on("LTDeposited", (user, value, hodlRewards) => {
-      console.log("received LTDeposited event :", user, value, hodlRewards);
-    });
-    /*
-      event LTAllocatedByOwner(address _user, uint _value, uint _hodlRewards, bool _isAllocationStaked);
-
-  event LTAllocatedThroughSale(address _user, uint _valueLT, uint _valuePayment, uint _hodlRewards);
-
-  event LTReceived(address _user, uint _value, uint _totalFees, uint _feesToRewardHodlers, uint _hodlRewards);
-
-  event LTDeposited(address _user, uint _value, uint _hodlRewards);
-*/
+      "LTDeposited",
+    ].forEach((event) => this.subscribeToEvent(event));
   }
 
   toModel(data: IChargedToken) {
