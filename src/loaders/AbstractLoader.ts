@@ -1,5 +1,6 @@
 import { ethers, EventFilter } from "ethers";
 import { FlattenMaps, HydratedDocument } from "mongoose";
+import { pubSub } from "../graphql";
 import { IContract, IEventHandler, IModel } from "../types";
 
 /**
@@ -100,6 +101,9 @@ export abstract class AbstractLoader<T extends IContract> {
 
     this.lastUpdateBlock = this.actualBlock;
     this.lastState = result.toJSON();
+
+    pubSub.publish(this.constructor.name, this.lastState);
+
     return result;
   }
 
