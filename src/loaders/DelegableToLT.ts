@@ -8,6 +8,11 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     super(provider, address, contracts.DelegableToLT);
   }
 
+  async init(): Promise<void> {
+    const ptData = await this.load();
+    await this.saveOrUpdate(ptData);
+  }
+
   async load() {
     console.log("Reading project token @", this.address);
 
@@ -46,6 +51,25 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     } else {
       await DelegableToLTModel.updateOne({ address: data.address }, data);
     }
+  }
+
+  subscribeToEvents(): void {
+    // ERC20 events
+    // event Transfer(address indexed from, address indexed to, uint256 value);
+    this.instance.on("Transfer", (event) => {
+      console.log("received Transfer event :", event);
+    });
+
+    // self events
+    /*
+      event LTAllocatedByOwner(address _user, uint _value, uint _hodlRewards, bool _isAllocationStaked);
+
+  event LTAllocatedThroughSale(address _user, uint _valueLT, uint _valuePayment, uint _hodlRewards);
+
+  event LTReceived(address _user, uint _value, uint _totalFees, uint _feesToRewardHodlers, uint _hodlRewards);
+
+  event LTDeposited(address _user, uint _value, uint _hodlRewards);
+*/
   }
 
   toModel(data: IDelegableToLT) {

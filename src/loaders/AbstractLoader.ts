@@ -19,6 +19,8 @@ export abstract class AbstractLoader<T> {
     this.instance = new ethers.Contract(address, contract.abi, provider);
   }
 
+  abstract init(): Promise<void>;
+
   abstract load(): Promise<T>;
 
   abstract saveOrUpdate(data: T): Promise<void>;

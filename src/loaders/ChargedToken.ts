@@ -1,6 +1,7 @@
 import { ethers } from "ethers";
 import { contracts } from "../contracts";
 import { ChargedTokenModel, IChargedToken } from "../models";
+import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
 import { InterfaceProjectToken } from "./InterfaceProjectToken";
 
@@ -9,6 +10,19 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
 
   constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
     super(provider, address, contracts.LiquidityToken);
+  }
+
+  async init() {
+    const ctData = await this.load();
+    await this.saveOrUpdate(ctData);
+
+    if (ctData.interfaceProjectToken !== EMPTY_ADDRESS) {
+      this.interface = new InterfaceProjectToken(
+        this.provider,
+        ctData.interfaceProjectToken
+      );
+      await this.interface.init();
+    }
   }
 
   async load() {
@@ -80,6 +94,25 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     } else {
       await ChargedTokenModel.updateOne({ address: data.address }, data);
     }
+  }
+
+  subscribeToEvents(): void {
+    // ERC20 events
+    // event Transfer(address indexed from, address indexed to, uint256 value);
+    this.instance.on("Transfer", (event) => {
+      console.log("received Transfer event :", event);
+    });
+
+    // self events
+    /*
+      event LTAllocatedByOwner(address _user, uint _value, uint _hodlRewards, bool _isAllocationStaked);
+
+  event LTAllocatedThroughSale(address _user, uint _valueLT, uint _valuePayment, uint _hodlRewards);
+
+  event LTReceived(address _user, uint _value, uint _totalFees, uint _feesToRewardHodlers, uint _hodlRewards);
+
+  event LTDeposited(address _user, uint _value, uint _hodlRewards);
+*/
   }
 
   toModel(data: IChargedToken) {

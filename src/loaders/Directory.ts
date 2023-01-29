@@ -11,6 +11,15 @@ export class Directory extends AbstractLoader<IDirectory> {
     super(provider, address, contracts.ContractsDirectory);
   }
 
+  async init() {
+    const dirData = await this.load();
+    await this.saveOrUpdate(dirData);
+
+    await Promise.all(
+      Object.values(this.ct).map((ct: ChargedToken) => ct.init())
+    );
+  }
+
   async load() {
     console.log("Reading directory @", this.address);
 

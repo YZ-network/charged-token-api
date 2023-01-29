@@ -12,3 +12,5 @@ export interface IErc20 extends IOwnable {
 }
 
 export type IKeyValueList = Record<string, string>[];
+
+export const EMPTY_ADDRESS = "0x0000000000000000000000000000000000000000";
