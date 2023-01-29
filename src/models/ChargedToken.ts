@@ -1,5 +1,5 @@
 import mongoose, { HydratedDocument } from "mongoose";
-import { IErc20 } from "../types";
+import { IErc20, IModel } from "../types";
 
 export interface IChargedTokenConstants {
   fractionInitialUnlockPerThousand: string;
@@ -51,70 +51,71 @@ export interface IChargedToken
   withdrawFeesPerThousandForLT: string;
 }
 
-const chargedTokenSchema = new mongoose.Schema<IChargedToken>(
-  {
-    // contract
-    lastUpdateBlock: { type: Number, required: true },
-    address: { type: String, required: true },
-    // ownable
-    owner: { type: String, required: true },
-    // erc20
-    name: { type: String, required: true },
-    symbol: { type: String, required: true },
-    decimals: Number,
-    balances: { type: Map, of: String },
-    totalSupply: String,
-    // constants
-    fractionInitialUnlockPerThousand: String,
-    durationCliff: String,
-    durationLinearVesting: String,
-    maxInitialTokenAllocation: String,
-    maxWithdrawFeesPerThousandForLT: String,
-    maxClaimFeesPerThousandForPT: String,
-    maxStakingAPR: String,
-    maxStakingTokenAmount: String,
-    // toggles
-    areUserFunctionsDisabled: Boolean,
-    isInterfaceProjectTokenLocked: Boolean,
-    areAllocationsTerminated: Boolean,
-    // variables
-    interfaceProjectToken: String,
-    ratioFeesToRewardHodlersPerThousand: String,
-    currentRewardPerShare1e18: String,
-    stakedLT: String,
-    totalTokenAllocated: String,
-    withdrawFeesPerThousandForLT: String,
-    // maps
-    claimedRewardPerShare1e18: { type: Map, of: String },
-    userLiquiToken: {
-      type: Map,
-      of: new mongoose.Schema({
-        fullyChargedBalance: String,
-        partiallyChargedBalance: String,
-        dateOfPartiallyCharged: String,
-      }),
-    },
-    // staking
-    stakingStartDate: String,
-    stakingDuration: String,
-    stakingDateLastCheckpoint: String,
-    campaignStakingRewards: String,
-    totalStakingRewards: String,
+const chargedTokenSchema = new mongoose.Schema<
+  IChargedToken,
+  IModel<IChargedToken>
+>({
+  // contract
+  lastUpdateBlock: { type: Number, required: true },
+  address: { type: String, required: true },
+  // ownable
+  owner: { type: String, required: true },
+  // erc20
+  name: { type: String, required: true },
+  symbol: { type: String, required: true },
+  decimals: Number,
+  balances: { type: Map, of: String },
+  totalSupply: String,
+  // constants
+  fractionInitialUnlockPerThousand: String,
+  durationCliff: String,
+  durationLinearVesting: String,
+  maxInitialTokenAllocation: String,
+  maxWithdrawFeesPerThousandForLT: String,
+  maxClaimFeesPerThousandForPT: String,
+  maxStakingAPR: String,
+  maxStakingTokenAmount: String,
+  // toggles
+  areUserFunctionsDisabled: Boolean,
+  isInterfaceProjectTokenLocked: Boolean,
+  areAllocationsTerminated: Boolean,
+  // variables
+  interfaceProjectToken: String,
+  ratioFeesToRewardHodlersPerThousand: String,
+  currentRewardPerShare1e18: String,
+  stakedLT: String,
+  totalTokenAllocated: String,
+  withdrawFeesPerThousandForLT: String,
+  // maps
+  claimedRewardPerShare1e18: { type: Map, of: String },
+  userLiquiToken: {
+    type: Map,
+    of: new mongoose.Schema({
+      fullyChargedBalance: String,
+      partiallyChargedBalance: String,
+      dateOfPartiallyCharged: String,
+    }),
   },
-  {
-    statics: {
-      toModel(data: IChargedToken): HydratedDocument<IChargedToken> {
-        const model = new this();
-        Object.keys(data).forEach((key) => {
-          model[key] = data[key];
-        });
-        return model;
-      },
-    },
+  // staking
+  stakingStartDate: String,
+  stakingDuration: String,
+  stakingDateLastCheckpoint: String,
+  campaignStakingRewards: String,
+  totalStakingRewards: String,
+});
+
+chargedTokenSchema.static(
+  "toModel",
+  function (data: IChargedToken): HydratedDocument<IChargedToken> {
+    const model = new this();
+    Object.keys(data).forEach((key) => {
+      model[key] = data[key];
+    });
+    return model;
   }
 );
 
-export const ChargedTokenModel = mongoose.model<IChargedToken>(
-  "ChargedToken",
-  chargedTokenSchema
-);
+export const ChargedTokenModel = mongoose.model<
+  IChargedToken,
+  IModel<IChargedToken>
+>("ChargedToken", chargedTokenSchema);

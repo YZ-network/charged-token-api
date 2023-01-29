@@ -16,8 +16,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       provider,
       address,
       contracts.InterfaceProjectToken,
-      InterfaceProjectTokenModel,
-      ["StartSet", "ProjectTokenReceived", "LTRecharged"]
+      InterfaceProjectTokenModel
     );
   }
 

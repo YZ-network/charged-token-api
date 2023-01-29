@@ -9,13 +9,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   interface: InterfaceProjectToken | undefined;
 
   constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
-    super(provider, address, contracts.LiquidityToken, ChargedTokenModel, [
-      "Transfer",
-      "LTAllocatedByOwner",
-      "LTAllocatedThroughSale",
-      "LTReceived",
-      "LTDeposited",
-    ]);
+    super(provider, address, contracts.LiquidityToken, ChargedTokenModel);
   }
 
   async init() {
@@ -101,24 +95,28 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   }
 
   onTransferEvent([from, to, value]: any[]): void {}
-  onLTAllocatedByOwner([
+  onLTAllocatedByOwnerEvent([
     user,
     value,
     hodlRewards,
     isAllocationStaked,
   ]: any[]): void {}
-  onLTAllocatedThroughSale([
+  onLTAllocatedThroughSaleEvent([
     user,
     valueLT,
     valuePayment,
     hodlRewards,
   ]: any[]): void {}
-  onLTReceived([
+  onLTReceivedEvent([
     user,
     value,
     totalFees,
     feesToRewardHodlers,
     hodlRewards,
   ]: any[]): void {}
-  onLTDeposited(user: string, value: BigNumber, hodlRewards: BigNumber): void {}
+  onLTDepositedEvent(
+    user: string,
+    value: BigNumber,
+    hodlRewards: BigNumber
+  ): void {}
 }

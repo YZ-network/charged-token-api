@@ -5,9 +5,7 @@ import { AbstractLoader } from "./AbstractLoader";
 
 export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
-    super(provider, address, contracts.DelegableToLT, DelegableToLTModel, [
-      "Transfer",
-    ]);
+    super(provider, address, contracts.DelegableToLT, DelegableToLTModel);
   }
 
   toModel(data: IDelegableToLT) {
