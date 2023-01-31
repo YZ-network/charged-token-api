@@ -81,6 +81,12 @@ export abstract class AbstractLoader<T extends IContract> {
       this.lastState = existing.toJSON();
       await this.syncEvents(this.lastUpdateBlock + 1);
     } else {
+      console.log(
+        "First time loading of",
+        this.constructor.name,
+        "@",
+        this.address
+      );
       this.lastState = (await this.saveOrUpdate(await this.load())).toJSON();
       this.lastUpdateBlock = this.actualBlock;
     }

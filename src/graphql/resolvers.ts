@@ -1,10 +1,10 @@
 import { Repeater } from "graphql-yoga";
 import { recordToEntryList } from "../functions";
-import { DirectoryModel, IDirectory } from "../models";
+import { ChargedTokenModel, DirectoryModel, IDirectory } from "../models";
 import pubSub from "./pubsub";
 
 const DirectoryQueryResolver = async () => {
-  const directory = await DirectoryModel.findOne().exec();
+  const directory = await DirectoryModel.findOne();
 
   if (directory === null) {
     throw new Error("No directory yet.");
@@ -17,6 +17,20 @@ const DirectoryQueryResolver = async () => {
     projectRelatedToLT: recordToEntryList(jsonDirectory.projectRelatedToLT),
     whitelist: recordToEntryList(jsonDirectory.projectRelatedToLT),
   };
+};
+
+const allChargedTokensResolver = async () => {
+  const cts = await ChargedTokenModel.find();
+
+  const jsonCTs = cts.map((ct) => {
+    const jsonCT = ct.toJSON();
+    return {
+      ...jsonCT,
+      balances: recordToEntryList(jsonCT.balances),
+    };
+  });
+
+  return jsonCTs;
 };
 
 const DirectorySubscriptionResolver = {
@@ -52,6 +66,7 @@ const DirectorySubscriptionResolver = {
 const resolvers = {
   Query: {
     Directory: DirectoryQueryResolver,
+    allChargedTokens: allChargedTokensResolver,
   },
   Subscription: {
     Directory: DirectorySubscriptionResolver,
