@@ -1,4 +1,4 @@
-import { BigNumber, ethers } from "ethers";
+import { ethers } from "ethers";
 import { contracts } from "../contracts";
 import { ChargedTokenModel, IChargedToken } from "../models";
 import { EMPTY_ADDRESS } from "../types";
@@ -95,18 +95,21 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   }
 
   onTransferEvent([from, to, value]: any[]): void {}
+
+  onUserFunctionsAreDisabledEvent([areUserFunctionsDisabled]: any[]): void {}
+  onInterfaceProjectTokenSetEvent([interfaceProjectToken]: any[]): void {}
+  onInterfaceProjectTokenIsLockedEvent([]: any[]): void {}
+  onIncreasedFullyChargedBalanceEvent([user, value]: any[]): void {}
   onLTAllocatedByOwnerEvent([
     user,
     value,
     hodlRewards,
     isAllocationStaked,
   ]: any[]): void {}
-  onLTAllocatedThroughSaleEvent([
-    user,
-    valueLT,
-    valuePayment,
-    hodlRewards,
-  ]: any[]): void {}
+  onIncreasedTotalTokenAllocatedEvent([value]: any[]): void {}
+  onIncreasedStakedLTEvent([value]: any[]): void {}
+  onAllocationsAreTerminatedEvent([]: any[]): void {}
+  onDecreasedFullyChargedBalanceAndStakedLTEvent([user, value]: any[]): void {}
   onLTReceivedEvent([
     user,
     value,
@@ -114,9 +117,20 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     feesToRewardHodlers,
     hodlRewards,
   ]: any[]): void {}
-  onLTDepositedEvent(
-    user: string,
-    value: BigNumber,
-    hodlRewards: BigNumber
-  ): void {}
+  onClaimedRewardPerShareUpdatedEvent([user, value]: any[]): void {}
+  onCurrentRewardPerShareAndStakingCheckpointUpdatedEvent([
+    rewardPerShare1e18,
+    blockTime,
+  ]: any[]): void {}
+  onIncreasedCurrentRewardPerShareEvent([value]: any[]): void {}
+  onLTDepositedEvent([user, value, hodlRewards]: any[]): void {}
+  onStakingCampaignCreatedEvent([startDate, duration, rewards]: any[]): void {}
+  onWithdrawalFeesUpdatedEvent([value]: any[]): void {}
+  onRatioFeesToRewardHodlersUpdatedEvent([value]: any[]): void {}
+  onDecreasedPartiallyChargedBalanceEvent([user, value]: any[]): void {}
+  onUpdatedDateOfPartiallyChargedAndDecreasedStakedLTEvent([
+    blockTime,
+    value,
+  ]: any[]): void {}
+  onTokensDischargedEvent([user, partiallyChargedBalance]: any[]): void {}
 }

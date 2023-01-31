@@ -59,4 +59,18 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       valueProjectTokenToFullRecharge: new Map(),
     };
   }
+
+  onStartSetEvent([dateLaunch, dateEndCliff]: any[]): void {}
+  onProjectTokenReceivedEvent([user, value, fees, hodlRewards]: any[]): void {}
+  onIncreasedValueProjectTokenToFullRechargeEvent([
+    user,
+    valueIncreased,
+  ]: any[]): void {}
+  onLTRechargedEvent([
+    user,
+    value,
+    valueProjectToken,
+    hodlRewards,
+  ]: any[]): void {}
+  onClaimFeesUpdatedEvent([valuePerThousand]: any[]): void {}
 }

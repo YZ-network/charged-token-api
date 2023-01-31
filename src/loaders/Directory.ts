@@ -70,4 +70,17 @@ export class Directory extends AbstractLoader<IDirectory> {
       areUserFunctionsDisabled: await ins.areUserFunctionsDisabled(),
     };
   }
+
+  onUserFunctionsAreDisabledEvent([areUserFunctionsDisabled]: any[]): void {}
+  onProjectOwnerWhitelistedEvent([projectOwner, project]: any[]): void {}
+  onAddedLTContractEvent([contract]: any[]): void {}
+  onRemovedLTContractEvent([contract]: any[]): void {}
+  onRemovedProjectByAdminEvent([projectOwner]: any[]): void {}
+  onChangedProjectOwnerAccountEvent([
+    projectOwnerOld,
+    projectOwnerNew,
+  ]: any[]): void {}
+  onChangedProjectNameEvent([oldProjectName, newProjectName]: any[]): void {}
+  onAllocatedLTToProjectEvent([contract, project]: any[]): void {}
+  onAllocatedProjectOwnerToProjectEvent([projectOwner, project]: any[]): void {}
 }

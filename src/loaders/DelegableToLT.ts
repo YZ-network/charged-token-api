@@ -45,4 +45,13 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
         await ins.isListOfInterfaceProjectTokenComplete(),
     };
   }
+
+  onTransferEvent([from, to, value]: any[]): void {}
+
+  onAddedAllTimeValidatedInterfaceProjectTokenEvent([
+    interfaceProjectToken,
+  ]: any[]): void {}
+  onAddedInterfaceProjectTokenEvent([interfaceProjectToken]: any[]): void {}
+  onListOfValidatedInterfaceProjectTokenIsFinalizedEvent([]: any[]): void {}
+  onInterfaceProjectTokenRemovedEvent([interfaceProjectToken]: any[]): void {}
 }
