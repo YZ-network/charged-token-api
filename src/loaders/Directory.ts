@@ -11,6 +11,11 @@ export class Directory extends AbstractLoader<IDirectory> {
     super(provider, address, contracts.ContractsDirectory, DirectoryModel);
   }
 
+  async apply(fn: (loader: any) => Promise<void>): Promise<void> {
+    await super.apply(fn);
+    await Promise.all(Object.values(this.ct).map((loader) => loader.apply(fn)));
+  }
+
   async init() {
     await super.init();
 
@@ -37,25 +42,22 @@ export class Directory extends AbstractLoader<IDirectory> {
     ).toNumber();
     const whitelistedProjectOwners: string[] = [];
     const projects: string[] = [];
-    const whitelist: Map<string, string> = new Map();
+    const whitelist: Record<string, string> = {};
     for (let i = 0; i < whitelistCount; i++) {
       const projectOwner = await ins.getWhitelistedProjectOwner(i);
       const projectName = await ins.getWhitelistedProjectName(i);
       whitelistedProjectOwners.push(projectOwner);
       projects.push(projectName);
-      whitelist.set(projectOwner, await ins.whitelist(projectOwner));
+      whitelist[projectOwner] = await ins.whitelist(projectOwner);
     }
 
     const contractsCount = (await ins.countLTContracts()).toNumber();
     const directory: string[] = [];
-    const projectRelatedToLT: Map<string, string> = new Map();
+    const projectRelatedToLT: Record<string, string> = {};
     for (let i = 0; i < contractsCount; i++) {
       const ctAddress = await ins.getLTContract(i);
       directory.push(ctAddress);
-      projectRelatedToLT.set(
-        ctAddress,
-        await ins.projectRelatedToLT(ctAddress)
-      );
+      projectRelatedToLT[ctAddress] = await ins.projectRelatedToLT(ctAddress);
     }
 
     return {

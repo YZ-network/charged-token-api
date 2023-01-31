@@ -1,5 +1,5 @@
 import { Repeater } from "graphql-yoga";
-import { pushDirUpdatesUsingPubSub, recordToEntryList } from "../functions";
+import { recordToEntryList } from "../functions";
 import { DirectoryModel, IDirectory } from "../models";
 import pubSub from "./pubsub";
 
@@ -22,13 +22,13 @@ const DirectoryQueryResolver = async () => {
 const DirectorySubscriptionResolver = {
   subscribe: async () => {
     const sub = pubSub.subscribe("Directory");
-    const timerId = await pushDirUpdatesUsingPubSub();
+    //const timerId = await pushDirUpdatesUsingPubSub();
 
     return new Repeater(async (push, stop) => {
       let done = false;
 
       stop.then((err) => {
-        clearInterval(timerId);
+        //clearInterval(timerId);
         sub.return();
         done = true;
         console.error("stopped by", err);

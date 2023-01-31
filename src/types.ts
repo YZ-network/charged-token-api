@@ -17,7 +17,12 @@ export interface IErc20 extends IOwnable {
   balances: Record<string, string>;
 }
 
-export type IKeyValueList = Record<string, string>[];
+export interface IEntry {
+  key: string;
+  value: string;
+}
+
+export type IKeyValueList = IEntry[];
 
 export type IEventHandler = (args: any[]) => void;
 

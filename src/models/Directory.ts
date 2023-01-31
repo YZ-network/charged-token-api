@@ -5,8 +5,8 @@ export interface IDirectory extends IOwnable {
   directory: string[];
   whitelistedProjectOwners: string[];
   projects: string[];
-  projectRelatedToLT: Map<string, string>;
-  whitelist: Map<string, string>;
+  projectRelatedToLT: Record<string, string>;
+  whitelist: Record<string, string>;
   areUserFunctionsDisabled: boolean;
 }
 

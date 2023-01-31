@@ -2,7 +2,7 @@ import { ethers } from "ethers";
 import { contracts } from "../contracts";
 import {
   IInterfaceProjectToken,
-  InterfaceProjectTokenModel,
+  InterfaceProjectTokenModel
 } from "../models/InterfaceProjectToken";
 import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
@@ -18,6 +18,11 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       contracts.InterfaceProjectToken,
       InterfaceProjectTokenModel
     );
+  }
+
+  async apply(fn: (loader: any) => Promise<void>): Promise<void> {
+    await super.apply(fn);
+    await this.projectToken?.apply(fn);
   }
 
   async init() {

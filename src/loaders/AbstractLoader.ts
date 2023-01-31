@@ -2,6 +2,26 @@ import { ethers, EventFilter } from "ethers";
 import { FlattenMaps, HydratedDocument } from "mongoose";
 import { pubSub } from "../graphql";
 import { IContract, IEventHandler, IModel } from "../types";
+import { Directory } from "./Directory";
+
+export function subscribeToNewBlocks(
+  provider: ethers.providers.JsonRpcProvider,
+  directory: Directory
+): void {
+  provider.on("block", async (newBlockNumber) => {
+    if (newBlockNumber > directory.lastUpdateBlock) {
+      console.log(
+        "new block :",
+        directory.lastUpdateBlock,
+        "=>",
+        newBlockNumber
+      );
+      await directory.apply((loader) => loader.syncEvents(newBlockNumber));
+    } else {
+      console.log("skipping past block :", newBlockNumber);
+    }
+  });
+}
 
 /**
  * Generic contract loader. Used for loading initial contracts state, keeping
@@ -17,7 +37,7 @@ export abstract class AbstractLoader<T extends IContract> {
   protected readonly model: IModel<T>;
 
   protected readonly instance: ethers.Contract;
-  protected lastUpdateBlock: number = 0;
+  lastUpdateBlock: number = 0;
   protected actualBlock: number = 0;
   protected lastState: FlattenMaps<T> | undefined;
 
@@ -41,6 +61,10 @@ export abstract class AbstractLoader<T extends IContract> {
     this.instance = new ethers.Contract(address, contract.abi, provider);
   }
 
+  async apply(fn: (loader: any) => Promise<void>): Promise<void> {
+    await fn(this);
+  }
+
   /**
    * Call this method after creating a new instance in order to fetch the initial
    * contract state from the blockchain or existing one from database.
@@ -60,8 +84,6 @@ export abstract class AbstractLoader<T extends IContract> {
       this.lastState = (await this.saveOrUpdate(await this.load())).toJSON();
       this.lastUpdateBlock = this.actualBlock;
     }
-
-    this.subscribeToNewBlocks();
   }
 
   /**
@@ -107,16 +129,9 @@ export abstract class AbstractLoader<T extends IContract> {
     return result;
   }
 
-  private subscribeToNewBlocks(): void {
-    this.provider.on("block", async (newBlockNumber) => {
-      if (newBlockNumber > this.lastUpdateBlock) {
-        this.actualBlock = newBlockNumber;
-        await this.syncEvents(newBlockNumber);
-      }
-    });
-  }
-
   private async syncEvents(fromBlock: number): Promise<void> {
+    this.actualBlock = fromBlock;
+
     const eventFilter: EventFilter = {
       address: this.address,
     };
@@ -138,6 +153,11 @@ export abstract class AbstractLoader<T extends IContract> {
 
   private onEvent(name: string, args: any[]): void {
     const eventHandlerName = `on${name}Event` as keyof this;
+    console.log(
+      "Calling event handler",
+      this.constructor.name,
+      eventHandlerName
+    );
     (this[eventHandlerName] as IEventHandler)(args);
   }
 
