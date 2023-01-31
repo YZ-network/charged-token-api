@@ -122,11 +122,8 @@ const schema = createSchema({
 
   type Subscription {
     Directory: IDirectory
-    allChargedTokens: [IChargedToken!]!
     ChargedToken(address: String!): IChargedToken!
-    allInterfaceProjectTokens: [IInterfaceProjectToken!]!
     InterfaceProjectToken(address: String!): IInterfaceProjectToken!
-    allDelegableToLTs: [IDelegableToLT!]!
     DelegableToLT(address: String!): IDelegableToLT!
   }
 `,

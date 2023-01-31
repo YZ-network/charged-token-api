@@ -28,8 +28,11 @@ export type IEventHandler = (args: any[]) => void;
 
 export type IToModel<T> = (data: T) => HydratedDocument<T>;
 
+export type IToGraphQL<T> = (doc: HydratedDocument<T>) => any;
+
 export type IModel<T> = Model<T> & {
   toModel: IToModel<T>;
+  toGraphQL: IToGraphQL<T>;
 };
 
 export const EMPTY_ADDRESS = "0x0000000000000000000000000000000000000000";

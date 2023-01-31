@@ -1,4 +1,5 @@
 import mongoose, { HydratedDocument } from "mongoose";
+import { recordToEntryList } from "../functions";
 import { IModel, IOwnable } from "../types";
 
 export interface IInterfaceProjectToken extends IOwnable {
@@ -38,6 +39,19 @@ interfaceProjectTokenSchema.static(
       model[key] = data[key];
     });
     return model;
+  }
+);
+
+interfaceProjectTokenSchema.static(
+  "toGraphQL",
+  function (doc: HydratedDocument<IInterfaceProjectToken>): any {
+    const result = doc.toJSON();
+    return {
+      ...result,
+      valueProjectTokenToFullRecharge: recordToEntryList(
+        result.valueProjectTokenToFullRecharge
+      ),
+    };
   }
 );
 

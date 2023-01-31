@@ -1,6 +1,13 @@
 import { Repeater } from "graphql-yoga";
 import { recordToEntryList } from "../functions";
-import { ChargedTokenModel, DirectoryModel, IDirectory } from "../models";
+import {
+  ChargedTokenModel,
+  DelegableToLTModel,
+  DirectoryModel,
+  IDirectory,
+  InterfaceProjectTokenModel,
+} from "../models";
+import { IModel } from "../types";
 import pubSub from "./pubsub";
 
 const DirectoryQueryResolver = async () => {
@@ -19,57 +26,99 @@ const DirectoryQueryResolver = async () => {
   };
 };
 
-const allChargedTokensResolver = async () => {
-  const cts = await ChargedTokenModel.find();
-
-  const jsonCTs = cts.map((ct) => {
-    const jsonCT = ct.toJSON();
-    return {
-      ...jsonCT,
-      balances: recordToEntryList(jsonCT.balances),
+class ResolverFactory {
+  static findAll<T>(model: IModel<T>) {
+    return async () => {
+      const results = await model.find();
+      return results.map((result) => model.toGraphQL(result));
     };
-  });
+  }
 
-  return jsonCTs;
-};
-
-const DirectorySubscriptionResolver = {
-  subscribe: async () => {
-    const sub = pubSub.subscribe("Directory");
-    //const timerId = await pushDirUpdatesUsingPubSub();
-
-    return new Repeater(async (push, stop) => {
-      let done = false;
-
-      stop.then((err) => {
-        //clearInterval(timerId);
-        sub.return();
-        done = true;
-        console.error("stopped by", err);
-      });
-
-      try {
-        for await (const value of sub) {
-          console.log("sending to subscription");
-          await push(value);
-        }
-        console.log("subscription ended");
-      } catch (err) {
-        console.error("stopped with error", err);
-        stop("sub closed");
+  static findByAddress<T>(model: IModel<T>) {
+    return async (_, [address]: [string]) => {
+      const result = await model.findOne({ address });
+      if (result !== null) {
+        return model.toGraphQL(result);
       }
-    });
-  },
-  resolve: (payload: any) => payload,
-};
+    };
+  }
+
+  static subscribeByName(modelName: string) {
+    return {
+      subscribe: async () => {
+        const sub = pubSub.subscribe(modelName);
+
+        return new Repeater(async (push, stop) => {
+          stop.then((err) => {
+            sub.return();
+            console.error("stopped by", err);
+          });
+
+          try {
+            for await (const value of sub) {
+              console.log("sending to subscription");
+              await push(value);
+            }
+            console.log("subscription ended");
+          } catch (err) {
+            console.error("stopped with error", err);
+            stop("sub closed");
+          }
+        });
+      },
+      resolve: (payload: any) => payload,
+    };
+  }
+
+  static subscribeByNameAndAddress(modelName: string) {
+    return {
+      subscribe: async (_, { address }: { address: string }) => {
+        const sub = pubSub.subscribe(`${modelName}.${address}`);
+
+        return new Repeater(async (push, stop) => {
+          stop.then((err) => {
+            sub.return();
+            console.error("stopped by", err);
+          });
+
+          try {
+            for await (const value of sub) {
+              console.log("sending to subscription");
+              await push(value);
+            }
+            console.log("subscription ended");
+          } catch (err) {
+            console.error("stopped with error", err);
+            stop("sub closed");
+          }
+        });
+      },
+      resolve: (payload: any) => payload,
+    };
+  }
+}
 
 const resolvers = {
   Query: {
     Directory: DirectoryQueryResolver,
-    allChargedTokens: allChargedTokensResolver,
+    allChargedTokens: ResolverFactory.findAll(ChargedTokenModel),
+    ChargedToken: ResolverFactory.findByAddress(ChargedTokenModel),
+    allInterfaceProjectTokens: ResolverFactory.findAll(
+      InterfaceProjectTokenModel
+    ),
+    InterfaceProjectToken: ResolverFactory.findByAddress(
+      InterfaceProjectTokenModel
+    ),
+    allDelegableToLTs: ResolverFactory.findAll(DelegableToLTModel),
+    DelegableToLT: ResolverFactory.findByAddress(DelegableToLTModel),
   },
   Subscription: {
-    Directory: DirectorySubscriptionResolver,
+    Directory: ResolverFactory.subscribeByName("Directory"),
+    ChargedToken: ResolverFactory.subscribeByNameAndAddress("ChargedToken"),
+    InterfaceProjectToken: ResolverFactory.subscribeByNameAndAddress(
+      "InterfaceProjectToken"
+    ),
+    DelegableToLT: ResolverFactory.subscribeByNameAndAddress("DelegableToLT"),
   },
 };
 

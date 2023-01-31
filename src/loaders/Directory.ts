@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import { contracts } from "../contracts";
+import { pubSub } from "../graphql";
 import { DirectoryModel, IDirectory } from "../models";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
@@ -30,6 +31,10 @@ export class Directory extends AbstractLoader<IDirectory> {
 
   toModel(data: IDirectory) {
     return (DirectoryModel as any).toModel(data);
+  }
+
+  notifyUpdate(): void {
+    pubSub.publish(`${this.constructor.name}`, this.lastState);
   }
 
   async load() {

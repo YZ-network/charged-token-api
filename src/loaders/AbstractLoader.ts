@@ -16,6 +16,7 @@ export function subscribeToNewBlocks(
         "=>",
         newBlockNumber
       );
+
       await directory.apply((loader) => loader.syncEvents(newBlockNumber));
     } else {
       console.log("skipping past block :", newBlockNumber);
@@ -78,7 +79,7 @@ export abstract class AbstractLoader<T extends IContract> {
 
     if (existing != null) {
       this.lastUpdateBlock = existing.lastUpdateBlock;
-      this.lastState = existing.toJSON();
+      this.lastState = this.model.toGraphQL(existing);
       await this.syncEvents(this.lastUpdateBlock + 1);
     } else {
       console.log(
@@ -87,8 +88,10 @@ export abstract class AbstractLoader<T extends IContract> {
         "@",
         this.address
       );
-      this.lastState = (await this.saveOrUpdate(await this.load())).toJSON();
+      const saved = await this.saveOrUpdate(await this.load());
+      this.lastState = this.model.toGraphQL(saved);
       this.lastUpdateBlock = this.actualBlock;
+      this.notifyUpdate();
     }
   }
 
@@ -128,15 +131,22 @@ export abstract class AbstractLoader<T extends IContract> {
     }
 
     this.lastUpdateBlock = this.actualBlock;
-    this.lastState = result.toJSON();
-
-    pubSub.publish(this.constructor.name, this.lastState);
+    this.lastState = this.model.toGraphQL(result);
 
     return result;
   }
 
-  private async syncEvents(fromBlock: number): Promise<void> {
-    this.actualBlock = fromBlock;
+  notifyUpdate(): void {
+    pubSub.publish(`${this.constructor.name}.${this.address}`, this.lastState);
+  }
+
+  async syncEvents(fromBlock: number): Promise<void> {
+    console.log(
+      "Syncing events for",
+      this.constructor.name,
+      "since",
+      fromBlock
+    );
 
     const eventFilter: EventFilter = {
       address: this.address,
@@ -153,8 +163,13 @@ export abstract class AbstractLoader<T extends IContract> {
       await this.onEvent(name, args);
     }
 
+    this.actualBlock = fromBlock;
     this.lastUpdateBlock = this.actualBlock;
     await this.updateLastBlock();
+
+    if (missedEvents.length > 0) {
+      this.notifyUpdate();
+    }
   }
 
   private onEvent(name: string, args: any[]): void {

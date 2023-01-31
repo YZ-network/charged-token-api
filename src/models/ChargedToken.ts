@@ -1,4 +1,5 @@
 import mongoose, { HydratedDocument } from "mongoose";
+import { recordToEntryList } from "../functions";
 import { IErc20, IModel } from "../types";
 
 export interface IChargedTokenConstants {
@@ -112,6 +113,17 @@ chargedTokenSchema.static(
       model[key] = data[key];
     });
     return model;
+  }
+);
+
+chargedTokenSchema.static(
+  "toGraphQL",
+  function (doc: HydratedDocument<IChargedToken>): any {
+    const result = doc.toJSON();
+    return {
+      ...result,
+      balances: recordToEntryList(result.balances),
+    };
   }
 );
 
