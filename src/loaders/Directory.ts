@@ -78,9 +78,49 @@ export class Directory extends AbstractLoader<IDirectory> {
     };
   }
 
-  onUserFunctionsAreDisabledEvent([areUserFunctionsDisabled]: any[]): void {}
-  onProjectOwnerWhitelistedEvent([projectOwner, project]: any[]): void {}
-  onAddedLTContractEvent([contract]: any[]): void {}
+  async onUserFunctionsAreDisabledEvent([
+    areUserFunctionsDisabled,
+  ]: any[]): Promise<void> {
+    const jsonModel = (await this.get())!.toJSON();
+    jsonModel.areUserFunctionsDisabled = areUserFunctionsDisabled;
+
+    const saved = await this.saveOrUpdate(jsonModel);
+
+    this.lastState = this.model.toGraphQL(saved);
+    this.lastUpdateBlock = this.actualBlock;
+    this.notifyUpdate();
+  }
+
+  async onProjectOwnerWhitelistedEvent([
+    projectOwner,
+    project,
+  ]: any[]): Promise<void> {
+    const jsonModel = (await this.get())!.toJSON();
+    jsonModel.projects.push(project);
+    jsonModel.whitelistedProjectOwners.push(projectOwner);
+    jsonModel.whitelist[projectOwner] = project;
+
+    const saved = await this.saveOrUpdate(jsonModel);
+
+    this.lastState = this.model.toGraphQL(saved);
+    this.lastUpdateBlock = this.actualBlock;
+    this.notifyUpdate();
+  }
+
+  async onAddedLTContractEvent([contract]: any[]): Promise<void> {
+    const jsonModel = (await this.get())!.toJSON();
+
+    jsonModel.directory.push(contract);
+    jsonModel.projectRelatedToLT[contract] =
+      await this.instance.projectRelatedToLT(contract);
+
+    const saved = await this.saveOrUpdate(jsonModel);
+
+    this.lastState = this.model.toGraphQL(saved);
+    this.lastUpdateBlock = this.actualBlock;
+    this.notifyUpdate();
+  }
+
   onRemovedLTContractEvent([contract]: any[]): void {}
   onRemovedProjectByAdminEvent([projectOwner]: any[]): void {}
   onChangedProjectOwnerAccountEvent([

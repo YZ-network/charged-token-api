@@ -172,14 +172,14 @@ export abstract class AbstractLoader<T extends IContract> {
     }
   }
 
-  private onEvent(name: string, args: any[]): void {
+  private onEvent(name: string, args: any[]): Promise<void> {
     const eventHandlerName = `on${name}Event` as keyof this;
     console.log(
       "Calling event handler",
       this.constructor.name,
       eventHandlerName
     );
-    (this[eventHandlerName] as IEventHandler)(args);
+    return (this[eventHandlerName] as IEventHandler)(args);
   }
 
   private async updateLastBlock() {

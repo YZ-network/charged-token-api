@@ -24,7 +24,7 @@ export interface IEntry {
 
 export type IKeyValueList = IEntry[];
 
-export type IEventHandler = (args: any[]) => void;
+export type IEventHandler = (args: any[]) => Promise<void>;
 
 export type IToModel<T> = (data: T) => HydratedDocument<T>;
 
