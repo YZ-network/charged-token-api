@@ -119,6 +119,9 @@ export class Directory extends AbstractLoader<IDirectory> {
     this.lastState = this.model.toGraphQL(saved);
     this.lastUpdateBlock = this.actualBlock;
     this.notifyUpdate();
+
+    this.ct[contract] = new ChargedToken(this.provider, contract);
+    await this.ct[contract].init();
   }
 
   onRemovedLTContractEvent([contract]: any[]): void {}
