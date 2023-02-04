@@ -73,8 +73,8 @@ const schema = createSchema({
     isInterfaceProjectTokenLocked: Boolean!
     areAllocationsTerminated: Boolean!
 
-    claimedRewardPerShare1e18: [IEntry!]!
-    userLiquiToken: [IUserLiquiToken!]!
+    claimedRewardPerShare1e18: [IEntry!]
+    userLiquiToken: [IUserLiquiToken!]
 
     interfaceProjectToken: String!
     ratioFeesToRewardHodlersPerThousand: String!
