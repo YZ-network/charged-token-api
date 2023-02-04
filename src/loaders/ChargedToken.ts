@@ -102,36 +102,23 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   }
 
   async loadUserBalances(user: string): Promise<IUserBalance> {
-    const ctBalance = {
+    console.log("Loading CT balances for", user, this.address);
+
+    return {
+      user,
+      address: this.address,
+      lastUpdateBlock: this.actualBlock,
       balance: await this.instance.balanceOf(user),
+      balancePT:
+        this.interface !== undefined
+          ? await this.interface.loadUserBalancePT(user)
+          : "0",
       fullyChargedBalance:
         await this.instance.getUserFullyChargedBalanceLiquiToken(user),
       partiallyChargedBalance:
         await this.instance.getUserPartiallyChargedBalanceLiquiToken(user),
       dateOfPartiallyCharged:
         await this.instance.getUserDateOfPartiallyChargedToken(user),
-    };
-    const claims =
-      this.interface !== undefined
-        ? await this.interface.loadUserClaims(
-            user,
-            ctBalance,
-            this.lastState!.fractionInitialUnlockPerThousand,
-            this.lastState!.durationLinearVesting
-          )
-        : {
-            balancePT: "0",
-            chargedClaimableProjectToken: "0",
-            claimableProjectToken: "0",
-            ptNeededToRecharge: "0",
-          };
-
-    return {
-      user,
-      address: this.address,
-      lastUpdateBlock: this.actualBlock,
-      balances: ctBalance,
-      claims,
     };
   }
 
@@ -141,7 +128,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   onInterfaceProjectTokenSetEvent([interfaceProjectToken]: any[]): void {}
   onInterfaceProjectTokenIsLockedEvent([]: any[]): void {}
   onIncreasedFullyChargedBalanceEvent([user, value]: any[]): void {
-    pubSub.publish("UserBalance.load", user);
+    pubSub.publish("UserBalance/load", user);
   }
   onLTAllocatedByOwnerEvent([
     user,
@@ -149,13 +136,13 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     hodlRewards,
     isAllocationStaked,
   ]: any[]): void {
-    pubSub.publish("UserBalance.load", user);
+    pubSub.publish("UserBalance/load", user);
   }
   onIncreasedTotalTokenAllocatedEvent([value]: any[]): void {}
   onIncreasedStakedLTEvent([value]: any[]): void {}
   onAllocationsAreTerminatedEvent([]: any[]): void {}
   onDecreasedFullyChargedBalanceAndStakedLTEvent([user, value]: any[]): void {
-    pubSub.publish("UserBalance.load", user);
+    pubSub.publish("UserBalance/load", user);
   }
   onLTReceivedEvent([
     user,
@@ -164,10 +151,10 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     feesToRewardHodlers,
     hodlRewards,
   ]: any[]): void {
-    pubSub.publish("UserBalance.load", user);
+    pubSub.publish("UserBalance/load", user);
   }
   onClaimedRewardPerShareUpdatedEvent([user, value]: any[]): void {
-    pubSub.publish("UserBalance.load", user);
+    pubSub.publish("UserBalance/load", user);
   }
   onCurrentRewardPerShareAndStakingCheckpointUpdatedEvent([
     rewardPerShare1e18,
@@ -175,19 +162,19 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   ]: any[]): void {}
   onIncreasedCurrentRewardPerShareEvent([value]: any[]): void {}
   onLTDepositedEvent([user, value, hodlRewards]: any[]): void {
-    pubSub.publish("UserBalance.load", user);
+    pubSub.publish("UserBalance/load", user);
   }
   onStakingCampaignCreatedEvent([startDate, duration, rewards]: any[]): void {}
   onWithdrawalFeesUpdatedEvent([value]: any[]): void {}
   onRatioFeesToRewardHodlersUpdatedEvent([value]: any[]): void {}
   onDecreasedPartiallyChargedBalanceEvent([user, value]: any[]): void {
-    pubSub.publish("UserBalance.load", user);
+    pubSub.publish("UserBalance/load", user);
   }
   onUpdatedDateOfPartiallyChargedAndDecreasedStakedLTEvent([
     blockTime,
     value,
   ]: any[]): void {}
   onTokensDischargedEvent([user, partiallyChargedBalance]: any[]): void {
-    pubSub.publish("UserBalance.load", user);
+    pubSub.publish("UserBalance/load", user);
   }
 }

@@ -26,16 +26,20 @@ const DirectoryQueryResolver = async () => {
   };
 };
 
-const UserBalanceQueryResolver = async (_, [user]: [string]) => {
-  pubSub.publish(`UserBalance/load`, user);
+const UserBalanceQueryResolver = async (_, { user }: { user: string }) => {
+  console.log("Notifying worker to load balances for", user);
+  pubSub.publish("UserBalance/load", user);
   const sub = pubSub.subscribe(`UserBalance.${user}`);
-  const nextValue = JSON.parse((await sub.next()) as unknown as string);
+  const nextValue = (await sub.next()).value;
+  console.log("Received new value :", nextValue);
+  const resultsList = JSON.parse(nextValue);
   sub.return();
-  return nextValue;
+  return resultsList;
 };
 
 const UserBalanceSubscriptionResolver = {
   subscribe: async (_, { user }: { user: string }) => {
+    console.log("subscribing to balances for", user);
     const sub = pubSub.subscribe(`UserBalance.${user}`);
 
     return new Repeater(async (push, stop) => {
@@ -46,8 +50,8 @@ const UserBalanceSubscriptionResolver = {
 
       try {
         for await (const value of sub) {
-          console.log("sending to subscription");
-          await push(value);
+          console.log("sending balances to subscription", value);
+          await push(JSON.parse(value));
         }
         console.log("subscription ended");
       } catch (err) {

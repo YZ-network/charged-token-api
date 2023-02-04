@@ -1,15 +1,10 @@
 import { BigNumber, ethers } from "ethers";
 import { contracts } from "../contracts";
 import { pubSub } from "../graphql";
-import { DateWrapper } from "../models";
 import {
   IInterfaceProjectToken,
   InterfaceProjectTokenModel,
 } from "../models/InterfaceProjectToken";
-import {
-  IChargedTokenBalance,
-  IChargedTokenClaims,
-} from "../models/UserBalances";
 import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
 import { DelegableToLT } from "./DelegableToLT";
@@ -71,48 +66,12 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     };
   }
 
-  async loadUserClaims(
-    user: string,
-    userBalance: IChargedTokenBalance,
-    fractionInitialUnlockPerThousand: string,
-    durationLinearVesting: string
-  ): Promise<IChargedTokenClaims> {
-    const timestamp = DateWrapper.now().blockchainTimestamp;
+  async loadUserBalancePT(user: string): Promise<string> {
+    console.log("Loading user PT balance for", user);
 
-    return {
-      balancePT:
-        this.projectToken === undefined
-          ? "0"
-          : await this.projectToken.loadUserBalance(user),
-      chargedClaimableProjectToken: this.getValueProjectTokenPerVestingSchedule(
-        BigNumber.from(fractionInitialUnlockPerThousand),
-        BigNumber.from(userBalance.fullyChargedBalance),
-        Math.min(
-          timestamp,
-          Number(this.lastState!.dateEndCliff) + Number(durationLinearVesting)
-        ),
-        Number(this.lastState!.dateEndCliff),
-        timestamp >= Number(this.lastState!.dateLaunch),
-        Number(durationLinearVesting)
-      ).toString(),
-      claimableProjectToken: this.getValueProjectTokenPerVestingSchedule(
-        BigNumber.from(fractionInitialUnlockPerThousand),
-        BigNumber.from(userBalance.partiallyChargedBalance),
-        Math.min(
-          timestamp,
-          Number(this.lastState!.dateEndCliff) + Number(durationLinearVesting)
-        ),
-        Math.max(
-          Number(userBalance.dateOfPartiallyCharged),
-          Number(this.lastState!.dateEndCliff)
-        ),
-        false,
-        Number(durationLinearVesting)
-      ).toString(),
-      ptNeededToRecharge: await this.instance.valueProjectTokenToFullRecharge(
-        user
-      ),
-    };
+    return this.projectToken === undefined
+      ? "0"
+      : await this.projectToken.loadUserBalance(user);
   }
 
   private getValueProjectTokenPerVestingSchedule(
@@ -144,13 +103,13 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
 
   onStartSetEvent([dateLaunch, dateEndCliff]: any[]): void {}
   onProjectTokenReceivedEvent([user, value, fees, hodlRewards]: any[]): void {
-    pubSub.publish("UserBalance.load", user);
+    pubSub.publish("UserBalance/load", user);
   }
   onIncreasedValueProjectTokenToFullRechargeEvent([
     user,
     valueIncreased,
   ]: any[]): void {
-    pubSub.publish("UserBalance.load", user);
+    pubSub.publish("UserBalance/load", user);
   }
   onLTRechargedEvent([
     user,
@@ -158,7 +117,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     valueProjectToken,
     hodlRewards,
   ]: any[]): void {
-    pubSub.publish("UserBalance.load", user);
+    pubSub.publish("UserBalance/load", user);
   }
   onClaimFeesUpdatedEvent([valuePerThousand]: any[]): void {}
 }

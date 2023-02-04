@@ -3,39 +3,17 @@ import { IModel } from "../types";
 
 export interface IChargedTokenBalance {
   balance: string;
+  balancePT: string;
   fullyChargedBalance: string;
   partiallyChargedBalance: string;
   dateOfPartiallyCharged: string;
 }
 
-export interface IChargedTokenClaims {
-  balancePT: string;
-  chargedClaimableProjectToken: string;
-  claimableProjectToken: string;
-  ptNeededToRecharge: string;
-}
-
-export interface IUserBalance {
+export interface IUserBalance extends IChargedTokenBalance {
   lastUpdateBlock: number;
   user: string;
   address: string;
-  balances: IChargedTokenBalance;
-  claims: IChargedTokenClaims;
 }
-
-const charedTokenBalanceSchema = new mongoose.Schema<IChargedTokenBalance>({
-  balance: { type: String, default: "0" },
-  fullyChargedBalance: { type: String, default: "0" },
-  partiallyChargedBalance: { type: String, default: "0" },
-  dateOfPartiallyCharged: { type: String, default: "0" },
-});
-
-const charedTokenClaimsSchema = new mongoose.Schema<IChargedTokenClaims>({
-  balancePT: { type: String, default: "0" },
-  chargedClaimableProjectToken: { type: String, default: "0" },
-  claimableProjectToken: { type: String, default: "0" },
-  ptNeededToRecharge: { type: String, default: "0" },
-});
 
 const userBalanceSchema = new mongoose.Schema<
   IUserBalance,
@@ -44,8 +22,11 @@ const userBalanceSchema = new mongoose.Schema<
   lastUpdateBlock: { type: Number, required: true },
   user: String,
   address: String,
-  balances: { type: charedTokenBalanceSchema },
-  claims: { type: charedTokenClaimsSchema },
+  balance: { type: String, default: "0" },
+  balancePT: { type: String, default: "0" },
+  fullyChargedBalance: { type: String, default: "0" },
+  partiallyChargedBalance: { type: String, default: "0" },
+  dateOfPartiallyCharged: { type: String, default: "0" },
 });
 
 userBalanceSchema.static(

@@ -30,6 +30,7 @@ export async function subscribeToUserBalancesLoading(
   const sub = pubSub.subscribe("UserBalance/load");
 
   for await (const user of sub) {
+    console.log("triggered reloading user balances", user);
     await directory.loadAllUserBalances(user);
   }
 }

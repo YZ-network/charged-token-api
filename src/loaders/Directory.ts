@@ -79,12 +79,14 @@ export class Directory extends AbstractLoader<IDirectory> {
   }
 
   async loadAllUserBalances(user: string) {
+    console.log("Loading user balances for", user);
     const results = await Promise.all(
       Object.values(this.ct).map((ct: ChargedToken) =>
         ct.loadUserBalances(user)
       )
     );
 
+    console.log("Saving user balances for", user);
     for (const entry of results) {
       if (
         (await UserBalanceModel.exists({ user, address: entry.address })) !==
@@ -96,8 +98,17 @@ export class Directory extends AbstractLoader<IDirectory> {
       }
     }
 
-    const saved = await UserBalanceModel.find({ user });
-    pubSub.publish(`UserBalance.${user}`, saved);
+    console.log("Publishing updated user balances for", user);
+    const saved = await UserBalanceModel.find({ user }).exec();
+    console.log("Result :", saved);
+    pubSub.publish(
+      `UserBalance.${user}`,
+      JSON.stringify(
+        (saved != null ? saved : []).map((balance) =>
+          UserBalanceModel.toGraphQL(balance)
+        )
+      )
+    );
 
     return results;
   }

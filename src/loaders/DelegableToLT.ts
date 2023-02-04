@@ -52,8 +52,8 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   }
 
   onTransferEvent([from, to, value]: any[]): void {
-    pubSub.publish("UserBalance.load", from);
-    pubSub.publish("UserBalance.load", to);
+    pubSub.publish("UserBalance/load", from);
+    pubSub.publish("UserBalance/load", to);
   }
 
   onAddedAllTimeValidatedInterfaceProjectTokenEvent([
