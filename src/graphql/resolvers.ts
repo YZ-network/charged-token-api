@@ -26,6 +26,39 @@ const DirectoryQueryResolver = async () => {
   };
 };
 
+const UserBalanceQueryResolver = async (_, [user]: [string]) => {
+  pubSub.publish(`UserBalance/load`, user);
+  const sub = pubSub.subscribe(`UserBalance.${user}`);
+  const nextValue = JSON.parse((await sub.next()) as unknown as string);
+  sub.return();
+  return nextValue;
+};
+
+const UserBalanceSubscriptionResolver = {
+  subscribe: async (_, { user }: { user: string }) => {
+    const sub = pubSub.subscribe(`UserBalance.${user}`);
+
+    return new Repeater(async (push, stop) => {
+      stop.then((err) => {
+        sub.return();
+        console.error("stopped by", err);
+      });
+
+      try {
+        for await (const value of sub) {
+          console.log("sending to subscription");
+          await push(value);
+        }
+        console.log("subscription ended");
+      } catch (err) {
+        console.error("stopped with error", err);
+        stop("sub closed");
+      }
+    });
+  },
+  resolve: (payload: any) => payload,
+};
+
 class ResolverFactory {
   static findAll<T>(model: IModel<T>) {
     return async () => {
@@ -111,6 +144,7 @@ const resolvers = {
     ),
     allDelegableToLTs: ResolverFactory.findAll(DelegableToLTModel),
     DelegableToLT: ResolverFactory.findByAddress(DelegableToLTModel),
+    userBalances: UserBalanceQueryResolver,
   },
   Subscription: {
     Directory: ResolverFactory.subscribeByName("Directory"),
@@ -119,6 +153,7 @@ const resolvers = {
       "InterfaceProjectToken"
     ),
     DelegableToLT: ResolverFactory.subscribeByNameAndAddress("DelegableToLT"),
+    userBalances: UserBalanceSubscriptionResolver,
   },
 };
 

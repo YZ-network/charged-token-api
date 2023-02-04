@@ -110,6 +110,31 @@ const schema = createSchema({
     isListOfInterfaceProjectTokenComplete: Boolean
   }
 
+  type IChargedTokenBalance {
+    balance: String!
+    fullyChargedBalance: String!
+    partiallyChargedBalance: String!
+    dateOfPartiallyCharged: String!
+  }
+
+  type IChargedTokenClaims {
+    balancePT: String!
+    chargedClaimableProjectToken: String!
+    claimableProjectToken: String!
+    ptNeededToRecharge: String!
+  }
+
+  type IUserBalancesEntry {
+    user: String!
+    contract: String!
+    balances: IChargedTokenBalance!
+    claims: IChargedTokenClaims!
+  }
+
+  type IUserBalances {
+    list: [IUserBalancesEntry!]!
+  }
+
   type Query {
     Directory: IDirectory
     allChargedTokens: [IChargedToken!]!
@@ -118,6 +143,7 @@ const schema = createSchema({
     InterfaceProjectToken(address: String!): IInterfaceProjectToken!
     allDelegableToLTs: [IDelegableToLT!]!
     DelegableToLT(address: String!): IDelegableToLT!
+    userBalances(user: String!): [IUserBalances!]!
   }
 
   type Subscription {
@@ -125,6 +151,7 @@ const schema = createSchema({
     ChargedToken(address: String!): IChargedToken!
     InterfaceProjectToken(address: String!): IInterfaceProjectToken!
     DelegableToLT(address: String!): IDelegableToLT!
+    userBalances(user: String!): [IUserBalances!]!
   }
 `,
   resolvers,

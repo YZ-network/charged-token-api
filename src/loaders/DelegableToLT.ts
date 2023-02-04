@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import { contracts } from "../contracts";
+import { pubSub } from "../graphql";
 import { DelegableToLTModel, IDelegableToLT } from "../models/DelegableToLT";
 import { AbstractLoader } from "./AbstractLoader";
 
@@ -46,7 +47,14 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     };
   }
 
-  onTransferEvent([from, to, value]: any[]): void {}
+  async loadUserBalance(user: string) {
+    return await this.instance.balanceOf(user);
+  }
+
+  onTransferEvent([from, to, value]: any[]): void {
+    pubSub.publish("UserBalance.load", from);
+    pubSub.publish("UserBalance.load", to);
+  }
 
   onAddedAllTimeValidatedInterfaceProjectTokenEvent([
     interfaceProjectToken,

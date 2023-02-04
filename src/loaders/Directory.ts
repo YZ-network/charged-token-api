@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 import { contracts } from "../contracts";
 import { pubSub } from "../graphql";
-import { DirectoryModel, IDirectory } from "../models";
+import { DirectoryModel, IDirectory, UserBalanceModel } from "../models";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
 
@@ -76,6 +76,30 @@ export class Directory extends AbstractLoader<IDirectory> {
       whitelist,
       areUserFunctionsDisabled: await ins.areUserFunctionsDisabled(),
     };
+  }
+
+  async loadAllUserBalances(user: string) {
+    const results = await Promise.all(
+      Object.values(this.ct).map((ct: ChargedToken) =>
+        ct.loadUserBalances(user)
+      )
+    );
+
+    for (const entry of results) {
+      if (
+        (await UserBalanceModel.exists({ user, address: entry.address })) !==
+        null
+      ) {
+        await this.model.updateOne({ user, address: entry.address }, entry);
+      } else {
+        await UserBalanceModel.toModel(entry).save();
+      }
+    }
+
+    const saved = await UserBalanceModel.find({ user });
+    pubSub.publish(`UserBalance.${user}`, saved);
+
+    return results;
   }
 
   async onUserFunctionsAreDisabledEvent([

@@ -24,6 +24,16 @@ export function subscribeToNewBlocks(
   });
 }
 
+export async function subscribeToUserBalancesLoading(
+  directory: Directory
+): Promise<void> {
+  const sub = pubSub.subscribe("UserBalance/load");
+
+  for await (const user of sub) {
+    await directory.loadAllUserBalances(user);
+  }
+}
+
 /**
  * Generic contract loader. Used for loading initial contracts state, keeping
  * up with new block events and saving the result to database.

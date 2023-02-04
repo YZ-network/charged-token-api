@@ -1,6 +1,8 @@
 import { ethers } from "ethers";
 import { contracts } from "../contracts";
+import { pubSub } from "../graphql";
 import { ChargedTokenModel, IChargedToken } from "../models";
+import { IUserBalance } from "../models/UserBalances";
 import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
 import { InterfaceProjectToken } from "./InterfaceProjectToken";
@@ -99,43 +101,93 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     };
   }
 
+  async loadUserBalances(user: string): Promise<IUserBalance> {
+    const ctBalance = {
+      balance: await this.instance.balanceOf(user),
+      fullyChargedBalance:
+        await this.instance.getUserFullyChargedBalanceLiquiToken(user),
+      partiallyChargedBalance:
+        await this.instance.getUserPartiallyChargedBalanceLiquiToken(user),
+      dateOfPartiallyCharged:
+        await this.instance.getUserDateOfPartiallyChargedToken(user),
+    };
+    const claims =
+      this.interface !== undefined
+        ? await this.interface.loadUserClaims(
+            user,
+            ctBalance,
+            this.lastState!.fractionInitialUnlockPerThousand,
+            this.lastState!.durationLinearVesting
+          )
+        : {
+            balancePT: "0",
+            chargedClaimableProjectToken: "0",
+            claimableProjectToken: "0",
+            ptNeededToRecharge: "0",
+          };
+
+    return {
+      user,
+      address: this.address,
+      lastUpdateBlock: this.actualBlock,
+      balances: ctBalance,
+      claims,
+    };
+  }
+
   onTransferEvent([from, to, value]: any[]): void {}
 
   onUserFunctionsAreDisabledEvent([areUserFunctionsDisabled]: any[]): void {}
   onInterfaceProjectTokenSetEvent([interfaceProjectToken]: any[]): void {}
   onInterfaceProjectTokenIsLockedEvent([]: any[]): void {}
-  onIncreasedFullyChargedBalanceEvent([user, value]: any[]): void {}
+  onIncreasedFullyChargedBalanceEvent([user, value]: any[]): void {
+    pubSub.publish("UserBalance.load", user);
+  }
   onLTAllocatedByOwnerEvent([
     user,
     value,
     hodlRewards,
     isAllocationStaked,
-  ]: any[]): void {}
+  ]: any[]): void {
+    pubSub.publish("UserBalance.load", user);
+  }
   onIncreasedTotalTokenAllocatedEvent([value]: any[]): void {}
   onIncreasedStakedLTEvent([value]: any[]): void {}
   onAllocationsAreTerminatedEvent([]: any[]): void {}
-  onDecreasedFullyChargedBalanceAndStakedLTEvent([user, value]: any[]): void {}
+  onDecreasedFullyChargedBalanceAndStakedLTEvent([user, value]: any[]): void {
+    pubSub.publish("UserBalance.load", user);
+  }
   onLTReceivedEvent([
     user,
     value,
     totalFees,
     feesToRewardHodlers,
     hodlRewards,
-  ]: any[]): void {}
-  onClaimedRewardPerShareUpdatedEvent([user, value]: any[]): void {}
+  ]: any[]): void {
+    pubSub.publish("UserBalance.load", user);
+  }
+  onClaimedRewardPerShareUpdatedEvent([user, value]: any[]): void {
+    pubSub.publish("UserBalance.load", user);
+  }
   onCurrentRewardPerShareAndStakingCheckpointUpdatedEvent([
     rewardPerShare1e18,
     blockTime,
   ]: any[]): void {}
   onIncreasedCurrentRewardPerShareEvent([value]: any[]): void {}
-  onLTDepositedEvent([user, value, hodlRewards]: any[]): void {}
+  onLTDepositedEvent([user, value, hodlRewards]: any[]): void {
+    pubSub.publish("UserBalance.load", user);
+  }
   onStakingCampaignCreatedEvent([startDate, duration, rewards]: any[]): void {}
   onWithdrawalFeesUpdatedEvent([value]: any[]): void {}
   onRatioFeesToRewardHodlersUpdatedEvent([value]: any[]): void {}
-  onDecreasedPartiallyChargedBalanceEvent([user, value]: any[]): void {}
+  onDecreasedPartiallyChargedBalanceEvent([user, value]: any[]): void {
+    pubSub.publish("UserBalance.load", user);
+  }
   onUpdatedDateOfPartiallyChargedAndDecreasedStakedLTEvent([
     blockTime,
     value,
   ]: any[]): void {}
-  onTokensDischargedEvent([user, partiallyChargedBalance]: any[]): void {}
+  onTokensDischargedEvent([user, partiallyChargedBalance]: any[]): void {
+    pubSub.publish("UserBalance.load", user);
+  }
 }
