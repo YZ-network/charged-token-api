@@ -171,7 +171,17 @@ export abstract class AbstractLoader<T extends IContract> {
       const name = event.event!;
       const args = this.filterArgs(event.args);
 
-      await this.onEvent(name, args);
+      if (name === undefined) {
+        console.log(
+          "found undefined event :",
+          event,
+          typeof event,
+          event.constructor?.name
+        );
+      } else {
+        console.log("calling event handler", name);
+        await this.onEvent(name, args);
+      }
     }
 
     this.actualBlock = fromBlock;
