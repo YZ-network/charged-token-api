@@ -21,9 +21,9 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     );
   }
 
-  async apply(fn: (loader: any) => Promise<void>): Promise<void> {
-    await super.apply(fn);
-    await this.projectToken?.apply(fn);
+  async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
+    await super.applyFunc(fn);
+    await this.projectToken?.applyFunc(fn);
   }
 
   async init() {

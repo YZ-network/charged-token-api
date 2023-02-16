@@ -14,9 +14,9 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     super(provider, address, contracts.LiquidityToken, ChargedTokenModel);
   }
 
-  async apply(fn: (loader: any) => Promise<void>): Promise<void> {
-    await super.apply(fn);
-    await this.interface?.apply(fn);
+  async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
+    await super.applyFunc(fn);
+    await this.interface?.applyFunc(fn);
   }
 
   async init() {

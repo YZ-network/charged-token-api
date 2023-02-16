@@ -12,9 +12,9 @@ export class Directory extends AbstractLoader<IDirectory> {
     super(provider, address, contracts.ContractsDirectory, DirectoryModel);
   }
 
-  async apply(fn: (loader: any) => Promise<void>): Promise<void> {
-    await super.apply(fn);
-    await Promise.all(Object.values(this.ct).map((loader) => loader.apply(fn)));
+  async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
+    await super.applyFunc(fn);
+    await Promise.all(Object.values(this.ct).map((loader) => loader.applyFunc(fn)));
   }
 
   async init() {

@@ -17,7 +17,7 @@ export function subscribeToNewBlocks(
         newBlockNumber
       );
 
-      await directory.apply((loader) => loader.syncEvents(newBlockNumber));
+      await directory.applyFunc((loader) => loader.syncEvents(newBlockNumber));
     } else {
       console.log("skipping past block :", newBlockNumber);
     }
@@ -73,7 +73,7 @@ export abstract class AbstractLoader<T extends IContract> {
     this.instance = new ethers.Contract(address, contract.abi, provider);
   }
 
-  async apply(fn: (loader: any) => Promise<void>): Promise<void> {
+  async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
     await fn(this);
   }
 

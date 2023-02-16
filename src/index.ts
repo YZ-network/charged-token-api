@@ -61,7 +61,7 @@ useServer(
 
 mongoose.set("strictQuery", true);
 mongoose
-  .connect("mongodb://localhost:27017/test")
+  .connect(`mongodb://${process.env.MONGODB_HOST}:27017/test`)
   .then(() => {
     worker(provider).catch((err) => {
       console.error("Error occured during load :", err);
