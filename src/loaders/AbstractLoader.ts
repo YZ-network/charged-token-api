@@ -1,4 +1,4 @@
-import { ethers, EventFilter } from "ethers";
+import { ethers, Event, EventFilter } from "ethers";
 import { FlattenMaps, HydratedDocument } from "mongoose";
 import { pubSub } from "../graphql";
 import { IContract, IEventHandler, IModel } from "../types";
@@ -17,7 +17,38 @@ export function subscribeToNewBlocks(
         newBlockNumber
       );
 
-      await directory.applyFunc((loader) => loader.syncEvents(newBlockNumber));
+      const addresses: string[] = [];
+
+      await directory.applyFunc(async (loader) => {
+        addresses.push(loader.address);
+      });
+      console.log('Looking up events for contract addresses :', addresses.join(', '));
+
+      const eventFilter: ethers.providers.Filter = {
+        fromBlock: directory.lastUpdateBlock+1
+      };
+
+      try {
+        const missedEvents = await provider.getLogs(
+          eventFilter
+        );
+        const missedEventsMap: Record<string, ethers.providers.Log[]> = {};
+
+        addresses.forEach(address => missedEventsMap[address] = []);
+
+        let eventsCount = 0;
+        for (const event of missedEvents) {
+          if (!addresses.includes(event.address)) continue;
+          missedEventsMap[event.address].push(event);
+          eventsCount++;
+        }
+
+        console.log('Events found :', eventsCount);
+
+        await directory.applyFunc((loader) => loader.syncEvents(newBlockNumber, missedEventsMap[loader.address]));
+      } catch (e) {
+        console.error("Couldn't retrieve logs from block", newBlockNumber, "to", await provider.getBlockNumber());
+      }
     } else {
       console.log("skipping past block :", newBlockNumber);
     }
@@ -49,6 +80,7 @@ export abstract class AbstractLoader<T extends IContract> {
   protected readonly model: IModel<T>;
 
   protected readonly instance: ethers.Contract;
+  protected readonly iface: ethers.utils.Interface;
   lastUpdateBlock: number = 0;
   protected actualBlock: number = 0;
   protected lastState: FlattenMaps<T> | undefined;
@@ -71,6 +103,7 @@ export abstract class AbstractLoader<T extends IContract> {
     this.model = model;
 
     this.instance = new ethers.Contract(address, contract.abi, provider);
+    this.iface = new ethers.utils.Interface(contract.abi);
   }
 
   async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
@@ -151,36 +184,57 @@ export abstract class AbstractLoader<T extends IContract> {
     pubSub.publish(`${this.constructor.name}.${this.address}`, this.lastState);
   }
 
-  async syncEvents(fromBlock: number): Promise<void> {
-    console.log(
+  async syncEvents(fromBlock: number, missedLogs?: ethers.providers.Log[]): Promise<void> {
+    console.debug(
       "Syncing events for",
       this.constructor.name,
       "since",
       fromBlock
     );
 
-    const eventFilter: EventFilter = {
-      address: this.address,
-    };
-    const missedEvents = await this.instance.queryFilter(
-      eventFilter,
-      fromBlock
-    );
+    let missedEvents: ethers.Event[] = [];
 
-    for (const event of missedEvents) {
-      const name = event.event!;
-      const args = this.filterArgs(event.args);
-
-      if (name === undefined) {
-        console.log(
-          "found undefined event :",
-          event,
-          typeof event,
-          event.constructor?.name
+    if (missedLogs === undefined) {
+      try {
+        const eventFilter: EventFilter = {
+          address: this.address,
+        };
+        console.debug(
+          "Loading missed events"
         );
-      } else {
-        console.log("calling event handler", name);
-        await this.onEvent(name, args);
+    
+        missedEvents = await this.instance.queryFilter(
+          eventFilter,
+          fromBlock
+        );
+
+        for (const event of missedEvents) {
+          const name = event.event!;
+          const args = this.filterArgs(event.args);
+
+          if (name === undefined) {
+            console.log(
+              "found undefined event :",
+              event,
+              typeof event,
+              event.constructor?.name
+            );
+          } else {
+            console.log("calling event handler", name);
+            await this.onEvent(name, args);
+          }
+        }
+      } catch (e) {
+        console.error("Error retrieving events from block", fromBlock, "to", await this.provider.getBlockNumber());
+      }
+    } else {
+      console.debug(
+        "Using given events"
+      );
+      for (const log of missedLogs) {
+        const decodedLog = this.iface.parseLog(log);
+        console.log('decoded log :', decodedLog);
+        // await this.onEvent(decodedLog.name, ...decodedLog.args);
       }
     }
 

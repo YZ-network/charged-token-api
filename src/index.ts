@@ -10,7 +10,7 @@ import { worker } from "./worker";
 console.log("Starting app on environment", process.env.ENVIRONMENT);
 
 const provider = new ethers.providers.StaticJsonRpcProvider(
-  process.env.JSON_RPC_URL
+  process.env.JSON_RPC_KEY === undefined ? process.env.JSON_RPC_URL : `${process.env.JSON_RPC_URL}${process.env.JSON_RPC_KEY}`
 );
 
 const yoga = createYoga({

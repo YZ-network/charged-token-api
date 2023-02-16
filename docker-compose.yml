@@ -7,8 +7,10 @@ services:
       - "4000:4000"
     environment:
       - ENVIRONMENT=docker
-      - JSON_RPC_URL=https://rpc-mumbai.maticvigil.com
+      - JSON_RPC_KEY=
+      - JSON_RPC_URL=https://polygon-mumbai.infura.io/v3/
       - DIRECTORY_ADDRESS=0xA94F250f2508A9be616e0922742Bb0628474F906
+      - MONGODB_HOST=db
 
   db:
     image: mongo:6.0
