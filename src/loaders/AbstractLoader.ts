@@ -10,19 +10,11 @@ export function subscribeToNewBlocks(
 ): void {
   provider.on("block", async (newBlockNumber) => {
     if (newBlockNumber > directory.lastUpdateBlock) {
-      console.log(
-        "new block :",
-        directory.lastUpdateBlock,
-        "=>",
-        newBlockNumber
-      );
-
       const addresses: string[] = [];
 
       await directory.applyFunc(async (loader) => {
         addresses.push(loader.address);
       });
-      console.log('Looking up events for contract addresses :', addresses.join(', '));
 
       const eventFilter: ethers.providers.Filter = {
         fromBlock: directory.lastUpdateBlock+1
@@ -43,7 +35,9 @@ export function subscribeToNewBlocks(
           eventsCount++;
         }
 
-        console.log('Events found :', eventsCount);
+        if (eventsCount > 0) {
+          console.log('Events found :', eventsCount);
+        }
 
         await directory.applyFunc((loader) => loader.syncEvents(newBlockNumber, missedEventsMap[loader.address]));
       } catch (e) {
@@ -185,13 +179,6 @@ export abstract class AbstractLoader<T extends IContract> {
   }
 
   async syncEvents(fromBlock: number, missedLogs?: ethers.providers.Log[]): Promise<void> {
-    console.debug(
-      "Syncing events for",
-      this.constructor.name,
-      "since",
-      fromBlock
-    );
-
     let missedEvents: ethers.Event[] = [];
 
     if (missedLogs === undefined) {
@@ -199,9 +186,7 @@ export abstract class AbstractLoader<T extends IContract> {
         const eventFilter: EventFilter = {
           address: this.address,
         };
-        console.debug(
-          "Loading missed events"
-        );
+        console.log("Loading missed events for", this.constructor.name, "@", this.address);
     
         missedEvents = await this.instance.queryFilter(
           eventFilter,
@@ -213,12 +198,7 @@ export abstract class AbstractLoader<T extends IContract> {
           const args = this.filterArgs(event.args);
 
           if (name === undefined) {
-            console.log(
-              "found undefined event :",
-              event,
-              typeof event,
-              event.constructor?.name
-            );
+            console.log("found undefined event :", event, typeof event, event.constructor?.name);
           } else {
             console.log("calling event handler", name);
             await this.onEvent(name, args);
@@ -228,12 +208,10 @@ export abstract class AbstractLoader<T extends IContract> {
         console.error("Error retrieving events from block", fromBlock, "to", await this.provider.getBlockNumber());
       }
     } else {
-      console.debug(
-        "Using given events"
-      );
       for (const log of missedLogs) {
         const decodedLog = this.iface.parseLog(log);
         console.log('decoded log :', decodedLog);
+        // TODO : call event handler from log description
         // await this.onEvent(decodedLog.name, ...decodedLog.args);
       }
     }
