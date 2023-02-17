@@ -26,7 +26,7 @@ const DirectoryQueryResolver = async () => {
   };
 };
 
-const UserBalanceQueryResolver = async (_, { user }: { user: string }) => {
+const UserBalanceQueryResolver = async (_: any, { user }: { user: string }) => {
   console.log("Notifying worker to load balances for", user);
   pubSub.publish("UserBalance/load", user);
   const sub = pubSub.subscribe(`UserBalance.${user}`);
@@ -38,7 +38,7 @@ const UserBalanceQueryResolver = async (_, { user }: { user: string }) => {
 };
 
 const UserBalanceSubscriptionResolver = {
-  subscribe: async (_, { user }: { user: string }) => {
+  subscribe: async (_: any, { user }: { user: string }) => {
     console.log("subscribing to balances for", user);
     const sub = pubSub.subscribe(`UserBalance.${user}`);
 
@@ -72,7 +72,7 @@ class ResolverFactory {
   }
 
   static findByAddress<T>(model: IModel<T>) {
-    return async (_, [address]: [string]) => {
+    return async (_: any, [address]: [string]) => {
       const result = await model.findOne({ address });
       if (result !== null) {
         return model.toGraphQL(result);
@@ -109,7 +109,7 @@ class ResolverFactory {
 
   static subscribeByNameAndAddress(modelName: string) {
     return {
-      subscribe: async (_, { address }: { address: string }) => {
+      subscribe: async (_: any, { address }: { address: string }) => {
         const sub = pubSub.subscribe(`${modelName}.${address}`);
 
         return new Repeater(async (push, stop) => {

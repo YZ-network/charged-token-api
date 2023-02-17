@@ -109,9 +109,7 @@ chargedTokenSchema.static(
   "toModel",
   function (data: IChargedToken): HydratedDocument<IChargedToken> {
     const model = new this();
-    Object.keys(data).forEach((key) => {
-      model[key] = data[key];
-    });
+    Object.assign(model, data);
     return model;
   }
 );

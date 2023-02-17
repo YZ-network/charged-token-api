@@ -29,9 +29,7 @@ directorySchema.static(
   "toModel",
   function (data: IDirectory): HydratedDocument<IDirectory> {
     const model = new this();
-    Object.keys(data).forEach((key) => {
-      model[key] = data[key];
-    });
+    Object.assign(model, data);
     return model;
   }
 );

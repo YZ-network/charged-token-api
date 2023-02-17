@@ -2,6 +2,6 @@ FROM node:16
 
 ADD . .
 
-RUN npm i
+RUN npm i && npm run build
 
-CMD npm start
+CMD node lib/index.js

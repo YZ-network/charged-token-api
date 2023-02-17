@@ -35,9 +35,7 @@ interfaceProjectTokenSchema.static(
     data: IInterfaceProjectToken
   ): HydratedDocument<IInterfaceProjectToken> {
     const model = new this();
-    Object.keys(data).forEach((key) => {
-      model[key] = data[key];
-    });
+    Object.assign(model, data);
     return model;
   }
 );
