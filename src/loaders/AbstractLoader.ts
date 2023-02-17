@@ -243,6 +243,18 @@ export abstract class AbstractLoader<T extends IContract> {
     }
   }
 
+  protected async getJsonModel(): Promise<FlattenMaps<T>> {
+    return (await this.get())!.toJSON();
+  }
+
+  protected async applyUpdateAndNotify(data: T) {
+    const saved = await this.saveOrUpdate(data);
+
+    this.lastState = this.model.toGraphQL(saved);
+    this.lastUpdateBlock = this.actualBlock;
+    this.notifyUpdate();
+  }
+
   private onEvent(name: string, args: any[]): Promise<void> {
     const eventHandlerName = `on${name}Event` as keyof this;
     console.log(

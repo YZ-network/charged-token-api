@@ -14,7 +14,9 @@ export class Directory extends AbstractLoader<IDirectory> {
 
   async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
     await super.applyFunc(fn);
-    await Promise.all(Object.values(this.ct).map((loader) => loader.applyFunc(fn)));
+    await Promise.all(
+      Object.values(this.ct).map((loader) => loader.applyFunc(fn))
+    );
   }
 
   async init() {
@@ -116,56 +118,126 @@ export class Directory extends AbstractLoader<IDirectory> {
   async onUserFunctionsAreDisabledEvent([
     areUserFunctionsDisabled,
   ]: any[]): Promise<void> {
-    const jsonModel = (await this.get())!.toJSON();
+    const jsonModel = await this.getJsonModel();
+
     jsonModel.areUserFunctionsDisabled = areUserFunctionsDisabled;
 
-    const saved = await this.saveOrUpdate(jsonModel);
-
-    this.lastState = this.model.toGraphQL(saved);
-    this.lastUpdateBlock = this.actualBlock;
-    this.notifyUpdate();
+    await this.applyUpdateAndNotify(jsonModel);
   }
 
   async onProjectOwnerWhitelistedEvent([
     projectOwner,
     project,
   ]: any[]): Promise<void> {
-    const jsonModel = (await this.get())!.toJSON();
+    const jsonModel = await this.getJsonModel();
+
     jsonModel.projects.push(project);
     jsonModel.whitelistedProjectOwners.push(projectOwner);
     jsonModel.whitelist[projectOwner] = project;
 
-    const saved = await this.saveOrUpdate(jsonModel);
-
-    this.lastState = this.model.toGraphQL(saved);
-    this.lastUpdateBlock = this.actualBlock;
-    this.notifyUpdate();
+    await this.applyUpdateAndNotify(jsonModel);
   }
 
   async onAddedLTContractEvent([contract]: any[]): Promise<void> {
-    const jsonModel = (await this.get())!.toJSON();
+    const jsonModel = await this.getJsonModel();
 
     jsonModel.directory.push(contract);
     jsonModel.projectRelatedToLT[contract] =
       await this.instance.projectRelatedToLT(contract);
 
-    const saved = await this.saveOrUpdate(jsonModel);
-
-    this.lastState = this.model.toGraphQL(saved);
-    this.lastUpdateBlock = this.actualBlock;
-    this.notifyUpdate();
+    await this.applyUpdateAndNotify(jsonModel);
 
     this.ct[contract] = new ChargedToken(this.provider, contract);
     await this.ct[contract].init();
   }
 
-  onRemovedLTContractEvent([contract]: any[]): void {}
-  onRemovedProjectByAdminEvent([projectOwner]: any[]): void {}
-  onChangedProjectOwnerAccountEvent([
+  async onRemovedLTContractEvent([contract]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.directory = jsonModel.directory.filter(
+      (address) => address !== contract
+    );
+    delete jsonModel.projectRelatedToLT[contract];
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onRemovedProjectByAdminEvent([projectOwner]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.projects = jsonModel.projects.filter(
+      (_, index) => jsonModel.whitelistedProjectOwners[index] !== projectOwner
+    );
+
+    jsonModel.whitelistedProjectOwners =
+      jsonModel.whitelistedProjectOwners.filter(
+        (address) => address !== projectOwner
+      );
+
+    Object.entries(jsonModel.projectRelatedToLT).forEach(
+      ([ltAddress, projectName]) => {
+        if (!jsonModel.projects.includes(projectName)) {
+          delete jsonModel.projectRelatedToLT[ltAddress];
+        }
+      }
+    );
+    Object.entries(jsonModel.whitelist).forEach(([ownerAddress]) => {
+      if (!jsonModel.whitelistedProjectOwners.includes(ownerAddress)) {
+        delete jsonModel.whitelist[ownerAddress];
+      }
+    });
+
+    jsonModel.directory = jsonModel.directory.filter(
+      (ltAddress) => jsonModel.projectRelatedToLT[ltAddress] !== undefined
+    );
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onChangedProjectOwnerAccountEvent([
     projectOwnerOld,
     projectOwnerNew,
-  ]: any[]): void {}
-  onChangedProjectNameEvent([oldProjectName, newProjectName]: any[]): void {}
-  onAllocatedLTToProjectEvent([contract, project]: any[]): void {}
-  onAllocatedProjectOwnerToProjectEvent([projectOwner, project]: any[]): void {}
+  ]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.whitelistedProjectOwners = jsonModel.whitelistedProjectOwners.map(
+      (address) => (address === projectOwnerOld ? projectOwnerNew : address)
+    );
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onChangedProjectNameEvent([
+    oldProjectName,
+    newProjectName,
+  ]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.projects = jsonModel.projects.map((name) =>
+      name === oldProjectName ? newProjectName : name
+    );
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onAllocatedLTToProjectEvent([contract, project]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.projectRelatedToLT[contract] = project;
+    jsonModel.directory.push(contract);
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onAllocatedProjectOwnerToProjectEvent([
+    projectOwner,
+    project,
+  ]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.whitelistedProjectOwners.push(projectOwner);
+    jsonModel.projects.push(project);
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
 }
