@@ -1,4 +1,4 @@
-import { ethers, Event, EventFilter } from "ethers";
+import { ethers, EventFilter } from "ethers";
 import { FlattenMaps, HydratedDocument } from "mongoose";
 import { pubSub } from "../graphql";
 import { IContract, IEventHandler, IModel } from "../types";
@@ -17,16 +17,14 @@ export function subscribeToNewBlocks(
       });
 
       const eventFilter: ethers.providers.Filter = {
-        fromBlock: directory.lastUpdateBlock+1
+        fromBlock: directory.lastUpdateBlock + 1,
       };
 
       try {
-        const missedEvents = await provider.getLogs(
-          eventFilter
-        );
+        const missedEvents = await provider.getLogs(eventFilter);
         const missedEventsMap: Record<string, ethers.providers.Log[]> = {};
 
-        addresses.forEach(address => missedEventsMap[address] = []);
+        addresses.forEach((address) => (missedEventsMap[address] = []));
 
         let eventsCount = 0;
         for (const event of missedEvents) {
@@ -36,12 +34,19 @@ export function subscribeToNewBlocks(
         }
 
         if (eventsCount > 0) {
-          console.log('Events found :', eventsCount);
+          console.log("Events found :", eventsCount);
         }
 
-        await directory.applyFunc((loader) => loader.syncEvents(newBlockNumber, missedEventsMap[loader.address]));
+        await directory.applyFunc((loader) =>
+          loader.syncEvents(newBlockNumber, missedEventsMap[loader.address])
+        );
       } catch (e) {
-        console.error("Couldn't retrieve logs from block", newBlockNumber, "to", await provider.getBlockNumber());
+        console.error(
+          "Couldn't retrieve logs from block",
+          newBlockNumber,
+          "to",
+          await provider.getBlockNumber()
+        );
       }
     } else {
       console.log("skipping past block :", newBlockNumber);
@@ -178,7 +183,10 @@ export abstract class AbstractLoader<T extends IContract> {
     pubSub.publish(`${this.constructor.name}.${this.address}`, this.lastState);
   }
 
-  async syncEvents(fromBlock: number, missedLogs?: ethers.providers.Log[]): Promise<void> {
+  async syncEvents(
+    fromBlock: number,
+    missedLogs?: ethers.providers.Log[]
+  ): Promise<void> {
     let missedEvents: ethers.Event[] = [];
 
     if (missedLogs === undefined) {
@@ -186,33 +194,43 @@ export abstract class AbstractLoader<T extends IContract> {
         const eventFilter: EventFilter = {
           address: this.address,
         };
-        console.log("Loading missed events for", this.constructor.name, "@", this.address);
-    
-        missedEvents = await this.instance.queryFilter(
-          eventFilter,
-          fromBlock
+        console.log(
+          "Loading missed events for",
+          this.constructor.name,
+          "@",
+          this.address
         );
+
+        missedEvents = await this.instance.queryFilter(eventFilter, fromBlock);
 
         for (const event of missedEvents) {
           const name = event.event!;
           const args = this.filterArgs(event.args);
 
           if (name === undefined) {
-            console.log("found undefined event :", event, typeof event, event.constructor?.name);
+            console.log(
+              "found undefined event :",
+              event,
+              typeof event,
+              event.constructor?.name
+            );
           } else {
             console.log("calling event handler", name);
             await this.onEvent(name, args);
           }
         }
       } catch (e) {
-        console.error("Error retrieving events from block", fromBlock, "to", await this.provider.getBlockNumber());
+        console.error(
+          "Error retrieving events from block",
+          fromBlock,
+          "to",
+          await this.provider.getBlockNumber()
+        );
       }
     } else {
       for (const log of missedLogs) {
         const decodedLog = this.iface.parseLog(log);
-        console.log('decoded log :', decodedLog);
-        // TODO : call event handler from log description
-        // await this.onEvent(decodedLog.name, ...decodedLog.args);
+        await this.onEvent(decodedLog.name, [...decodedLog.args.values()]);
       }
     }
 
