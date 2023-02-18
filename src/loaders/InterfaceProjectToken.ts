@@ -62,7 +62,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       claimFeesPerThousandForPT: (
         await ins.claimFeesPerThousandForPT()
       ).toString(),
-      valueProjectTokenToFullRecharge: new Map(),
+      valueProjectTokenToFullRecharge: {},
     };
   }
 
@@ -101,23 +101,45 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     return valueProjectToken;
   }
 
-  onStartSetEvent([dateLaunch, dateEndCliff]: any[]): void {}
-  onProjectTokenReceivedEvent([user, value, fees, hodlRewards]: any[]): void {
+  async onStartSetEvent([dateLaunch, dateEndCliff]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.dateLaunch = dateLaunch;
+    jsonModel.dateEndCliff = dateEndCliff;
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onProjectTokenReceivedEvent([
+    user,
+    value,
+    fees,
+    hodlRewards,
+  ]: any[]): Promise<void> {
     pubSub.publish("UserBalance/load", user);
   }
-  onIncreasedValueProjectTokenToFullRechargeEvent([
+
+  async onIncreasedValueProjectTokenToFullRechargeEvent([
     user,
     valueIncreased,
-  ]: any[]): void {
+  ]: any[]): Promise<void> {
     pubSub.publish("UserBalance/load", user);
   }
-  onLTRechargedEvent([
+
+  async onLTRechargedEvent([
     user,
     value,
     valueProjectToken,
     hodlRewards,
-  ]: any[]): void {
+  ]: any[]): Promise<void> {
     pubSub.publish("UserBalance/load", user);
   }
-  onClaimFeesUpdatedEvent([valuePerThousand]: any[]): void {}
+
+  async onClaimFeesUpdatedEvent([valuePerThousand]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.claimFeesPerThousandForPT = valuePerThousand.toString();
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
 }

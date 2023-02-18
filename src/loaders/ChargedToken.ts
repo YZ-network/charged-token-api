@@ -88,8 +88,8 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         await ins.withdrawFeesPerThousandForLT()
       ).toString(),
       // maps
-      claimedRewardPerShare1e18: new Map(),
-      userLiquiToken: new Map(),
+      claimedRewardPerShare1e18: {},
+      userLiquiToken: {},
       // staking
       stakingStartDate: (await ins.stakingStartDate()).toString(),
       stakingDuration: (await ins.stakingDuration()).toString(),
@@ -122,59 +122,151 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     };
   }
 
-  onTransferEvent([from, to, value]: any[]): void {}
+  async onTransferEvent([from, to, value]: any[]): Promise<void> {}
 
-  onUserFunctionsAreDisabledEvent([areUserFunctionsDisabled]: any[]): void {}
-  onInterfaceProjectTokenSetEvent([interfaceProjectToken]: any[]): void {}
-  onInterfaceProjectTokenIsLockedEvent([]: any[]): void {}
-  onIncreasedFullyChargedBalanceEvent([user, value]: any[]): void {
+  async onUserFunctionsAreDisabledEvent([
+    areUserFunctionsDisabled,
+  ]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.areUserFunctionsDisabled = areUserFunctionsDisabled;
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onInterfaceProjectTokenSetEvent([
+    interfaceProjectToken,
+  ]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.interfaceProjectToken = interfaceProjectToken;
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onInterfaceProjectTokenIsLockedEvent([]: any[]): Promise<void> {}
+
+  async onIncreasedFullyChargedBalanceEvent([
+    user,
+    value,
+  ]: any[]): Promise<void> {
     pubSub.publish("UserBalance/load", user);
   }
-  onLTAllocatedByOwnerEvent([
+
+  async onLTAllocatedByOwnerEvent([
     user,
     value,
     hodlRewards,
     isAllocationStaked,
-  ]: any[]): void {
+  ]: any[]): Promise<void> {
     pubSub.publish("UserBalance/load", user);
   }
-  onIncreasedTotalTokenAllocatedEvent([value]: any[]): void {}
-  onIncreasedStakedLTEvent([value]: any[]): void {}
-  onAllocationsAreTerminatedEvent([]: any[]): void {}
-  onDecreasedFullyChargedBalanceAndStakedLTEvent([user, value]: any[]): void {
+
+  async onIncreasedTotalTokenAllocatedEvent([value]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.totalTokenAllocated = value.toString();
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onIncreasedStakedLTEvent([value]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.stakedLT = value.toString();
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onAllocationsAreTerminatedEvent([]: any[]): Promise<void> {}
+
+  async onDecreasedFullyChargedBalanceAndStakedLTEvent([
+    user,
+    value,
+  ]: any[]): Promise<void> {
     pubSub.publish("UserBalance/load", user);
   }
-  onLTReceivedEvent([
+
+  async onLTReceivedEvent([
     user,
     value,
     totalFees,
     feesToRewardHodlers,
     hodlRewards,
-  ]: any[]): void {
+  ]: any[]): Promise<void> {
     pubSub.publish("UserBalance/load", user);
   }
-  onClaimedRewardPerShareUpdatedEvent([user, value]: any[]): void {
+
+  async onClaimedRewardPerShareUpdatedEvent([
+    user,
+    value,
+  ]: any[]): Promise<void> {
     pubSub.publish("UserBalance/load", user);
   }
-  onCurrentRewardPerShareAndStakingCheckpointUpdatedEvent([
+
+  async onCurrentRewardPerShareAndStakingCheckpointUpdatedEvent([
     rewardPerShare1e18,
     blockTime,
-  ]: any[]): void {}
-  onIncreasedCurrentRewardPerShareEvent([value]: any[]): void {}
-  onLTDepositedEvent([user, value, hodlRewards]: any[]): void {
+  ]: any[]): Promise<void> {}
+
+  async onIncreasedCurrentRewardPerShareEvent([value]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.currentRewardPerShare1e18 = value.toString();
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onLTDepositedEvent([user, value, hodlRewards]: any[]): Promise<void> {
     pubSub.publish("UserBalance/load", user);
   }
-  onStakingCampaignCreatedEvent([startDate, duration, rewards]: any[]): void {}
-  onWithdrawalFeesUpdatedEvent([value]: any[]): void {}
-  onRatioFeesToRewardHodlersUpdatedEvent([value]: any[]): void {}
-  onDecreasedPartiallyChargedBalanceEvent([user, value]: any[]): void {
+
+  async onStakingCampaignCreatedEvent([
+    startDate,
+    duration,
+    rewards,
+  ]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.stakingStartDate = startDate;
+    jsonModel.stakingDuration = duration;
+    jsonModel.campaignStakingRewards = rewards.toString();
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onWithdrawalFeesUpdatedEvent([value]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.withdrawFeesPerThousandForLT = value.toString();
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onRatioFeesToRewardHodlersUpdatedEvent([value]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.ratioFeesToRewardHodlersPerThousand = value.toString();
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onDecreasedPartiallyChargedBalanceEvent([
+    user,
+    value,
+  ]: any[]): Promise<void> {
     pubSub.publish("UserBalance/load", user);
   }
-  onUpdatedDateOfPartiallyChargedAndDecreasedStakedLTEvent([
+
+  async onUpdatedDateOfPartiallyChargedAndDecreasedStakedLTEvent([
     blockTime,
     value,
-  ]: any[]): void {}
-  onTokensDischargedEvent([user, partiallyChargedBalance]: any[]): void {
+  ]: any[]): Promise<void> {}
+
+  async onTokensDischargedEvent([
+    user,
+    partiallyChargedBalance,
+  ]: any[]): Promise<void> {
     pubSub.publish("UserBalance/load", user);
   }
 }
