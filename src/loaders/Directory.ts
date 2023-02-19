@@ -167,7 +167,7 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     await this.applyUpdateAndNotify(jsonModel);
 
-    this.ct[contract] = new ChargedToken(this.provider, contract);
+    this.ct[contract] = new ChargedToken(this.provider, contract, this);
     await this.ct[contract].init();
   }
 
