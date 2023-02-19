@@ -3,6 +3,7 @@ import { FlattenMaps } from "mongoose";
 import { contracts } from "../contracts";
 import { pubSub } from "../graphql";
 import {
+  ChargedTokenModel,
   DirectoryModel,
   IDirectory,
   IUserBalance,
@@ -178,6 +179,10 @@ export class Directory extends AbstractLoader<IDirectory> {
       (address) => address !== contract
     );
     delete jsonModel.projectRelatedToLT[contract];
+
+    delete this.ct[contract];
+    await ChargedTokenModel.deleteOne({ address: contract });
+    await UserBalanceModel.deleteMany({ address: contract });
 
     await this.applyUpdateAndNotify(jsonModel);
   }
