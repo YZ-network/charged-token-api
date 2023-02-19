@@ -6,6 +6,7 @@ import {
   DirectoryModel,
   IDirectory,
   InterfaceProjectTokenModel,
+  UserBalanceModel,
 } from "../models";
 import { IModel } from "../types";
 import pubSub from "./pubsub";
@@ -26,7 +27,16 @@ const DirectoryQueryResolver = async () => {
   };
 };
 
-const UserBalanceQueryResolver = async (_: any, { user }: { user: string }) => {
+const UserBalanceQueryResolver = async (
+  _: any,
+  { user, address }: { user: string; address?: string }
+) => {
+  if ((await UserBalanceModel.exists({ user, address })) !== null) {
+    return (await UserBalanceModel.find({ user, address })).map((balance) =>
+      UserBalanceModel.toGraphQL(balance)
+    );
+  }
+
   console.log("Notifying worker to load balances for", user);
   pubSub.publish("UserBalance/load", user);
   const sub = pubSub.subscribe(`UserBalance.${user}`);

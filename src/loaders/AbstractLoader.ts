@@ -74,7 +74,7 @@ export async function subscribeToUserBalancesLoading(
  */
 export abstract class AbstractLoader<T extends IContract> {
   protected readonly provider: ethers.providers.JsonRpcProvider;
-  protected readonly address: string;
+  readonly address: string;
   protected readonly contract: any;
   protected readonly model: IModel<T>;
 

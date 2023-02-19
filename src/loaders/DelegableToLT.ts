@@ -1,12 +1,24 @@
 import { ethers } from "ethers";
 import { contracts } from "../contracts";
-import { pubSub } from "../graphql";
 import { DelegableToLTModel, IDelegableToLT } from "../models/DelegableToLT";
 import { AbstractLoader } from "./AbstractLoader";
+import { ChargedToken } from "./ChargedToken";
+import { Directory } from "./Directory";
 
 export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
-  constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
+  readonly ct: ChargedToken;
+  readonly directory: Directory;
+
+  constructor(
+    provider: ethers.providers.JsonRpcProvider,
+    address: string,
+    directory: Directory,
+    ct: ChargedToken
+  ) {
     super(provider, address, contracts.DelegableToLT, DelegableToLTModel);
+
+    this.directory = directory;
+    this.ct = ct;
   }
 
   toModel(data: IDelegableToLT) {
@@ -51,15 +63,45 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     return await this.instance.balanceOf(user);
   }
 
-  onTransferEvent([from, to, value]: any[]): void {
-    pubSub.publish("UserBalance/load", from);
-    pubSub.publish("UserBalance/load", to);
+  async onTransferEvent([from, to, value]: any[]): Promise<void> {
+    if (from !== this.address && to !== this.address) {
+      await this.directory.loadAllUserBalances(from, this.ct.address);
+      await this.directory.loadAllUserBalances(to, this.ct.address);
+    }
   }
 
-  onAddedAllTimeValidatedInterfaceProjectTokenEvent([
+  async onAddedAllTimeValidatedInterfaceProjectTokenEvent([
     interfaceProjectToken,
-  ]: any[]): void {}
-  onAddedInterfaceProjectTokenEvent([interfaceProjectToken]: any[]): void {}
-  onListOfValidatedInterfaceProjectTokenIsFinalizedEvent([]: any[]): void {}
-  onInterfaceProjectTokenRemovedEvent([interfaceProjectToken]: any[]): void {}
+  ]: any[]): Promise<void> {}
+
+  async onAddedInterfaceProjectTokenEvent([
+    interfaceProjectToken,
+  ]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.validatedInterfaceProjectToken.push(interfaceProjectToken);
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onListOfValidatedInterfaceProjectTokenIsFinalizedEvent([]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.isListOfInterfaceProjectTokenComplete = true;
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
+
+  async onInterfaceProjectTokenRemovedEvent([
+    interfaceProjectToken,
+  ]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.validatedInterfaceProjectToken =
+      jsonModel.validatedInterfaceProjectToken.filter(
+        (address) => address !== interfaceProjectToken
+      );
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
 }

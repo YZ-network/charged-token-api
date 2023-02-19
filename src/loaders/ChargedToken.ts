@@ -1,17 +1,23 @@
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { contracts } from "../contracts";
-import { pubSub } from "../graphql";
 import { ChargedTokenModel, IChargedToken } from "../models";
 import { IUserBalance } from "../models/UserBalances";
 import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
+import { Directory } from "./Directory";
 import { InterfaceProjectToken } from "./InterfaceProjectToken";
 
 export class ChargedToken extends AbstractLoader<IChargedToken> {
   interface: InterfaceProjectToken | undefined;
+  private readonly directory: Directory;
 
-  constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
+  constructor(
+    provider: ethers.providers.JsonRpcProvider,
+    address: string,
+    directory: Directory
+  ) {
     super(provider, address, contracts.LiquidityToken, ChargedTokenModel);
+    this.directory = directory;
   }
 
   async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
@@ -25,7 +31,9 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     if (this.lastState!.interfaceProjectToken !== EMPTY_ADDRESS) {
       this.interface = new InterfaceProjectToken(
         this.provider,
-        this.lastState!.interfaceProjectToken
+        this.lastState!.interfaceProjectToken,
+        this.directory,
+        this
       );
 
       await this.interface.init();
@@ -122,7 +130,13 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     };
   }
 
-  async onTransferEvent([from, to, value]: any[]): Promise<void> {}
+  async onTransferEvent([from, to, value]: any[]): Promise<void> {
+    if (from !== this.address && to !== this.address) {
+      // p2p transfers are not covered by other events
+      await this.directory.loadAllUserBalances(from, this.address);
+      await this.directory.loadAllUserBalances(to, this.address);
+    }
+  }
 
   async onUserFunctionsAreDisabledEvent([
     areUserFunctionsDisabled,
@@ -144,13 +158,19 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     await this.applyUpdateAndNotify(jsonModel);
   }
 
-  async onInterfaceProjectTokenIsLockedEvent([]: any[]): Promise<void> {}
+  async onInterfaceProjectTokenIsLockedEvent([]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.isInterfaceProjectTokenLocked = true;
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
 
   async onIncreasedFullyChargedBalanceEvent([
     user,
     value,
   ]: any[]): Promise<void> {
-    pubSub.publish("UserBalance/load", user);
+    await this.directory.loadAllUserBalances(user, this.address);
   }
 
   async onLTAllocatedByOwnerEvent([
@@ -159,13 +179,25 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     hodlRewards,
     isAllocationStaked,
   ]: any[]): Promise<void> {
-    pubSub.publish("UserBalance/load", user);
+    const jsonModel = await this.getJsonModel();
+
+    const bnValue = BigNumber.from(value);
+
+    jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
+      .add(bnValue)
+      .toString();
+
+    await this.applyUpdateAndNotify(jsonModel);
   }
 
   async onIncreasedTotalTokenAllocatedEvent([value]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.totalTokenAllocated = value.toString();
+    jsonModel.totalTokenAllocated = BigNumber.from(
+      jsonModel.totalTokenAllocated
+    )
+      .add(BigNumber.from(value))
+      .toString();
 
     await this.applyUpdateAndNotify(jsonModel);
   }
@@ -173,18 +205,34 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   async onIncreasedStakedLTEvent([value]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.stakedLT = value.toString();
+    jsonModel.stakedLT = BigNumber.from(jsonModel.stakedLT)
+      .add(BigNumber.from(value))
+      .toString();
 
     await this.applyUpdateAndNotify(jsonModel);
   }
 
-  async onAllocationsAreTerminatedEvent([]: any[]): Promise<void> {}
+  async onAllocationsAreTerminatedEvent([]: any[]): Promise<void> {
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.areAllocationsTerminated = true;
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
 
   async onDecreasedFullyChargedBalanceAndStakedLTEvent([
     user,
     value,
   ]: any[]): Promise<void> {
-    pubSub.publish("UserBalance/load", user);
+    // user balances are loaded by LTReceivedEvent
+
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.stakedLT = BigNumber.from(jsonModel.stakedLT)
+      .sub(BigNumber.from(value))
+      .toString();
+
+    await this.applyUpdateAndNotify(jsonModel);
   }
 
   async onLTReceivedEvent([
@@ -194,31 +242,42 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     feesToRewardHodlers,
     hodlRewards,
   ]: any[]): Promise<void> {
-    pubSub.publish("UserBalance/load", user);
+    await this.directory.loadAllUserBalances(user, this.address);
   }
 
   async onClaimedRewardPerShareUpdatedEvent([
     user,
     value,
-  ]: any[]): Promise<void> {
-    pubSub.publish("UserBalance/load", user);
-  }
+  ]: any[]): Promise<void> {}
 
   async onCurrentRewardPerShareAndStakingCheckpointUpdatedEvent([
     rewardPerShare1e18,
     blockTime,
-  ]: any[]): Promise<void> {}
+  ]: any[]): Promise<void> {
+    // user rewards updated by ClaimedRewardPerShareUpdatedEvent
+
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.currentRewardPerShare1e18 = rewardPerShare1e18;
+    jsonModel.stakingDateLastCheckpoint = blockTime;
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
 
   async onIncreasedCurrentRewardPerShareEvent([value]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.currentRewardPerShare1e18 = value.toString();
+    jsonModel.currentRewardPerShare1e18 = BigNumber.from(
+      jsonModel.currentRewardPerShare1e18
+    )
+      .add(BigNumber.from(value))
+      .toString();
 
     await this.applyUpdateAndNotify(jsonModel);
   }
 
   async onLTDepositedEvent([user, value, hodlRewards]: any[]): Promise<void> {
-    pubSub.publish("UserBalance/load", user);
+    // user balances updated by IncreasedFullyChargedBalance
   }
 
   async onStakingCampaignCreatedEvent([
@@ -228,9 +287,25 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   ]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
+    const bnRewards = BigNumber.from(rewards);
+
     jsonModel.stakingStartDate = startDate;
+    jsonModel.stakingDateLastCheckpoint = startDate;
     jsonModel.stakingDuration = duration;
     jsonModel.campaignStakingRewards = rewards.toString();
+    jsonModel.totalStakingRewards = BigNumber.from(
+      jsonModel.totalStakingRewards
+    )
+      .add(bnRewards)
+      .toString();
+    jsonModel.totalTokenAllocated = BigNumber.from(
+      jsonModel.totalTokenAllocated
+    )
+      .add(bnRewards)
+      .toString();
+    jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
+      .add(bnRewards)
+      .toString();
 
     await this.applyUpdateAndNotify(jsonModel);
   }
@@ -255,18 +330,27 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     user,
     value,
   ]: any[]): Promise<void> {
-    pubSub.publish("UserBalance/load", user);
+    // partiallyChargedBalance updated by IncreaseFullyChargedBalanceEvent
   }
 
   async onUpdatedDateOfPartiallyChargedAndDecreasedStakedLTEvent([
     blockTime,
     value,
-  ]: any[]): Promise<void> {}
+  ]: any[]): Promise<void> {
+    // dateOfPartiallyCharged updated by TokensDischargedEvent
+    const jsonModel = await this.getJsonModel();
+
+    jsonModel.stakedLT = BigNumber.from(jsonModel.stakedLT)
+      .sub(BigNumber.from(value))
+      .toString();
+
+    await this.applyUpdateAndNotify(jsonModel);
+  }
 
   async onTokensDischargedEvent([
     user,
     partiallyChargedBalance,
   ]: any[]): Promise<void> {
-    pubSub.publish("UserBalance/load", user);
+    await this.directory.loadAllUserBalances(user, this.address);
   }
 }

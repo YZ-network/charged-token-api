@@ -1,24 +1,34 @@
 import { BigNumber, ethers } from "ethers";
 import { contracts } from "../contracts";
-import { pubSub } from "../graphql";
 import {
   IInterfaceProjectToken,
   InterfaceProjectTokenModel,
 } from "../models/InterfaceProjectToken";
 import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
+import { ChargedToken } from "./ChargedToken";
 import { DelegableToLT } from "./DelegableToLT";
+import { Directory } from "./Directory";
 
 export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken> {
   projectToken: DelegableToLT | undefined;
+  readonly directory: Directory;
+  readonly ct: ChargedToken;
 
-  constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
+  constructor(
+    provider: ethers.providers.JsonRpcProvider,
+    address: string,
+    directory: Directory,
+    ct: ChargedToken
+  ) {
     super(
       provider,
       address,
       contracts.InterfaceProjectToken,
       InterfaceProjectTokenModel
     );
+    this.directory = directory;
+    this.ct = ct;
   }
 
   async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
@@ -32,7 +42,9 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     if (this.lastState!.projectToken !== EMPTY_ADDRESS) {
       this.projectToken = new DelegableToLT(
         this.provider,
-        this.lastState!.projectToken
+        this.lastState!.projectToken,
+        this.directory,
+        this.ct
       );
 
       await this.projectToken.init();
@@ -116,14 +128,14 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     fees,
     hodlRewards,
   ]: any[]): Promise<void> {
-    pubSub.publish("UserBalance/load", user);
+    // user balances updated by ChargedToken.ClaimedRewardPerShareUpdatedEvent
   }
 
   async onIncreasedValueProjectTokenToFullRechargeEvent([
     user,
     valueIncreased,
   ]: any[]): Promise<void> {
-    pubSub.publish("UserBalance/load", user);
+    // balances updated by ChargedToken.TokensDischargedEvent
   }
 
   async onLTRechargedEvent([
@@ -132,7 +144,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     valueProjectToken,
     hodlRewards,
   ]: any[]): Promise<void> {
-    pubSub.publish("UserBalance/load", user);
+    // balances updated by ChargedToken.IncreasedFullyChargedBalance
   }
 
   async onClaimFeesUpdatedEvent([valuePerThousand]: any[]): Promise<void> {

@@ -128,7 +128,7 @@ const schema = createSchema({
     InterfaceProjectToken(address: String!): IInterfaceProjectToken!
     allDelegableToLTs: [IDelegableToLT!]!
     DelegableToLT(address: String!): IDelegableToLT!
-    userBalances(user: String!): [IUserBalancesEntry!]!
+    userBalances(user: String!, address: String): [IUserBalancesEntry!]!
   }
 
   type Subscription {

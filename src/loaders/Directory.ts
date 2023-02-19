@@ -1,7 +1,13 @@
 import { ethers } from "ethers";
+import { FlattenMaps } from "mongoose";
 import { contracts } from "../contracts";
 import { pubSub } from "../graphql";
-import { DirectoryModel, IDirectory, UserBalanceModel } from "../models";
+import {
+  DirectoryModel,
+  IDirectory,
+  IUserBalance,
+  UserBalanceModel,
+} from "../models";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
 
@@ -23,7 +29,8 @@ export class Directory extends AbstractLoader<IDirectory> {
     await super.init();
 
     this.lastState!.directory.forEach(
-      (address) => (this.ct[address] = new ChargedToken(this.provider, address))
+      (address) =>
+        (this.ct[address] = new ChargedToken(this.provider, address, this))
     );
 
     await Promise.all(
@@ -80,20 +87,20 @@ export class Directory extends AbstractLoader<IDirectory> {
     };
   }
 
-  async loadAllUserBalances(user: string) {
+  async loadAllUserBalances(user: string, address?: string) {
     console.log("Loading user balances for", user);
-    const results = await Promise.all(
-      Object.values(this.ct).map((ct: ChargedToken) =>
-        ct.loadUserBalances(user)
-      )
-    );
+    const results =
+      address === undefined
+        ? await Promise.all(
+            Object.values(this.ct).map((ct: ChargedToken) =>
+              ct.loadUserBalances(user)
+            )
+          )
+        : [await this.ct[address].loadUserBalances(user)];
 
     console.log("Saving user balances for", user);
     for (const entry of results) {
-      if (
-        (await UserBalanceModel.exists({ user, address: entry.address })) !==
-        null
-      ) {
+      if (await this.existUserBalances(user, address)) {
         await this.model.updateOne({ user, address: entry.address }, entry);
       } else {
         await UserBalanceModel.toModel(entry).save();
@@ -113,6 +120,19 @@ export class Directory extends AbstractLoader<IDirectory> {
     );
 
     return results;
+  }
+
+  async existUserBalances(user: string, address?: string): Promise<boolean> {
+    return (await UserBalanceModel.exists({ user, address })) !== null;
+  }
+
+  async getUserBalances(
+    user: string,
+    address?: string
+  ): Promise<FlattenMaps<IUserBalance>[]> {
+    return (await UserBalanceModel.find({ user, address })).map((balance) =>
+      UserBalanceModel.toGraphQL(balance)
+    );
   }
 
   async onUserFunctionsAreDisabledEvent([
