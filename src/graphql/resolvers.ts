@@ -11,8 +11,11 @@ import {
 import { IModel } from "../types";
 import pubSub from "./pubsub";
 
-const DirectoryQueryResolver = async () => {
-  const directory = await DirectoryModel.findOne();
+const DirectoryQueryResolver = async (
+  _: any,
+  { chainId }: { chainId: number }
+) => {
+  const directory = await DirectoryModel.findOne({ chainId });
 
   if (directory === null) {
     throw new Error("No directory yet.");
@@ -29,11 +32,15 @@ const DirectoryQueryResolver = async () => {
 
 const UserBalanceQueryResolver = async (
   _: any,
-  { user, address }: { user: string; address?: string }
+  {
+    chainId,
+    user,
+    address,
+  }: { chainId: number; user: string; address?: string }
 ) => {
-  if ((await UserBalanceModel.exists({ user, address })) !== null) {
-    return (await UserBalanceModel.find({ user, address })).map((balance) =>
-      UserBalanceModel.toGraphQL(balance)
+  if ((await UserBalanceModel.exists({ chainId, user, address })) !== null) {
+    return (await UserBalanceModel.find({ chainId, user, address })).map(
+      (balance) => UserBalanceModel.toGraphQL(balance)
     );
   }
 
@@ -48,9 +55,12 @@ const UserBalanceQueryResolver = async (
 };
 
 const UserBalanceSubscriptionResolver = {
-  subscribe: async (_: any, { user }: { user: string }) => {
+  subscribe: async (
+    _: any,
+    { chainId, user }: { chainId: number; user: string }
+  ) => {
     console.log("subscribing to balances for", user);
-    const sub = pubSub.subscribe(`UserBalance.${user}`);
+    const sub = pubSub.subscribe(`UserBalance.${chainId}.${user}`);
 
     return new Repeater(async (push, stop) => {
       stop.then((err) => {
@@ -75,15 +85,15 @@ const UserBalanceSubscriptionResolver = {
 
 class ResolverFactory {
   static findAll<T>(model: IModel<T>) {
-    return async () => {
-      const results = await model.find();
+    return async (_: any, [chainId]: [number]) => {
+      const results = await model.find({ chainId });
       return results.map((result) => model.toGraphQL(result));
     };
   }
 
   static findByAddress<T>(model: IModel<T>) {
-    return async (_: any, [address]: [string]) => {
-      const result = await model.findOne({ address });
+    return async (_: any, [chainId, address]: [number, string]) => {
+      const result = await model.findOne({ chainId, address });
       if (result !== null) {
         return model.toGraphQL(result);
       }
@@ -92,8 +102,8 @@ class ResolverFactory {
 
   static subscribeByName(modelName: string) {
     return {
-      subscribe: async () => {
-        const sub = pubSub.subscribe(modelName);
+      subscribe: async (_: any, { chainId }: { chainId: number }) => {
+        const sub = pubSub.subscribe(`${modelName}.${chainId}`);
 
         return new Repeater(async (push, stop) => {
           stop.then((err) => {
@@ -119,8 +129,11 @@ class ResolverFactory {
 
   static subscribeByNameAndAddress(modelName: string) {
     return {
-      subscribe: async (_: any, { address }: { address: string }) => {
-        const sub = pubSub.subscribe(`${modelName}.${address}`);
+      subscribe: async (
+        _: any,
+        { chainId, address }: { chainId: number; address: string }
+      ) => {
+        const sub = pubSub.subscribe(`${modelName}.${chainId}.${address}`);
 
         return new Repeater(async (push, stop) => {
           stop.then((err) => {

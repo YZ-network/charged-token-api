@@ -57,7 +57,7 @@ export function subscribeToNewBlocks(
 export async function subscribeToUserBalancesLoading(
   directory: Directory
 ): Promise<void> {
-  const sub = pubSub.subscribe("UserBalance/load");
+  const sub = pubSub.subscribe(`UserBalance.${directory.chainId}/load`);
 
   for await (const user of sub) {
     console.log("triggered reloading user balances", user);
@@ -73,6 +73,7 @@ export async function subscribeToUserBalancesLoading(
  * to the latest block number before watching new blocks.
  */
 export abstract class AbstractLoader<T extends IContract> {
+  readonly chainId: number;
   protected readonly provider: ethers.providers.JsonRpcProvider;
   readonly address: string;
   protected readonly contract: any;
@@ -91,11 +92,13 @@ export abstract class AbstractLoader<T extends IContract> {
    * @param model mongoose model for this contract.
    */
   protected constructor(
+    chainId: number,
     provider: ethers.providers.JsonRpcProvider,
     address: string,
     contract: any,
     model: IModel<T>
   ) {
+    this.chainId = chainId;
     this.provider = provider;
     this.address = address;
     this.contract = contract;
@@ -152,18 +155,29 @@ export abstract class AbstractLoader<T extends IContract> {
 
   /** Checks for contract state in the database. */
   async exists(): Promise<boolean> {
-    return (await this.model.exists({ address: this.address })) !== null;
+    return (
+      (await this.model.exists({
+        chainId: this.chainId,
+        address: this.address,
+      })) !== null
+    );
   }
 
   /** Returns contract state from the database or null. */
   async get(): Promise<HydratedDocument<T> | null> {
-    return await this.model.findOne({ address: this.address });
+    return await this.model.findOne({
+      chainId: this.chainId,
+      address: this.address,
+    });
   }
 
   /** Saves or updates the document in database with the given data. */
   async saveOrUpdate(data: T): Promise<HydratedDocument<T>> {
     if (await this.exists()) {
-      await this.model.updateOne({ address: this.address }, data);
+      await this.model.updateOne(
+        { chainId: this.chainId, address: this.address },
+        data
+      );
     } else {
       await this.toModel(data).save();
     }
@@ -180,7 +194,10 @@ export abstract class AbstractLoader<T extends IContract> {
   }
 
   notifyUpdate(): void {
-    pubSub.publish(`${this.constructor.name}.${this.address}`, this.lastState);
+    pubSub.publish(
+      `${this.constructor.name}.${this.chainId}.${this.address}`,
+      this.lastState
+    );
   }
 
   async syncEvents(
@@ -267,7 +284,7 @@ export abstract class AbstractLoader<T extends IContract> {
 
   private async updateLastBlock() {
     await this.model.updateOne(
-      { address: this.address },
+      { chainId: this.chainId, address: this.address },
       { lastUpdateBlock: this.lastUpdateBlock }
     );
   }

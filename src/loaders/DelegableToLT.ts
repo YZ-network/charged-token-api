@@ -10,12 +10,19 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   readonly directory: Directory;
 
   constructor(
+    chainId: number,
     provider: ethers.providers.JsonRpcProvider,
     address: string,
     directory: Directory,
     ct: ChargedToken
   ) {
-    super(provider, address, contracts.DelegableToLT, DelegableToLTModel);
+    super(
+      chainId,
+      provider,
+      address,
+      contracts.DelegableToLT,
+      DelegableToLTModel
+    );
 
     this.directory = directory;
     this.ct = ct;
@@ -42,6 +49,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
 
     return {
       // contract
+      chainId: this.chainId,
       lastUpdateBlock: this.actualBlock,
       address: this.address,
       // ownable

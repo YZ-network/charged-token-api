@@ -16,12 +16,14 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   readonly ct: ChargedToken;
 
   constructor(
+    chainId: number,
     provider: ethers.providers.JsonRpcProvider,
     address: string,
     directory: Directory,
     ct: ChargedToken
   ) {
     super(
+      chainId,
       provider,
       address,
       contracts.InterfaceProjectToken,
@@ -41,6 +43,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
 
     if (this.lastState!.projectToken !== EMPTY_ADDRESS) {
       this.projectToken = new DelegableToLT(
+        this.chainId,
         this.provider,
         this.lastState!.projectToken,
         this.directory,
@@ -62,6 +65,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
 
     return {
       // contract
+      chainId: this.chainId,
       lastUpdateBlock: this.actualBlock,
       address: this.address,
       // ownable

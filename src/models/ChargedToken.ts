@@ -57,6 +57,7 @@ const chargedTokenSchema = new mongoose.Schema<
   IModel<IChargedToken>
 >({
   // contract
+  chainId: { type: Number, required: true },
   lastUpdateBlock: { type: Number, required: true },
   address: { type: String, required: true },
   // ownable

@@ -33,6 +33,7 @@ const schema = createSchema({
   }
   
   type IDirectory implements IOwnable {
+    chainId: Int!
     address: String!
     owner: String!
     
@@ -45,6 +46,7 @@ const schema = createSchema({
   }
 
   type IChargedToken implements IERC20 {
+    chainId: Int!
     address: String!
     owner: String!
 
@@ -85,6 +87,7 @@ const schema = createSchema({
   }
 
   type IInterfaceProjectToken implements IOwnable {
+    chainId: Int!
     address: String!
     owner: String!
 
@@ -97,6 +100,7 @@ const schema = createSchema({
   }
 
   type IDelegableToLT implements IERC20 {
+    chainId: Int!
     address: String!
     owner: String!
 
@@ -111,6 +115,7 @@ const schema = createSchema({
   }
 
   type IUserBalancesEntry {
+    chainId: Int!
     user: String!
     address: String!
     balance: String!
@@ -121,22 +126,22 @@ const schema = createSchema({
   }
 
   type Query {
-    Directory: IDirectory
-    allChargedTokens: [IChargedToken!]!
-    ChargedToken(address: String!): IChargedToken!
-    allInterfaceProjectTokens: [IInterfaceProjectToken!]!
-    InterfaceProjectToken(address: String!): IInterfaceProjectToken!
-    allDelegableToLTs: [IDelegableToLT!]!
-    DelegableToLT(address: String!): IDelegableToLT!
-    userBalances(user: String!, address: String): [IUserBalancesEntry!]!
+    Directory(chainId: Int!): IDirectory
+    allChargedTokens(chainId: Int!): [IChargedToken!]!
+    ChargedToken(chainId: Int!, address: String!): IChargedToken!
+    allInterfaceProjectTokens(chainId: Int!): [IInterfaceProjectToken!]!
+    InterfaceProjectToken(chainId: Int!, address: String!): IInterfaceProjectToken!
+    allDelegableToLTs(chainId: Int!): [IDelegableToLT!]!
+    DelegableToLT(chainId: Int!, address: String!): IDelegableToLT!
+    userBalances(chainId: Int!, user: String!, address: String): [IUserBalancesEntry!]!
   }
 
   type Subscription {
-    Directory: IDirectory
-    ChargedToken(address: String!): IChargedToken!
-    InterfaceProjectToken(address: String!): IInterfaceProjectToken!
-    DelegableToLT(address: String!): IDelegableToLT!
-    userBalances(user: String!): [IUserBalancesEntry!]!
+    Directory(chainId: Int!): IDirectory
+    ChargedToken(chainId: Int!, address: String!): IChargedToken!
+    InterfaceProjectToken(chainId: Int!, address: String!): IInterfaceProjectToken!
+    DelegableToLT(chainId: Int!, address: String!): IDelegableToLT!
+    userBalances(chainId: Int!, user: String!): [IUserBalancesEntry!]!
   }
 `,
   resolvers,

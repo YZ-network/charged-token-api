@@ -1,6 +1,7 @@
 import { HydratedDocument, Model } from "mongoose";
 
 export interface IContract {
+  chainId: number;
   address: string;
   lastUpdateBlock: number;
 }

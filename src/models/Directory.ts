@@ -14,6 +14,7 @@ export interface IDirectory extends IOwnable {
 const { Schema } = mongoose;
 
 const directorySchema = new Schema<IDirectory, IModel<IDirectory>>({
+  chainId: { type: Number, required: true },
   lastUpdateBlock: { type: Number, required: true },
   address: { type: String, required: true },
   owner: { type: String, required: true },

@@ -6,7 +6,12 @@ import {
 import { Directory } from "./loaders/Directory";
 
 export async function worker(provider: ethers.providers.JsonRpcProvider) {
-  const directory = new Directory(provider, process.env.DIRECTORY_ADDRESS!);
+  const chainId = await (await provider.getNetwork()).chainId;
+  const directory = new Directory(
+    chainId,
+    provider,
+    process.env.DIRECTORY_ADDRESS!
+  );
   await directory.init();
   subscribeToNewBlocks(provider, directory);
   subscribeToUserBalancesLoading(directory);

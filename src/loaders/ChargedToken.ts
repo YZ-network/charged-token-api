@@ -12,11 +12,18 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   private readonly directory: Directory;
 
   constructor(
+    chainId: number,
     provider: ethers.providers.JsonRpcProvider,
     address: string,
     directory: Directory
   ) {
-    super(provider, address, contracts.LiquidityToken, ChargedTokenModel);
+    super(
+      chainId,
+      provider,
+      address,
+      contracts.LiquidityToken,
+      ChargedTokenModel
+    );
     this.directory = directory;
   }
 
@@ -30,6 +37,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
 
     if (this.lastState!.interfaceProjectToken !== EMPTY_ADDRESS) {
       this.interface = new InterfaceProjectToken(
+        this.chainId,
         this.provider,
         this.lastState!.interfaceProjectToken,
         this.directory,
@@ -51,6 +59,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
 
     return {
       // contract
+      chainId: this.chainId,
       lastUpdateBlock: this.actualBlock,
       address: this.address,
       // ownable
@@ -113,6 +122,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     console.log("Loading CT balances for", user, this.address);
 
     return {
+      chainId: this.chainId,
       user,
       address: this.address,
       lastUpdateBlock: this.actualBlock,

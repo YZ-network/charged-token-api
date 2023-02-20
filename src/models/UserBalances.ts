@@ -10,6 +10,7 @@ export interface IChargedTokenBalance {
 }
 
 export interface IUserBalance extends IChargedTokenBalance {
+  chainId: number;
   lastUpdateBlock: number;
   user: string;
   address: string;
@@ -19,6 +20,7 @@ const userBalanceSchema = new mongoose.Schema<
   IUserBalance,
   IModel<IUserBalance>
 >({
+  chainId: { type: Number, required: true },
   lastUpdateBlock: { type: Number, required: true },
   user: String,
   address: String,

@@ -4,19 +4,32 @@ import { contracts } from "../contracts";
 import { pubSub } from "../graphql";
 import {
   ChargedTokenModel,
+  DelegableToLTModel,
   DirectoryModel,
   IDirectory,
+  InterfaceProjectTokenModel,
   IUserBalance,
   UserBalanceModel,
 } from "../models";
+import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
 
 export class Directory extends AbstractLoader<IDirectory> {
   readonly ct: Record<string, ChargedToken> = {};
 
-  constructor(provider: ethers.providers.JsonRpcProvider, address: string) {
-    super(provider, address, contracts.ContractsDirectory, DirectoryModel);
+  constructor(
+    chainId: number,
+    provider: ethers.providers.JsonRpcProvider,
+    address: string
+  ) {
+    super(
+      chainId,
+      provider,
+      address,
+      contracts.ContractsDirectory,
+      DirectoryModel
+    );
   }
 
   async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
@@ -31,7 +44,12 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     this.lastState!.directory.forEach(
       (address) =>
-        (this.ct[address] = new ChargedToken(this.provider, address, this))
+        (this.ct[address] = new ChargedToken(
+          this.chainId,
+          this.provider,
+          address,
+          this
+        ))
     );
 
     await Promise.all(
@@ -76,6 +94,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     }
 
     return {
+      chainId: this.chainId,
       lastUpdateBlock: this.actualBlock,
       address: this.address,
       owner: await ins.owner(),
@@ -168,7 +187,12 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     await this.applyUpdateAndNotify(jsonModel);
 
-    this.ct[contract] = new ChargedToken(this.provider, contract, this);
+    this.ct[contract] = new ChargedToken(
+      this.chainId,
+      this.provider,
+      contract,
+      this
+    );
     await this.ct[contract].init();
   }
 
@@ -180,9 +204,25 @@ export class Directory extends AbstractLoader<IDirectory> {
     );
     delete jsonModel.projectRelatedToLT[contract];
 
+    const balanceAddressList: string[] = [];
+
     delete this.ct[contract];
     await ChargedTokenModel.deleteOne({ address: contract });
-    await UserBalanceModel.deleteMany({ address: contract });
+    balanceAddressList.push(contract);
+
+    const iface = await InterfaceProjectTokenModel.findOne({
+      liquidityToken: contract,
+    });
+    if (iface !== null) {
+      balanceAddressList.push(iface.address);
+      await InterfaceProjectTokenModel.deleteOne({ address: iface.address });
+      if (iface.projectToken !== EMPTY_ADDRESS) {
+        await DelegableToLTModel.deleteOne({ address: iface.projectToken });
+        balanceAddressList.push(iface.projectToken);
+      }
+    }
+
+    await UserBalanceModel.deleteMany({ address: { $in: balanceAddressList } });
 
     await this.applyUpdateAndNotify(jsonModel);
   }
