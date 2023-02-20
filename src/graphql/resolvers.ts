@@ -1,10 +1,8 @@
 import { Repeater } from "graphql-yoga";
-import { recordToEntryList } from "../functions";
 import {
   ChargedTokenModel,
   DelegableToLTModel,
   DirectoryModel,
-  IDirectory,
   InterfaceProjectTokenModel,
   UserBalanceModel,
 } from "../models";
@@ -21,13 +19,7 @@ const DirectoryQueryResolver = async (
     throw new Error("No directory yet.");
   }
 
-  const jsonDirectory: IDirectory = directory.toJSON();
-
-  return {
-    ...jsonDirectory,
-    projectRelatedToLT: recordToEntryList(jsonDirectory.projectRelatedToLT),
-    whitelist: recordToEntryList(jsonDirectory.projectRelatedToLT),
-  };
+  return DirectoryModel.toGraphQL(directory);
 };
 
 const UserBalanceQueryResolver = async (
@@ -85,14 +77,17 @@ const UserBalanceSubscriptionResolver = {
 
 class ResolverFactory {
   static findAll<T>(model: IModel<T>) {
-    return async (_: any, [chainId]: [number]) => {
+    return async (_: any, { chainId }: { chainId: number }) => {
       const results = await model.find({ chainId });
       return results.map((result) => model.toGraphQL(result));
     };
   }
 
   static findByAddress<T>(model: IModel<T>) {
-    return async (_: any, [chainId, address]: [number, string]) => {
+    return async (
+      _: any,
+      { chainId, address }: { chainId: number; address: string }
+    ) => {
       const result = await model.findOne({ chainId, address });
       if (result !== null) {
         return model.toGraphQL(result);
@@ -103,6 +98,7 @@ class ResolverFactory {
   static subscribeByName(modelName: string) {
     return {
       subscribe: async (_: any, { chainId }: { chainId: number }) => {
+        console.log("subscribe to", modelName, chainId);
         const sub = pubSub.subscribe(`${modelName}.${chainId}`);
 
         return new Repeater(async (push, stop) => {
@@ -133,6 +129,8 @@ class ResolverFactory {
         _: any,
         { chainId, address }: { chainId: number; address: string }
       ) => {
+        console.log("subscribe to", modelName, chainId, address);
+
         const sub = pubSub.subscribe(`${modelName}.${chainId}.${address}`);
 
         return new Repeater(async (push, stop) => {
