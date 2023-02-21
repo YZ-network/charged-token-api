@@ -189,8 +189,6 @@ export class Directory extends AbstractLoader<IDirectory> {
     jsonModel.projectRelatedToLT[contract] =
       await this.instance.projectRelatedToLT(contract);
 
-    await this.applyUpdateAndNotify(jsonModel);
-
     this.ct[contract] = new ChargedToken(
       this.chainId,
       this.provider,
@@ -198,6 +196,8 @@ export class Directory extends AbstractLoader<IDirectory> {
       this
     );
     await this.ct[contract].init();
+
+    await this.applyUpdateAndNotify(jsonModel);
   }
 
   async onRemovedLTContractEvent([contract]: any[]): Promise<void> {

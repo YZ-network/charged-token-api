@@ -9,7 +9,7 @@ export function subscribeToNewBlocks(
   directory: Directory
 ): void {
   provider.on("block", async (newBlockNumber) => {
-    if (newBlockNumber > directory.lastUpdateBlock) {
+    if (newBlockNumber >= directory.lastUpdateBlock) {
       const addresses: string[] = [];
 
       await directory.applyFunc(async (loader) => {
@@ -137,7 +137,15 @@ export abstract class AbstractLoader<T extends IContract> {
       const saved = await this.saveOrUpdate(await this.load());
       this.lastState = this.model.toGraphQL(saved);
       this.lastUpdateBlock = this.actualBlock;
-      this.notifyUpdate();
+
+      pubSub.publish(
+        `${this.constructor.name}.${this.chainId}.${this.address}`,
+        this.lastState
+      );
+      pubSub.publish(
+        `${this.constructor.name}.${this.chainId}`,
+        this.lastState
+      );
     }
   }
 
@@ -194,10 +202,15 @@ export abstract class AbstractLoader<T extends IContract> {
   }
 
   notifyUpdate(): void {
+    console.log(
+      "notifying update 2 for",
+      `${this.constructor.name}.${this.chainId}.${this.address}`
+    );
     pubSub.publish(
       `${this.constructor.name}.${this.chainId}.${this.address}`,
       this.lastState
     );
+    pubSub.publish(`${this.constructor.name}.${this.chainId}`, this.lastState);
   }
 
   async syncEvents(
@@ -256,7 +269,14 @@ export abstract class AbstractLoader<T extends IContract> {
     await this.updateLastBlock();
 
     if (missedEvents.length > 0) {
-      this.notifyUpdate();
+      pubSub.publish(
+        `${this.constructor.name}.${this.chainId}.${this.address}`,
+        this.lastState
+      );
+      pubSub.publish(
+        `${this.constructor.name}.${this.chainId}`,
+        this.lastState
+      );
     }
   }
 
@@ -265,11 +285,25 @@ export abstract class AbstractLoader<T extends IContract> {
   }
 
   protected async applyUpdateAndNotify(data: T) {
+    console.log("saving update for", this.constructor.name);
+
     const saved = await this.saveOrUpdate(data);
+
+    console.log("saved, converting to GraphQL for", this.constructor.name);
 
     this.lastState = this.model.toGraphQL(saved);
     this.lastUpdateBlock = this.actualBlock;
-    this.notifyUpdate();
+
+    console.log(
+      "notifying update 1 for",
+      `${this.constructor.name}.${this.chainId}.${this.address}`
+    );
+
+    pubSub.publish(
+      `${this.constructor.name}.${this.chainId}.${this.address}`,
+      this.lastState
+    );
+    pubSub.publish(`${this.constructor.name}.${this.chainId}`, this.lastState);
   }
 
   private onEvent(name: string, args: any[]): Promise<void> {
