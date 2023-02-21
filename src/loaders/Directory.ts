@@ -1,5 +1,4 @@
 import { ethers } from "ethers";
-import { FlattenMaps } from "mongoose";
 import { contracts } from "../contracts";
 import { pubSub } from "../graphql";
 import {
@@ -8,7 +7,6 @@ import {
   DirectoryModel,
   IDirectory,
   InterfaceProjectTokenModel,
-  IUserBalance,
   UserBalanceModel,
 } from "../models";
 import { EMPTY_ADDRESS } from "../types";
@@ -121,17 +119,23 @@ export class Directory extends AbstractLoader<IDirectory> {
     console.log("Saving user balances for", user);
     for (const entry of results) {
       if (await this.existUserBalances(user, address)) {
-        await this.model.updateOne({ user, address: entry.address }, entry);
+        await this.model.updateOne(
+          { chainId: this.chainId, user, address: entry.address },
+          entry
+        );
       } else {
         await UserBalanceModel.toModel(entry).save();
       }
     }
 
     console.log("Publishing updated user balances for", user);
-    const saved = await UserBalanceModel.find({ user }).exec();
+    const saved = await UserBalanceModel.find({
+      chainId: this.chainId,
+      user,
+    }).exec();
     console.log("Result :", saved);
     pubSub.publish(
-      `UserBalance.${user}`,
+      `UserBalance.${this.chainId}.${user}`,
       JSON.stringify(
         (saved != null ? saved : []).map((balance) =>
           UserBalanceModel.toGraphQL(balance)
@@ -143,16 +147,16 @@ export class Directory extends AbstractLoader<IDirectory> {
   }
 
   async existUserBalances(user: string, address?: string): Promise<boolean> {
-    return (await UserBalanceModel.exists({ user, address })) !== null;
-  }
-
-  async getUserBalances(
-    user: string,
-    address?: string
-  ): Promise<FlattenMaps<IUserBalance>[]> {
-    return (await UserBalanceModel.find({ user, address })).map((balance) =>
-      UserBalanceModel.toGraphQL(balance)
-    );
+    return address !== undefined
+      ? (await UserBalanceModel.exists({
+          chainId: this.chainId,
+          user,
+          address,
+        })) !== null
+      : (await UserBalanceModel.exists({
+          chainId: this.chainId,
+          user,
+        })) !== null;
   }
 
   async onUserFunctionsAreDisabledEvent([

@@ -30,15 +30,16 @@ const UserBalanceQueryResolver = async (
     address,
   }: { chainId: number; user: string; address?: string }
 ) => {
-  if ((await UserBalanceModel.exists({ chainId, user, address })) !== null) {
-    return (await UserBalanceModel.find({ chainId, user, address })).map(
-      (balance) => UserBalanceModel.toGraphQL(balance)
+  console.log("checking existing balances for", chainId, user, address);
+  if ((await UserBalanceModel.exists({ chainId, user })) !== null) {
+    return (await UserBalanceModel.find({ chainId, user })).map((balance) =>
+      UserBalanceModel.toGraphQL(balance)
     );
   }
 
   console.log("Notifying worker to load balances for", user);
-  pubSub.publish("UserBalance/load", user);
-  const sub = pubSub.subscribe(`UserBalance.${user}`);
+  pubSub.publish(`UserBalance.${chainId}/load`, user);
+  const sub = pubSub.subscribe(`UserBalance.${chainId}.${user}`);
   const nextValue = (await sub.next()).value;
   console.log("Received new value :", nextValue);
   const resultsList = JSON.parse(nextValue);
