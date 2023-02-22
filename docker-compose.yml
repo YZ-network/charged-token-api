@@ -1,14 +1,25 @@
-version: "3.3"
+version: "3"
 services:
   api:
-    build: .
-    image: ct-api
+    image: 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz
     ports:
       - "4000:4000"
     environment:
       - JSON_RPC_URL=https://matic-mumbai.chainstacklabs.com
       - DIRECTORY_ADDRESS=0xA94F250f2508A9be616e0922742Bb0628474F906
-      - MONGODB_HOST=db
-
+      - MONGODB_HOST=localhost
+      - BIND_ADDRESS=0.0.0.0
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: yz-api
+        awslogs-region: eu-west-3
+        awslogs-stream-prefix: 'yz-api'
   db:
     image: mongo:6.0
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: yz-db
+        awslogs-region: eu-west-3
+        awslogs-stream-prefix: 'yz-db'

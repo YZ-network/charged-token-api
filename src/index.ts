@@ -69,8 +69,8 @@ mongoose
       });
     }
 
-    httpServer.listen(4000, () =>
-      console.log("Running a GraphQL API server at http://localhost:4000/")
+    httpServer.listen(4000, process.env.BIND_ADDRESS, () =>
+      console.log(`Running a GraphQL API server at http://${process.env.BIND_ADDRESS}:4000/`)
     );
   })
   .catch((err) => console.error("Error connecting to database :", err));

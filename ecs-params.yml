@@ -1,0 +1,25 @@
+version: 1
+task_definition:
+  task_role_arn: arn:aws:iam::940219468121:role/yzFargate
+  ecs_network_mode: awsvpc
+  task_execution_role: arn:aws:iam::940219468121:role/yzFargate
+  task_size:
+    mem_limit: 1GB
+    cpu_limit: 512
+  services:
+    api:
+      depends_on:
+        - container_name: db
+          condition: START
+
+    db:
+      essential: true
+
+run_params:
+  network_configuration:
+    awsvpc_configuration:
+      subnets:
+        - subnet-05be35e78d17c9e19
+      security-groups:
+        - sg-076f05e695dc3cdae
+      assign_public_ip: ENABLED
