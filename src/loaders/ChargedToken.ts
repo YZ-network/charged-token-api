@@ -32,8 +32,8 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     await this.interface?.applyFunc(fn);
   }
 
-  async init() {
-    await super.init();
+  async init(actualBlock?: number) {
+    await super.init(actualBlock);
 
     if (this.lastState!.interfaceProjectToken !== EMPTY_ADDRESS) {
       this.interface = new InterfaceProjectToken(
@@ -44,7 +44,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         this
       );
 
-      await this.interface.init();
+      await this.interface.init(actualBlock);
     }
   }
 

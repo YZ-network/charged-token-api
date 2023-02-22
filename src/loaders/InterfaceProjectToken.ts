@@ -38,8 +38,8 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     await this.projectToken?.applyFunc(fn);
   }
 
-  async init() {
-    await super.init();
+  async init(actualBlock?: number) {
+    await super.init(actualBlock);
 
     if (this.lastState!.projectToken !== EMPTY_ADDRESS) {
       this.projectToken = new DelegableToLT(
@@ -50,7 +50,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         this.ct
       );
 
-      await this.projectToken.init();
+      await this.projectToken.init(actualBlock);
     }
   }
 

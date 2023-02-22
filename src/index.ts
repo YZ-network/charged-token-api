@@ -9,10 +9,6 @@ import { worker } from "./worker";
 
 console.log("Starting app on environment", process.env.ENVIRONMENT);
 
-const provider = new ethers.providers.StaticJsonRpcProvider(
-  process.env.JSON_RPC_KEY === undefined ? process.env.JSON_RPC_URL : `${process.env.JSON_RPC_URL}${process.env.JSON_RPC_KEY}`
-);
-
 const yoga = createYoga({
   schema,
   graphiql: {
@@ -63,10 +59,17 @@ mongoose.set("strictQuery", true);
 mongoose
   .connect(`mongodb://${process.env.MONGODB_HOST}:27017/test`)
   .then(() => {
-    worker(provider).catch((err) => {
-      console.error("Error occured during load :", err);
-      mongoose.disconnect();
-    });
+    const rpcs = process.env.JSON_RPC_URL!.split(",");
+    const directories = process.env.DIRECTORY_ADDRESS!.split(",");
+
+    for (let i = 0; i < rpcs.length; i++) {
+      const provider = new ethers.providers.StaticJsonRpcProvider(rpcs[i]);
+
+      worker(provider, directories[i]).catch((err) => {
+        console.error("Error occured during load :", err);
+        mongoose.disconnect();
+      });
+    }
 
     httpServer.listen(4000, () =>
       console.log("Running a GraphQL API server at http://localhost:4000/")

@@ -38,14 +38,18 @@ export function subscribeToNewBlocks(
         }
 
         await directory.applyFunc((loader) =>
-          loader.syncEvents(newBlockNumber, missedEventsMap[loader.address])
+          loader.syncEvents(
+            directory.lastUpdateBlock + 1,
+            newBlockNumber,
+            missedEventsMap[loader.address]
+          )
         );
       } catch (e) {
         console.error(
           "Couldn't retrieve logs from block",
-          newBlockNumber,
+          directory.lastUpdateBlock + 1,
           "to",
-          await provider.getBlockNumber()
+          newBlockNumber
         );
       }
     } else {
@@ -118,15 +122,18 @@ export abstract class AbstractLoader<T extends IContract> {
    *
    * After initialization, the contract is up to date and the loader is subscribed to events.
    */
-  async init(): Promise<void> {
-    this.actualBlock = await this.provider.getBlockNumber();
+  async init(actualBlock?: number): Promise<void> {
+    this.actualBlock =
+      actualBlock !== undefined
+        ? actualBlock
+        : await this.provider.getBlockNumber();
 
     const existing = await this.get();
 
     if (existing != null) {
       this.lastUpdateBlock = existing.lastUpdateBlock;
       this.lastState = this.model.toGraphQL(existing);
-      await this.syncEvents(this.lastUpdateBlock + 1);
+      await this.syncEvents(this.lastUpdateBlock + 1, this.actualBlock);
     } else {
       console.log(
         "First time loading of",
@@ -215,6 +222,7 @@ export abstract class AbstractLoader<T extends IContract> {
 
   async syncEvents(
     fromBlock: number,
+    toBlock: number,
     missedLogs?: ethers.providers.Log[]
   ): Promise<void> {
     let missedEvents: ethers.Event[] = [];
@@ -264,7 +272,7 @@ export abstract class AbstractLoader<T extends IContract> {
       }
     }
 
-    this.actualBlock = fromBlock;
+    this.actualBlock = toBlock;
     this.lastUpdateBlock = this.actualBlock;
     await this.updateLastBlock();
 

@@ -37,8 +37,8 @@ export class Directory extends AbstractLoader<IDirectory> {
     );
   }
 
-  async init() {
-    await super.init();
+  async init(actualBlock?: number) {
+    await super.init(actualBlock);
 
     this.lastState!.directory.forEach(
       (address) =>
@@ -51,7 +51,9 @@ export class Directory extends AbstractLoader<IDirectory> {
     );
 
     await Promise.all(
-      Object.values(this.ct).map((ct: ChargedToken) => ct.init())
+      Object.values(this.ct).map((ct: ChargedToken) =>
+        ct.init(this.actualBlock)
+      )
     );
   }
 
@@ -195,7 +197,7 @@ export class Directory extends AbstractLoader<IDirectory> {
       contract,
       this
     );
-    await this.ct[contract].init();
+    await this.ct[contract].init(this.actualBlock);
 
     await this.applyUpdateAndNotify(jsonModel);
   }
