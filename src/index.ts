@@ -7,8 +7,6 @@ import { WebSocketServer } from "ws";
 import { schema } from "./graphql";
 import { worker } from "./worker";
 
-console.log("Starting app on environment", process.env.ENVIRONMENT);
-
 const yoga = createYoga({
   schema,
   graphiql: {

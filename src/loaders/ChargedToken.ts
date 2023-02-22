@@ -53,7 +53,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   }
 
   async load() {
-    console.log("Reading charged token @", this.address);
+    console.log(this.chainId, "Reading charged token @", this.address);
 
     const ins = this.instance;
 

@@ -136,6 +136,7 @@ export abstract class AbstractLoader<T extends IContract> {
       await this.syncEvents(this.lastUpdateBlock + 1, this.actualBlock);
     } else {
       console.log(
+        this.chainId,
         "First time loading of",
         this.constructor.name,
         "@",

@@ -9,7 +9,10 @@ export async function worker(
   provider: ethers.providers.JsonRpcProvider,
   directoryAddress: string
 ) {
-  const chainId = await (await provider.getNetwork()).chainId;
+  const { chainId, name } = await provider.getNetwork();
+
+  console.log("Starting app on environment", name, "chainId=", chainId);
+
   const directory = new Directory(chainId, provider, directoryAddress);
   await directory.init();
   subscribeToNewBlocks(provider, directory);

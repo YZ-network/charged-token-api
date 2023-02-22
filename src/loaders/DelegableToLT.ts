@@ -33,7 +33,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   }
 
   async load() {
-    console.log("Reading project token @", this.address);
+    console.log(this.chainId, "Reading project token @", this.address);
 
     const ins = this.instance;
 

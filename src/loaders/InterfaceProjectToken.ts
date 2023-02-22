@@ -59,7 +59,11 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   }
 
   async load() {
-    console.log("Reading interface project token @", this.address);
+    console.log(
+      this.chainId,
+      "Reading interface project token @",
+      this.address
+    );
 
     const ins = this.instance;
 

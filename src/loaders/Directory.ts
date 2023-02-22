@@ -66,7 +66,7 @@ export class Directory extends AbstractLoader<IDirectory> {
   }
 
   async load() {
-    console.log("Reading directory @", this.address);
+    console.log(this.chainId, "Reading directory @", this.address);
 
     const ins = this.instance;
 
