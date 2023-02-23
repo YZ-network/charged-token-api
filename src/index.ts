@@ -19,6 +19,11 @@ const wsServer = new WebSocketServer({
   path: yoga.graphqlEndpoint,
 });
 
+// const bindAddress = process.env.BIND_ADDRESS || 'localhost'
+// const bindPort = process.env.BIND_ADDRESS ? Number(process.env.BIND_ADDRESS) : 80
+const bindAddress = '0.0.0.0';
+const bindPort = 80;
+
 // Integrate Yoga's Envelop instance and NodeJS server with graphql-ws
 useServer(
   {
@@ -69,8 +74,8 @@ mongoose
       });
     }
 
-    httpServer.listen(4000, process.env.BIND_ADDRESS, () =>
-      console.log(`Running a GraphQL API server at http://${process.env.BIND_ADDRESS}:4000/`)
+    httpServer.listen(bindPort, bindAddress, () =>
+      console.log(`Running a GraphQL API server at http://${bindAddress}:${bindPort}/`)
     );
   })
   .catch((err) => console.error("Error connecting to database :", err));

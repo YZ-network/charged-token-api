@@ -1,14 +1,19 @@
 version: "3"
 services:
   api:
-    image: 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz
+    image: 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz:latest
     ports:
-      - "4000:4000"
+      - "80:80"
     environment:
-      - JSON_RPC_URL=https://matic-mumbai.chainstacklabs.com
+      - JSON_RPC_URL=https://polygon-mumbai.infura.io/v3/
       - DIRECTORY_ADDRESS=0xA94F250f2508A9be616e0922742Bb0628474F906
       - MONGODB_HOST=localhost
       - BIND_ADDRESS=0.0.0.0
+    healthcheck:
+      test: curl -f http://localhost/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
     logging:
       driver: awslogs
       options:
@@ -17,6 +22,11 @@ services:
         awslogs-stream-prefix: 'yz-api'
   db:
     image: mongo:6.0
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
     logging:
       driver: awslogs
       options:
