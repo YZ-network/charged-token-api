@@ -2,9 +2,16 @@ name: Publish Docker image to ECR
 
 on:
   workflow_dispatch:
-#  push:
-#    branches:
-#      - main
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/'
+      - Dockerfile
+      - 'package*.json'
+      - tsconfig.json
+      - .babelrc
+      - .eslintrc
 
 concurrency: ${{ github.ref }}
 
