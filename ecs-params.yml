@@ -25,6 +25,11 @@ run_params:
     awsvpc_configuration:
       subnets:
         - subnet-0b405df6ca86c701b
+        - subnet-08849cde8f48b511e
       security-groups:
         - sg-076f05e695dc3cdae
       assign_public_ip: ENABLED
+  task_placement:
+    strategy:
+      - field: attribute:ecs.availability-zone
+        type: spread
