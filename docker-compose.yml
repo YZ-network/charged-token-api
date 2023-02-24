@@ -1,12 +1,12 @@
 version: "3"
 services:
   api:
-    image: 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz:snapshot
+    image: 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz:${TAG}
     ports:
       - "80:80"
-    env_file:
-      - api.configs
     environment:
+      - JSON_RPC_URL
+      - DIRECTORY_ADDRESS
       - MONGODB_HOST=localhost
       - BIND_ADDRESS=0.0.0.0
     healthcheck:
