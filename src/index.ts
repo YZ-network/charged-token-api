@@ -19,10 +19,8 @@ const wsServer = new WebSocketServer({
   path: yoga.graphqlEndpoint,
 });
 
-// const bindAddress = process.env.BIND_ADDRESS || 'localhost'
-// const bindPort = process.env.BIND_ADDRESS ? Number(process.env.BIND_ADDRESS) : 80
-const bindAddress = '0.0.0.0';
-const bindPort = 80;
+const bindAddress = process.env.BIND_ADDRESS || 'localhost'
+const bindPort = process.env.BIND_PORT ? Number(process.env.BIND_PORT) : 4000
 
 // Integrate Yoga's Envelop instance and NodeJS server with graphql-ws
 useServer(
