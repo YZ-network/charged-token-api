@@ -5,8 +5,6 @@ services:
     ports:
       - "80:80"
     environment:
-      - JSON_RPC_URL
-      - DIRECTORY_ADDRESS
       - MONGODB_HOST=localhost
       - BIND_ADDRESS=0.0.0.0
     healthcheck:
