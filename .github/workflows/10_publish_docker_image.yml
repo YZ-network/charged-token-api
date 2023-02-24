@@ -2,9 +2,9 @@ name: Publish Docker image to ECR
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
+#  push:
+#    branches:
+#      - main
 
 concurrency: ${{ github.ref }}
 
@@ -26,6 +26,6 @@ jobs:
       - name: Build image
         shell: bash
         run: |
-          docker build -t yz:snapshot
+          docker build -t yz:snapshot .
           docker tag yz:snapshot 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz:snapshot
           docker push 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz:snapshot
