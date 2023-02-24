@@ -4,9 +4,9 @@ services:
     image: 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz:snapshot
     ports:
       - "80:80"
+    env_file:
+      - api.configs
     environment:
-      - JSON_RPC_URL=https://polygon-mumbai.infura.io/v3/
-      - DIRECTORY_ADDRESS=0xA94F250f2508A9be616e0922742Bb0628474F906
       - MONGODB_HOST=localhost
       - BIND_ADDRESS=0.0.0.0
     healthcheck:

@@ -11,6 +11,11 @@ task_definition:
       depends_on:
         - container_name: db
           condition: HEALTHY
+      secrets:
+        - value_from: JSON_RPC_URL
+          name: JSON_RPC_URL
+        - value_from: DIRECTORY_ADDRESS
+          name: DIRECTORY_ADDRESS
 
     db:
       essential: true
