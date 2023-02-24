@@ -51,3 +51,5 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
         run: |
           ecs-cli compose --ecs-params ecs-params.yml up --launch-type FARGATE
+          LATEST_TASK=$(ecs-cli ps | grep '/api\s*RUNNING' | awk '{ print $4 }' | sort | tail -1)
+          ecs-cli update-service --service CT-api --task-definition $LATEST_TASK --force-new-deployment
