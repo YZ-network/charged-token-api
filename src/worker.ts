@@ -15,6 +15,12 @@ export async function worker(
 
   const directory = new Directory(chainId, provider, directoryAddress);
   await directory.init();
+  console.log(
+    "Initialization complete for",
+    name,
+    chainId,
+    "subscribing to updates"
+  );
   subscribeToNewBlocks(provider, directory);
   subscribeToUserBalancesLoading(directory);
   // await mongoose.disconnect();

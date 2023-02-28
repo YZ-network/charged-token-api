@@ -29,7 +29,3 @@ run_params:
       security-groups:
         - sg-076f05e695dc3cdae
       assign_public_ip: ENABLED
-  task_placement:
-    strategy:
-      - field: attribute:ecs.availability-zone
-        type: spread
