@@ -52,8 +52,6 @@ npm run build
 cp $(ls build/*.json | grep -vE 'contracts|realInput|ProjectToken|Set|SafeMath') ../../src/contracts
 [ $? != 0 ] && exit 5
 
-cd $PROJECT_DIR
-
 if [ ! -z $INSTALL_DIR ]
 then
   echo
@@ -72,6 +70,8 @@ then
   cp -Rv build/* $INSTALL_DIR
   [ $? != 0 ] && exit 9
 fi
+
+cd $PROJECT_DIR
 
 echo
 echo "[$(date -Iseconds)] (BOT) Updating repository ====================================="
