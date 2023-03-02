@@ -3,6 +3,11 @@ import { FlattenMaps, HydratedDocument } from "mongoose";
 import { pubSub } from "../graphql";
 import { IContract, IEventHandler, IModel } from "../types";
 
+interface ListenerRegistration {
+  eventName: string;
+  listener: ethers.providers.Listener;
+}
+
 /**
  * Generic contract loader. Used for loading initial contracts state, keeping
  * up with new block events and saving the result to database.
@@ -22,6 +27,8 @@ export abstract class AbstractLoader<T extends IContract> {
   lastUpdateBlock: number = 0;
   protected actualBlock: number = 0;
   protected lastState: FlattenMaps<T> | undefined;
+
+  protected readonly registeredListeners: ListenerRegistration[] = [];
 
   /**
    * @param provider ether provider.
@@ -259,7 +266,7 @@ export abstract class AbstractLoader<T extends IContract> {
         const eventName = match[1];
         return {
           eventName,
-          handler: (log: ethers.providers.Log) => {
+          listener: (log: ethers.providers.Log) => {
             const decodedLog = this.iface.parseLog(log);
             const args = [...decodedLog.args.values()];
             console.log("Calling event handler", eventName, "with", ...args);
@@ -279,10 +286,18 @@ export abstract class AbstractLoader<T extends IContract> {
       this.instance.filters
     );
 
-    eventHandlers.forEach(({ eventName, handler }) => {
+    eventHandlers.forEach(({ eventName, listener }) => {
       console.log("Subscribing to", eventName, "on", this.constructor.name);
-      this.provider.on(this.instance.filters[eventName](), handler);
+      this.provider.on(this.instance.filters[eventName](), listener);
+      this.registeredListeners.push({ eventName, listener });
     });
+  }
+
+  unsubscribeEvents() {
+    this.registeredListeners.forEach(({ eventName, listener }) =>
+      this.provider.off(eventName, listener)
+    );
+    this.registeredListeners.splice(0);
   }
 
   private onEvent(name: string, args: any[]): Promise<void> {

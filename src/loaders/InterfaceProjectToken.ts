@@ -4,7 +4,6 @@ import {
   IInterfaceProjectToken,
   InterfaceProjectTokenModel,
 } from "../models/InterfaceProjectToken";
-import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
 import { DelegableToLT } from "./DelegableToLT";
@@ -41,17 +40,15 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   async init(actualBlock?: number) {
     await super.init(actualBlock);
 
-    if (this.lastState!.projectToken !== EMPTY_ADDRESS) {
-      this.projectToken = new DelegableToLT(
-        this.chainId,
-        this.provider,
-        this.lastState!.projectToken,
-        this.directory,
-        this.ct
-      );
+    this.projectToken = new DelegableToLT(
+      this.chainId,
+      this.provider,
+      this.lastState!.projectToken,
+      this.directory,
+      this.ct
+    );
 
-      await this.projectToken.init(actualBlock);
-    }
+    await this.projectToken.init(actualBlock);
   }
 
   toModel(data: IInterfaceProjectToken) {
@@ -123,9 +120,12 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
 
   subscribeToEvents(): void {
     super.subscribeToEvents();
-    if (this.projectToken !== undefined) {
-      this.projectToken.subscribeToEvents();
-    }
+    this.projectToken!.subscribeToEvents();
+  }
+
+  unsubscribeEvents(): void {
+    super.unsubscribeEvents();
+    this.projectToken!.unsubscribeEvents();
   }
 
   async onStartSetEvent([dateLaunch, dateEndCliff]: any[]): Promise<void> {

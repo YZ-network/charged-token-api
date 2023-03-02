@@ -203,6 +203,7 @@ export class Directory extends AbstractLoader<IDirectory> {
       this
     );
     await this.ct[contract].init(this.actualBlock);
+    this.ct[contract].subscribeToEvents();
 
     await this.applyUpdateAndNotify(jsonModel);
   }
@@ -217,6 +218,7 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     const balanceAddressList: string[] = [];
 
+    this.ct[contract].unsubscribeEvents();
     delete this.ct[contract];
     await ChargedTokenModel.deleteOne({ address: contract });
     balanceAddressList.push(contract);

@@ -147,6 +147,13 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     }
   }
 
+  unsubscribeEvents(): void {
+    super.unsubscribeEvents();
+    if (this.interface !== undefined) {
+      this.interface.unsubscribeEvents();
+    }
+  }
+
   async onTransferEvent([from, to, value]: any[]): Promise<void> {
     if (from !== this.address && to !== this.address) {
       // p2p transfers are not covered by other events
@@ -171,6 +178,16 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     const jsonModel = await this.getJsonModel();
 
     jsonModel.interfaceProjectToken = interfaceProjectToken;
+
+    this.interface = new InterfaceProjectToken(
+      this.chainId,
+      this.provider,
+      interfaceProjectToken,
+      this.directory,
+      this
+    );
+    await this.interface.init();
+    this.interface.subscribeToEvents();
 
     await this.applyUpdateAndNotify(jsonModel);
   }
