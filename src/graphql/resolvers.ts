@@ -16,7 +16,7 @@ const DirectoryQueryResolver = async (
   const directory = await DirectoryModel.findOne({ chainId });
 
   if (directory === null) {
-    throw new Error("No directory yet.");
+    return null;
   }
 
   return DirectoryModel.toGraphQL(directory);
