@@ -42,9 +42,6 @@
     "web3": "^1.8.1",
     "ws": "^8.12.0"
   },
-  "optionalDependencies": {
-    "Charged-token": "git+ssh://git@github.com/Fintal78/Charged-token.git"
-  },
   "devDependencies": {
     "@babel/cli": "^7.20.7",
     "@babel/core": "^7.20.12",
