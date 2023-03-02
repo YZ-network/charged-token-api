@@ -42,6 +42,9 @@
     "web3": "^1.8.1",
     "ws": "^8.12.0"
   },
+  "optionalDependencies": {
+    "Charged-token": "github:Fintal78/Charged-token"
+  },
   "devDependencies": {
     "@babel/cli": "^7.20.7",
     "@babel/core": "^7.20.12",
