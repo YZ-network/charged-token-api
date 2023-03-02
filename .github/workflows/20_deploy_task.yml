@@ -2,9 +2,9 @@ name: Deploy snapshot to ECS
 
 on:
   workflow_dispatch:
-#  push:
-#    branches:
-#      - main
+  push:
+    branches:
+      - main
 
 concurrency: ${{ github.ref }}
 
@@ -22,7 +22,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-3
-      
+
       - name: Install dependencies
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
