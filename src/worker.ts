@@ -1,15 +1,17 @@
 import { ethers } from "ethers";
-import {
-  subscribeToNewBlocks,
-  subscribeToUserBalancesLoading,
-} from "./loaders";
 import { Directory } from "./loaders/Directory";
+import { subscribeToUserBalancesLoading } from "./subscriptions";
 
 export async function worker(
   provider: ethers.providers.JsonRpcProvider,
   directoryAddress: string
 ) {
   const { chainId, name } = await provider.getNetwork();
+
+  if (directoryAddress === "0x0000000000000000000000000000000000000000") {
+    console.log("No directory yet on", name, "chainId=", chainId);
+    return;
+  }
 
   console.log("Starting app on environment", name, "chainId=", chainId);
 
@@ -21,7 +23,7 @@ export async function worker(
     chainId,
     "subscribing to updates"
   );
-  subscribeToNewBlocks(provider, directory);
+  directory.subscribeToEvents();
   subscribeToUserBalancesLoading(directory);
   // await mongoose.disconnect();
 }

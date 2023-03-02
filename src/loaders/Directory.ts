@@ -161,6 +161,11 @@ export class Directory extends AbstractLoader<IDirectory> {
         })) !== null;
   }
 
+  subscribeToEvents(): void {
+    super.subscribeToEvents();
+    Object.values(this.ct).forEach((ct) => ct.subscribeToEvents());
+  }
+
   async onUserFunctionsAreDisabledEvent([
     areUserFunctionsDisabled,
   ]: any[]): Promise<void> {

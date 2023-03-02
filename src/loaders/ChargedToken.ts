@@ -140,6 +140,13 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     };
   }
 
+  subscribeToEvents(): void {
+    super.subscribeToEvents();
+    if (this.interface !== undefined) {
+      this.interface.subscribeToEvents();
+    }
+  }
+
   async onTransferEvent([from, to, value]: any[]): Promise<void> {
     if (from !== this.address && to !== this.address) {
       // p2p transfers are not covered by other events

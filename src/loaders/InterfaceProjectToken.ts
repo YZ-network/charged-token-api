@@ -121,6 +121,13 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     return valueProjectToken;
   }
 
+  subscribeToEvents(): void {
+    super.subscribeToEvents();
+    if (this.projectToken !== undefined) {
+      this.projectToken.subscribeToEvents();
+    }
+  }
+
   async onStartSetEvent([dateLaunch, dateEndCliff]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 

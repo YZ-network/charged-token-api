@@ -2,72 +2,6 @@ import { ethers, EventFilter } from "ethers";
 import { FlattenMaps, HydratedDocument } from "mongoose";
 import { pubSub } from "../graphql";
 import { IContract, IEventHandler, IModel } from "../types";
-import { Directory } from "./Directory";
-
-export function subscribeToNewBlocks(
-  provider: ethers.providers.JsonRpcProvider,
-  directory: Directory
-): void {
-  provider.on("block", async (newBlockNumber) => {
-    if (newBlockNumber >= directory.lastUpdateBlock) {
-      const addresses: string[] = [];
-
-      await directory.applyFunc(async (loader) => {
-        addresses.push(loader.address);
-      });
-
-      const eventFilter: ethers.providers.Filter = {
-        fromBlock: directory.lastUpdateBlock + 1,
-      };
-
-      try {
-        const missedEvents = await provider.getLogs(eventFilter);
-        const missedEventsMap: Record<string, ethers.providers.Log[]> = {};
-
-        addresses.forEach((address) => (missedEventsMap[address] = []));
-
-        let eventsCount = 0;
-        for (const event of missedEvents) {
-          if (!addresses.includes(event.address)) continue;
-          missedEventsMap[event.address].push(event);
-          eventsCount++;
-        }
-
-        if (eventsCount > 0) {
-          console.log("Events found :", eventsCount);
-        }
-
-        await directory.applyFunc((loader) =>
-          loader.syncEvents(
-            directory.lastUpdateBlock + 1,
-            newBlockNumber,
-            missedEventsMap[loader.address]
-          )
-        );
-      } catch (e) {
-        console.error(
-          "Couldn't retrieve logs from block",
-          directory.lastUpdateBlock + 1,
-          "to",
-          newBlockNumber
-        );
-      }
-    } else {
-      console.log("skipping past block :", newBlockNumber);
-    }
-  });
-}
-
-export async function subscribeToUserBalancesLoading(
-  directory: Directory
-): Promise<void> {
-  const sub = pubSub.subscribe(`UserBalance.${directory.chainId}/load`);
-
-  for await (const user of sub) {
-    console.log("triggered reloading user balances", user);
-    await directory.loadAllUserBalances(user);
-  }
-}
 
 /**
  * Generic contract loader. Used for loading initial contracts state, keeping
@@ -313,6 +247,42 @@ export abstract class AbstractLoader<T extends IContract> {
       this.lastState
     );
     pubSub.publish(`${this.constructor.name}.${this.chainId}`, this.lastState);
+  }
+
+  subscribeToEvents() {
+    const eventHandlers = Object.getOwnPropertyNames(
+      Object.getPrototypeOf(this)
+    )
+      .filter((prop) => prop.match(/^on.*Event$/) !== null)
+      .map((prop) => {
+        const match = prop.match(/^on(.*)Event$/)!;
+        const eventName = match[1];
+        return {
+          eventName,
+          handler: (log: ethers.providers.Log) => {
+            const decodedLog = this.iface.parseLog(log);
+            const args = [...decodedLog.args.values()];
+            console.log("Calling event handler", eventName, "with", ...args);
+            this.onEvent(eventName, args);
+          },
+        };
+      });
+
+    console.log(
+      "Enumerated handlers for",
+      this.constructor.name,
+      eventHandlers.map((eh) => eh.eventName)
+    );
+    console.log(
+      "Available filters for",
+      this.constructor.name,
+      this.instance.filters
+    );
+
+    eventHandlers.forEach(({ eventName, handler }) => {
+      console.log("Subscribing to", eventName, "on", this.constructor.name);
+      this.provider.on(this.instance.filters[eventName](), handler);
+    });
   }
 
   private onEvent(name: string, args: any[]): Promise<void> {
