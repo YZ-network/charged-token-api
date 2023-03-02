@@ -275,28 +275,32 @@ export abstract class AbstractLoader<T extends IContract> {
         };
       });
 
-    console.log(
-      "Enumerated handlers for",
-      this.constructor.name,
-      eventHandlers.map((eh) => eh.eventName)
-    );
-    console.log(
-      "Available filters for",
-      this.constructor.name,
-      this.instance.filters
-    );
-
     eventHandlers.forEach(({ eventName, listener }) => {
-      console.log("Subscribing to", eventName, "on", this.constructor.name);
+      console.log(
+        "Subscribing to",
+        eventName,
+        "on",
+        this.constructor.name,
+        "@",
+        this.address
+      );
       this.provider.on(this.instance.filters[eventName](), listener);
       this.registeredListeners.push({ eventName, listener });
     });
   }
 
   unsubscribeEvents() {
-    this.registeredListeners.forEach(({ eventName, listener }) =>
-      this.provider.off(eventName, listener)
-    );
+    this.registeredListeners.forEach(({ eventName, listener }) => {
+      console.log(
+        "Unsubscribing from",
+        eventName,
+        "on",
+        this.constructor.name,
+        "@",
+        this.address
+      );
+      this.provider.off(eventName, listener);
+    });
     this.registeredListeners.splice(0);
   }
 
