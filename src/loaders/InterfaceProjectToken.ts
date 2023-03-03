@@ -91,6 +91,10 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       : await this.projectToken.loadUserBalance(user);
   }
 
+  async loadValueProjectTokenToFullRecharge(user: string): Promise<string> {
+    return await this.instance.valueProjectTokenToFullRecharge(user);
+  }
+
   private getValueProjectTokenPerVestingSchedule(
     fractionInitialUnlockPerThousand: BigNumber,
     balance: BigNumber,

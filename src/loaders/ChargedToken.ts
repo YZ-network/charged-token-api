@@ -137,6 +137,13 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         await this.instance.getUserPartiallyChargedBalanceLiquiToken(user),
       dateOfPartiallyCharged:
         await this.instance.getUserDateOfPartiallyChargedToken(user),
+      claimedRewardPerShare1e18: await this.instance.claimedRewardPerShare1e18(
+        user
+      ),
+      valueProjectTokenToFullRecharge:
+        this.interface !== undefined
+          ? await this.interface.loadValueProjectTokenToFullRecharge(user)
+          : "0",
     };
   }
 

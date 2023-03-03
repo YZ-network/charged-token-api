@@ -7,6 +7,8 @@ export interface IChargedTokenBalance {
   fullyChargedBalance: string;
   partiallyChargedBalance: string;
   dateOfPartiallyCharged: string;
+  claimedRewardPerShare1e18: string;
+  valueProjectTokenToFullRecharge: string;
 }
 
 export interface IUserBalance extends IChargedTokenBalance {
@@ -29,6 +31,8 @@ const userBalanceSchema = new mongoose.Schema<
   fullyChargedBalance: { type: String, default: "0" },
   partiallyChargedBalance: { type: String, default: "0" },
   dateOfPartiallyCharged: { type: String, default: "0" },
+  claimedRewardPerShare1e18: { type: String, default: "0" },
+  valueProjectTokenToFullRecharge: { type: String, default: "0" },
 });
 
 userBalanceSchema.static(

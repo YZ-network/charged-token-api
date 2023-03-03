@@ -123,6 +123,8 @@ const schema = createSchema({
     fullyChargedBalance: String!
     partiallyChargedBalance: String!
     dateOfPartiallyCharged: String!
+    claimedRewardPerShare1e18: String!
+    valueProjectTokenToFullRecharge: String!
   }
 
   type Query {
