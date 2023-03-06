@@ -12,6 +12,10 @@ const yoga = createYoga({
   graphiql: {
     subscriptionsProtocol: "WS",
   },
+  cors: {
+    origin: process.env.CORS_ORIGINS,
+    methods: ["POST", "OPTIONS"],
+  },
 });
 const httpServer = createServer(yoga);
 const wsServer = new WebSocketServer({

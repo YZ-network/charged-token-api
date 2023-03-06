@@ -8,6 +8,7 @@ services:
       - MONGODB_HOST=localhost
       - BIND_ADDRESS=0.0.0.0
       - BIND_PORT=80
+      - CORS_ORIGINS=https://api.yz-network.com
     healthcheck:
       test: curl -f http://localhost/health
       interval: 30s
@@ -18,7 +19,7 @@ services:
       options:
         awslogs-group: yz-api
         awslogs-region: eu-west-3
-        awslogs-stream-prefix: 'yz-api'
+        awslogs-stream-prefix: "yz-api"
   db:
     image: mongo:6.0
     healthcheck:
@@ -31,4 +32,4 @@ services:
       options:
         awslogs-group: yz-db
         awslogs-region: eu-west-3
-        awslogs-stream-prefix: 'yz-db'
+        awslogs-stream-prefix: "yz-db"
