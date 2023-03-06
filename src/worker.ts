@@ -13,17 +13,30 @@ export async function worker(
     return;
   }
 
-  console.log("Starting app on environment", name, "chainId=", chainId);
+  do {
+    try {
+      console.log("Starting app on environment", name, "chainId=", chainId);
 
-  const directory = new Directory(chainId, provider, directoryAddress);
-  await directory.init();
-  console.log(
-    "Initialization complete for",
-    name,
-    chainId,
-    "subscribing to updates"
-  );
-  directory.subscribeToEvents();
-  subscribeToUserBalancesLoading(directory);
-  // await mongoose.disconnect();
+      const directory = new Directory(chainId, provider, directoryAddress);
+      await directory.init();
+      console.log(
+        "Initialization complete for",
+        name,
+        chainId,
+        "subscribing to updates"
+      );
+      directory.subscribeToEvents();
+      await subscribeToUserBalancesLoading(directory);
+      // await mongoose.disconnect();
+    } catch (err) {
+      console.error(
+        "Error happened killing worker on network",
+        name,
+        "chainId=",
+        chainId
+      );
+      await new Promise((resolve) => setTimeout(resolve, 30000));
+      console.log("Worker will restart now");
+    }
+  } while (true);
 }
