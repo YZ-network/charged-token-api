@@ -12,6 +12,8 @@ on:
       - tsconfig.json
       - .babelrc
       - .eslintrc
+      - docker-compose.yml
+      - ecs-params.yml
 
 concurrency: ${{ github.ref }}
 
