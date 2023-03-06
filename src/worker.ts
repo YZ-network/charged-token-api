@@ -35,6 +35,7 @@ export async function worker(
         "chainId=",
         chainId
       );
+      console.error(err);
       await new Promise((resolve) => setTimeout(resolve, 30000));
       console.log("Worker will restart now");
     }
