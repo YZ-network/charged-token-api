@@ -1,5 +1,4 @@
 import mongoose, { HydratedDocument } from "mongoose";
-import { recordToEntryList } from "../functions";
 import { IModel, IOwnable } from "../types";
 
 export interface IInterfaceProjectToken extends IOwnable {
@@ -8,7 +7,6 @@ export interface IInterfaceProjectToken extends IOwnable {
   dateLaunch: string;
   dateEndCliff: string;
   claimFeesPerThousandForPT: string;
-  valueProjectTokenToFullRecharge: Record<string, string>;
 }
 
 const interfaceProjectTokenSchema = new mongoose.Schema<
@@ -27,7 +25,6 @@ const interfaceProjectTokenSchema = new mongoose.Schema<
   dateLaunch: String,
   dateEndCliff: String,
   claimFeesPerThousandForPT: String,
-  valueProjectTokenToFullRecharge: { type: Map, of: String },
 });
 
 interfaceProjectTokenSchema.static(
@@ -44,13 +41,7 @@ interfaceProjectTokenSchema.static(
 interfaceProjectTokenSchema.static(
   "toGraphQL",
   function (doc: HydratedDocument<IInterfaceProjectToken>): any {
-    const result = doc.toJSON();
-    return {
-      ...result,
-      valueProjectTokenToFullRecharge: recordToEntryList(
-        result.valueProjectTokenToFullRecharge
-      ),
-    };
+    return doc.toJSON();
   }
 );
 

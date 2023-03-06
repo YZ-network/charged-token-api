@@ -96,7 +96,6 @@ const schema = createSchema({
     dateLaunch: String!
     dateEndCliff: String!
     claimFeesPerThousandForPT: String!
-    valueProjectTokenToFullRecharge: [IEntry!]!
   }
 
   type IDelegableToLT implements IERC20 {

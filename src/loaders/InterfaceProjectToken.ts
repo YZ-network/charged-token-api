@@ -79,7 +79,6 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       claimFeesPerThousandForPT: (
         await ins.claimFeesPerThousandForPT()
       ).toString(),
-      valueProjectTokenToFullRecharge: {},
     };
   }
 
@@ -92,7 +91,9 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   }
 
   async loadValueProjectTokenToFullRecharge(user: string): Promise<string> {
-    return await this.instance.valueProjectTokenToFullRecharge(user);
+    return (
+      await this.instance.valueProjectTokenToFullRecharge(user)
+    ).toString();
   }
 
   private getValueProjectTokenPerVestingSchedule(
