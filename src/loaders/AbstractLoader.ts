@@ -276,6 +276,7 @@ export abstract class AbstractLoader<T extends IContract> {
       });
 
     eventHandlers.forEach(({ eventName, listener }) => {
+      /*
       console.log(
         "Subscribing to",
         eventName,
@@ -284,6 +285,7 @@ export abstract class AbstractLoader<T extends IContract> {
         "@",
         this.address
       );
+      */
       this.provider.on(this.instance.filters[eventName](), listener);
       this.registeredListeners.push({ eventName, listener });
     });

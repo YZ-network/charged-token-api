@@ -118,9 +118,8 @@ export class Directory extends AbstractLoader<IDirectory> {
           )
         : [await this.ct[address].loadUserBalances(user)];
 
-    console.log("Saving user balances for", user);
     for (const entry of results) {
-      if (await this.existUserBalances(user, address)) {
+      if (await this.existUserBalances(user, entry.address)) {
         await this.model.updateOne(
           { chainId: this.chainId, user, address: entry.address },
           entry
@@ -135,7 +134,6 @@ export class Directory extends AbstractLoader<IDirectory> {
       chainId: this.chainId,
       user,
     }).exec();
-    console.log("Result :", saved);
     pubSub.publish(
       `UserBalance.${this.chainId}.${user}`,
       JSON.stringify(
@@ -148,17 +146,14 @@ export class Directory extends AbstractLoader<IDirectory> {
     return results;
   }
 
-  async existUserBalances(user: string, address?: string): Promise<boolean> {
-    return address !== undefined
-      ? (await UserBalanceModel.exists({
-          chainId: this.chainId,
-          user,
-          address,
-        })) !== null
-      : (await UserBalanceModel.exists({
-          chainId: this.chainId,
-          user,
-        })) !== null;
+  async existUserBalances(user: string, address: string): Promise<boolean> {
+    return (
+      (await UserBalanceModel.exists({
+        chainId: this.chainId,
+        user,
+        address,
+      })) !== null
+    );
   }
 
   subscribeToEvents(): void {
