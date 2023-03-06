@@ -50,6 +50,10 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     return {
       // contract
       chainId: this.chainId,
+      initBlock:
+        this.lastState !== undefined
+          ? this.lastState.initBlock
+          : this.actualBlock,
       lastUpdateBlock: this.actualBlock,
       address: this.address,
       // ownable

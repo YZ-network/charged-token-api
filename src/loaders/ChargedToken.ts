@@ -60,6 +60,10 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     return {
       // contract
       chainId: this.chainId,
+      initBlock:
+        this.lastState !== undefined
+          ? this.lastState.initBlock
+          : this.actualBlock,
       lastUpdateBlock: this.actualBlock,
       address: this.address,
       // ownable

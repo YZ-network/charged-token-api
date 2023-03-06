@@ -24,6 +24,7 @@ export abstract class AbstractLoader<T extends IContract> {
 
   protected readonly instance: ethers.Contract;
   protected readonly iface: ethers.utils.Interface;
+  initBlock: number = 0;
   lastUpdateBlock: number = 0;
   protected actualBlock: number = 0;
   protected lastState: FlattenMaps<T> | undefined;
@@ -72,6 +73,7 @@ export abstract class AbstractLoader<T extends IContract> {
     const existing = await this.get();
 
     if (existing != null) {
+      this.initBlock = existing.initBlock;
       this.lastUpdateBlock = existing.lastUpdateBlock;
       this.lastState = this.model.toGraphQL(existing);
       await this.syncEvents(this.lastUpdateBlock + 1, this.actualBlock);
@@ -85,6 +87,7 @@ export abstract class AbstractLoader<T extends IContract> {
       );
       const saved = await this.saveOrUpdate(await this.load());
       this.lastState = this.model.toGraphQL(saved);
+      this.initBlock = this.actualBlock;
       this.lastUpdateBlock = this.actualBlock;
 
       pubSub.publish(
@@ -267,6 +270,10 @@ export abstract class AbstractLoader<T extends IContract> {
         return {
           eventName,
           listener: (log: ethers.providers.Log) => {
+            if (log.blockNumber <= this.initBlock) {
+              console.warn("Skipping event from init block");
+              return;
+            }
             const decodedLog = this.iface.parseLog(log);
             const args = [...decodedLog.args.values()];
             console.log("Calling event handler", eventName, "with", ...args);

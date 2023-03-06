@@ -67,6 +67,10 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     return {
       // contract
       chainId: this.chainId,
+      initBlock:
+        this.lastState !== undefined
+          ? this.lastState.initBlock
+          : this.actualBlock,
       lastUpdateBlock: this.actualBlock,
       address: this.address,
       // ownable

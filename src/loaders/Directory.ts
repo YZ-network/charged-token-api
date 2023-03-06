@@ -95,6 +95,10 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     return {
       chainId: this.chainId,
+      initBlock:
+        this.lastState !== undefined
+          ? this.lastState.initBlock
+          : this.actualBlock,
       lastUpdateBlock: this.actualBlock,
       address: this.address,
       owner: await ins.owner(),
@@ -109,6 +113,9 @@ export class Directory extends AbstractLoader<IDirectory> {
 
   async loadAllUserBalances(user: string, address?: string) {
     console.log("Loading user balances for", user);
+
+    const startDate = new Date().getTime();
+
     const results =
       address === undefined
         ? await Promise.all(
@@ -141,6 +148,14 @@ export class Directory extends AbstractLoader<IDirectory> {
           UserBalanceModel.toGraphQL(balance)
         )
       )
+    );
+
+    const stopDate = new Date().getTime();
+
+    console.log(
+      "USER BALANCES LOADED IN",
+      (stopDate - startDate) / 1000,
+      "seconds"
     );
 
     return results;

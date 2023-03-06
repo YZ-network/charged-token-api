@@ -15,6 +15,7 @@ const interfaceProjectTokenSchema = new mongoose.Schema<
 >({
   // contract
   chainId: { type: Number, required: true },
+  initBlock: { type: Number, required: true },
   lastUpdateBlock: { type: Number, required: true },
   address: { type: String, required: true },
   // ownable
