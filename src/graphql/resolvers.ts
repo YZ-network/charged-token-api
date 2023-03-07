@@ -33,9 +33,10 @@ const UserBalanceQueryResolver = async (
   console.log("checking existing balances for", chainId, user, address);
 
   const contractsCount = await ChargedTokenModel.count({ chainId });
-  const balancesCount = await UserBalanceModel.count({ chainId });
+  const balancesCount = await UserBalanceModel.count({ chainId, user });
 
   if (contractsCount === balancesCount) {
+    console.log("returning cached balances for", user, chainId);
     return (await UserBalanceModel.find({ chainId, user })).map((balance) =>
       UserBalanceModel.toGraphQL(balance)
     );
