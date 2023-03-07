@@ -68,7 +68,7 @@ mongoose
     const directories = process.env.DIRECTORY_ADDRESS!.split(",");
 
     for (let i = 0; i < rpcs.length; i++) {
-      const provider = new ethers.providers.StaticJsonRpcProvider(rpcs[i]);
+      const provider = new ethers.providers.WebSocketProvider(rpcs[i]);
 
       worker(provider, directories[i]).catch((err) => {
         console.error("Error occured during load :", rpcs[i], err);
