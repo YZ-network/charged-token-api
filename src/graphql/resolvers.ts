@@ -32,14 +32,25 @@ const UserBalanceQueryResolver = async (
 ) => {
   console.log("checking existing balances for", chainId, user, address);
 
-  const contractsCount = await ChargedTokenModel.count({ chainId });
-  const balancesCount = await UserBalanceModel.count({ chainId, user });
+  if (address !== undefined) {
+    if ((await UserBalanceModel.exists({ chainId, user, address })) !== null) {
+      const balance = await UserBalanceModel.findOne({
+        chainId,
+        user,
+        address,
+      });
+      return UserBalanceModel.toGraphQL(balance!);
+    }
+  } else {
+    const contractsCount = await ChargedTokenModel.count({ chainId });
+    const balancesCount = await UserBalanceModel.count({ chainId, user });
 
-  if (contractsCount === balancesCount) {
-    console.log("returning cached balances for", user, chainId);
-    return (await UserBalanceModel.find({ chainId, user })).map((balance) =>
-      UserBalanceModel.toGraphQL(balance)
-    );
+    if (contractsCount === balancesCount) {
+      console.log("returning cached balances for", user, chainId);
+      return (await UserBalanceModel.find({ chainId, user })).map((balance) =>
+        UserBalanceModel.toGraphQL(balance)
+      );
+    }
   }
 
   console.log("Notifying worker to load balances for", user);
@@ -49,6 +60,13 @@ const UserBalanceQueryResolver = async (
   console.log("Received new value :", nextValue);
   const resultsList = JSON.parse(nextValue);
   sub.return();
+
+  if (address !== undefined) {
+    return resultsList.find(
+      (balanceResult: any) => balanceResult.address === address
+    );
+  }
+
   return resultsList;
 };
 
@@ -175,6 +193,7 @@ const resolvers = {
     ),
     allDelegableToLTs: ResolverFactory.findAll(DelegableToLTModel),
     DelegableToLT: ResolverFactory.findByAddress(DelegableToLTModel),
+    UserBalance: UserBalanceQueryResolver,
     userBalances: UserBalanceQueryResolver,
   },
   Subscription: {

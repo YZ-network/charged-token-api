@@ -134,7 +134,8 @@ const schema = createSchema({
     InterfaceProjectToken(chainId: Int!, address: String!): IInterfaceProjectToken!
     allDelegableToLTs(chainId: Int!): [IDelegableToLT!]!
     DelegableToLT(chainId: Int!, address: String!): IDelegableToLT!
-    userBalances(chainId: Int!, user: String!, address: String): [IUserBalancesEntry!]!
+    UserBalance(chainId: Int!, user: String!, address: String!): IUserBalancesEntry
+    userBalances(chainId: Int!, user: String!): [IUserBalancesEntry!]!
   }
 
   type Subscription {
