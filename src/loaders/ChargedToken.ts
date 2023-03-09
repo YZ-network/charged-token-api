@@ -125,25 +125,42 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   async loadUserBalances(user: string): Promise<IUserBalance> {
     console.log("Loading CT balances for", user, this.address);
 
+    const balance = (await this.instance.balanceOf(user)).toString();
+    const fullyChargedBalance = (
+      await this.instance.getUserFullyChargedBalanceLiquiToken(user)
+    ).toString();
+    const partiallyChargedBalance = (
+      await this.instance.getUserPartiallyChargedBalanceLiquiToken(user)
+    ).toString();
+
+    console.log(
+      "Loaded balances for user",
+      user,
+      "@ CT",
+      this.address,
+      ":",
+      balance,
+      fullyChargedBalance,
+      partiallyChargedBalance
+    );
+
     return {
       chainId: this.chainId,
       user,
       address: this.address,
       lastUpdateBlock: this.actualBlock,
-      balance: await this.instance.balanceOf(user),
+      balance,
       balancePT:
         this.interface !== undefined
           ? await this.interface.loadUserBalancePT(user)
           : "0",
-      fullyChargedBalance:
-        await this.instance.getUserFullyChargedBalanceLiquiToken(user),
-      partiallyChargedBalance:
-        await this.instance.getUserPartiallyChargedBalanceLiquiToken(user),
+      fullyChargedBalance,
+      partiallyChargedBalance,
       dateOfPartiallyCharged:
         await this.instance.getUserDateOfPartiallyChargedToken(user),
-      claimedRewardPerShare1e18: await this.instance.claimedRewardPerShare1e18(
-        user
-      ),
+      claimedRewardPerShare1e18: (
+        await this.instance.claimedRewardPerShare1e18(user)
+      ).toString(),
       valueProjectTokenToFullRecharge:
         this.interface !== undefined
           ? await this.interface.loadValueProjectTokenToFullRecharge(user)
@@ -173,18 +190,9 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     if (to !== EMPTY_ADDRESS) {
       await this.directory.loadAllUserBalances(to, this.address);
     }
-    if (from === EMPTY_ADDRESS) {
+    if (from === EMPTY_ADDRESS || to === EMPTY_ADDRESS) {
       const jsonModel = await this.getJsonModel();
-      jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
-        .add(BigNumber.from(value))
-        .toString();
-      await this.applyUpdateAndNotify(jsonModel);
-    }
-    if (to === EMPTY_ADDRESS) {
-      const jsonModel = await this.getJsonModel();
-      jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
-        .sub(BigNumber.from(value))
-        .toString();
+      jsonModel.totalSupply = (await this.instance.totalSupply()).toString();
       await this.applyUpdateAndNotify(jsonModel);
     }
   }

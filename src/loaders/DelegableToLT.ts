@@ -73,7 +73,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   }
 
   async loadUserBalance(user: string) {
-    return await this.instance.balanceOf(user);
+    return (await this.instance.balanceOf(user)).toString();
   }
 
   async onTransferEvent([from, to, value]: any[]): Promise<void> {
