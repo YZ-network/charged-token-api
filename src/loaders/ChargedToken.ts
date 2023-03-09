@@ -166,10 +166,26 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   }
 
   async onTransferEvent([from, to, value]: any[]): Promise<void> {
-    if (from !== this.address && to !== this.address) {
+    if (from !== EMPTY_ADDRESS) {
       // p2p transfers are not covered by other events
       await this.directory.loadAllUserBalances(from, this.address);
+    }
+    if (to !== EMPTY_ADDRESS) {
       await this.directory.loadAllUserBalances(to, this.address);
+    }
+    if (from === EMPTY_ADDRESS) {
+      const jsonModel = await this.getJsonModel();
+      jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
+        .add(BigNumber.from(value))
+        .toString();
+      await this.applyUpdateAndNotify(jsonModel);
+    }
+    if (to === EMPTY_ADDRESS) {
+      const jsonModel = await this.getJsonModel();
+      jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
+        .sub(BigNumber.from(value))
+        .toString();
+      await this.applyUpdateAndNotify(jsonModel);
     }
   }
 
@@ -293,7 +309,9 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   async onClaimedRewardPerShareUpdatedEvent([
     user,
     value,
-  ]: any[]): Promise<void> {}
+  ]: any[]): Promise<void> {
+    await this.directory.loadAllUserBalances(user, this.address);
+  }
 
   async onCurrentRewardPerShareAndStakingCheckpointUpdatedEvent([
     rewardPerShare1e18,

@@ -1,6 +1,7 @@
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { contracts } from "../contracts";
 import { DelegableToLTModel, IDelegableToLT } from "../models/DelegableToLT";
+import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
 import { Directory } from "./Directory";
@@ -76,9 +77,26 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   }
 
   async onTransferEvent([from, to, value]: any[]): Promise<void> {
-    if (from !== this.address && to !== this.address) {
+    if (from !== EMPTY_ADDRESS) {
+      // p2p transfers are not covered by other events
       await this.directory.loadAllUserBalances(from, this.ct.address);
+    }
+    if (to !== EMPTY_ADDRESS) {
       await this.directory.loadAllUserBalances(to, this.ct.address);
+    }
+    if (from === EMPTY_ADDRESS) {
+      const jsonModel = await this.getJsonModel();
+      jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
+        .add(BigNumber.from(value))
+        .toString();
+      await this.applyUpdateAndNotify(jsonModel);
+    }
+    if (to === EMPTY_ADDRESS) {
+      const jsonModel = await this.getJsonModel();
+      jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
+        .sub(BigNumber.from(value))
+        .toString();
+      await this.applyUpdateAndNotify(jsonModel);
     }
   }
 

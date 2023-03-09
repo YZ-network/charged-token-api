@@ -239,7 +239,10 @@ export class Directory extends AbstractLoader<IDirectory> {
     if (iface !== null) {
       balanceAddressList.push(iface.address);
       await InterfaceProjectTokenModel.deleteOne({ address: iface.address });
-      if (iface.projectToken !== EMPTY_ADDRESS) {
+      if (
+        iface.projectToken !== EMPTY_ADDRESS &&
+        (await DelegableToLTModel.count({ address: iface.projectToken })) === 1
+      ) {
         await DelegableToLTModel.deleteOne({ address: iface.projectToken });
         balanceAddressList.push(iface.projectToken);
       }
@@ -262,13 +265,6 @@ export class Directory extends AbstractLoader<IDirectory> {
         (address) => address !== projectOwner
       );
 
-    Object.entries(jsonModel.projectRelatedToLT).forEach(
-      ([ltAddress, projectName]) => {
-        if (!jsonModel.projects.includes(projectName)) {
-          delete jsonModel.projectRelatedToLT[ltAddress];
-        }
-      }
-    );
     Object.entries(jsonModel.whitelist).forEach(([ownerAddress]) => {
       if (!jsonModel.whitelistedProjectOwners.includes(ownerAddress)) {
         delete jsonModel.whitelist[ownerAddress];
