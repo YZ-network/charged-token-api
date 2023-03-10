@@ -112,7 +112,7 @@ export class Directory extends AbstractLoader<IDirectory> {
   }
 
   async loadAllUserBalances(user: string, address?: string) {
-    console.log("Loading user balances for", user);
+    console.log("Loading user balances for", user, "@", address);
 
     const startDate = new Date().getTime();
 
@@ -127,7 +127,7 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     for (const entry of results) {
       if (await this.existUserBalances(user, entry.address)) {
-        await this.model.updateOne(
+        await UserBalanceModel.updateOne(
           { chainId: this.chainId, user, address: entry.address },
           entry
         );
@@ -136,19 +136,23 @@ export class Directory extends AbstractLoader<IDirectory> {
       }
     }
 
-    console.log("Publishing updated user balances for", user);
     const saved = await UserBalanceModel.find({
       chainId: this.chainId,
       user,
     }).exec();
-    pubSub.publish(
-      `UserBalance.${this.chainId}.${user}`,
-      JSON.stringify(
-        (saved != null ? saved : []).map((balance) =>
-          UserBalanceModel.toGraphQL(balance)
+
+    if (saved !== null) {
+      console.log("Publishing updated user balances for", user);
+
+      pubSub.publish(
+        `UserBalance.${this.chainId}.${user}`,
+        JSON.stringify(
+          saved.map((balance) => UserBalanceModel.toGraphQL(balance))
         )
-      )
-    );
+      );
+    } else {
+      pubSub.publish(`UserBalance.${this.chainId}.${user}`, JSON.stringify([]));
+    }
 
     const stopDate = new Date().getTime();
 
