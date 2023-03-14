@@ -255,6 +255,11 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
       .add(bnValue)
       .toString();
+    jsonModel.totalTokenAllocated = BigNumber.from(
+      jsonModel.totalTokenAllocated
+    )
+      .add(bnValue)
+      .toString();
 
     await this.applyUpdateAndNotify(jsonModel);
   }
