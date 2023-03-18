@@ -1,9 +1,7 @@
 import { BigNumber, ethers } from "ethers";
-import { HydratedDocument } from "mongoose";
 import { contracts } from "../contracts";
-import { pubSub } from "../graphql";
 import { ChargedTokenModel, IChargedToken } from "../models";
-import { IUserBalance, UserBalanceModel } from "../models/UserBalances";
+import { IUserBalance } from "../models/UserBalances";
 import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
 import { Directory } from "./Directory";
@@ -186,55 +184,23 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
 
   async onTransferEvent([from, to, value]: any[]): Promise<void> {
     if (from !== EMPTY_ADDRESS) {
-      const balanceFrom = await UserBalanceModel.findOne({
-        address: this.address,
-        user: from,
-      });
-
+      const balanceFrom = await this.getBalance(this.address, from);
       if (balanceFrom !== null) {
-        const updatedBalance = BigNumber.from(balanceFrom.balance)
+        const balance = BigNumber.from(balanceFrom.balance)
           .sub(BigNumber.from(value))
           .toString();
-
-        await UserBalanceModel.updateOne(
-          { address: this.address, user: from },
-          { balance: updatedBalance }
-        );
-
-        const newBalanceFrom = (await UserBalanceModel.findOne({
-          address: this.address,
-          user: from,
-        })) as HydratedDocument<IUserBalance>;
-
-        pubSub.publish(`UserBalance.${this.chainId}.${newBalanceFrom.user}`, [
-          JSON.stringify(UserBalanceModel.toGraphQL(newBalanceFrom)),
-        ]);
+        await this.updateBalanceAndNotify(this.address, from, { balance });
       }
     }
     if (to !== EMPTY_ADDRESS) {
-      const balanceTo = await UserBalanceModel.findOne({
-        address: this.address,
-        user: to,
-      });
+      const balanceTo = await this.getBalance(this.address, to);
 
       if (balanceTo !== null) {
-        const updatedBalance = BigNumber.from(balanceTo.balance)
+        const balance = BigNumber.from(balanceTo.balance)
           .add(BigNumber.from(value))
           .toString();
 
-        await UserBalanceModel.updateOne(
-          { address: this.address, user: to },
-          { balance: updatedBalance }
-        );
-
-        const newBalanceFrom = (await UserBalanceModel.findOne({
-          address: this.address,
-          user: from,
-        })) as HydratedDocument<IUserBalance>;
-
-        pubSub.publish(`UserBalance.${this.chainId}.${newBalanceFrom.user}`, [
-          JSON.stringify(UserBalanceModel.toGraphQL(newBalanceFrom)),
-        ]);
+        await this.updateBalanceAndNotify(this.address, to, { balance });
       }
     }
     if (from === EMPTY_ADDRESS) {
@@ -295,29 +261,16 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     user,
     value,
   ]: any[]): Promise<void> {
-    const oldBalance = await UserBalanceModel.findOne({
-      address: this.address,
-      user,
-    });
+    const oldBalance = await this.getBalance(this.address, user);
 
     if (oldBalance !== null) {
-      const updatedBalance = BigNumber.from(oldBalance.fullyChargedBalance)
+      const fullyChargedBalance = BigNumber.from(oldBalance.fullyChargedBalance)
         .add(BigNumber.from(value))
         .toString();
 
-      await UserBalanceModel.updateOne(
-        { address: this.address, user },
-        { fullyChargedBalance: updatedBalance }
-      );
-
-      const newBalance = (await UserBalanceModel.findOne({
-        address: this.address,
-        user,
-      })) as HydratedDocument<IUserBalance>;
-
-      pubSub.publish(`UserBalance.${this.chainId}.${newBalance.user}`, [
-        JSON.stringify(UserBalanceModel.toGraphQL(newBalance)),
-      ]);
+      await this.updateBalanceAndNotify(this.address, user, {
+        fullyChargedBalance,
+      });
     }
   }
 
@@ -377,29 +330,16 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     user,
     value,
   ]: any[]): Promise<void> {
-    const oldBalance = await UserBalanceModel.findOne({
-      address: this.address,
-      user,
-    });
+    const oldBalance = await this.getBalance(this.address, user);
 
     if (oldBalance !== null) {
-      const updatedBalance = BigNumber.from(oldBalance.fullyChargedBalance)
+      const fullyChargedBalance = BigNumber.from(oldBalance.fullyChargedBalance)
         .sub(BigNumber.from(value))
         .toString();
 
-      await UserBalanceModel.updateOne(
-        { address: this.address, user },
-        { fullyChargedBalance: updatedBalance }
-      );
-
-      const newBalance = (await UserBalanceModel.findOne({
-        address: this.address,
-        user,
-      })) as HydratedDocument<IUserBalance>;
-
-      pubSub.publish(`UserBalance.${this.chainId}.${newBalance.user}`, [
-        JSON.stringify(UserBalanceModel.toGraphQL(newBalance)),
-      ]);
+      await this.updateBalanceAndNotify(this.address, user, {
+        fullyChargedBalance,
+      });
     }
 
     const jsonModel = await this.getJsonModel();
@@ -425,25 +365,12 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     user,
     value,
   ]: any[]): Promise<void> {
-    const oldBalance = await UserBalanceModel.findOne({
-      address: this.address,
-      user,
-    });
+    const oldBalance = await this.getBalance(this.address, user);
 
     if (oldBalance !== null) {
-      await UserBalanceModel.updateOne(
-        { address: this.address, user },
-        { claimedRewardPerShare1e18: value }
-      );
-
-      const newBalance = (await UserBalanceModel.findOne({
-        address: this.address,
-        user,
-      })) as HydratedDocument<IUserBalance>;
-
-      pubSub.publish(`UserBalance.${this.chainId}.${newBalance.user}`, [
-        JSON.stringify(UserBalanceModel.toGraphQL(newBalance)),
-      ]);
+      await this.updateBalanceAndNotify(this.address, user, {
+        claimedRewardPerShare1e18: value,
+      });
     }
   }
 
@@ -525,29 +452,18 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     user,
     value,
   ]: any[]): Promise<void> {
-    const oldBalance = await UserBalanceModel.findOne({
-      address: this.address,
-      user,
-    });
+    const oldBalance = await this.getBalance(this.address, user);
 
     if (oldBalance !== null) {
-      const balance = BigNumber.from(oldBalance.partiallyChargedBalance)
+      const partiallyChargedBalance = BigNumber.from(
+        oldBalance.partiallyChargedBalance
+      )
         .sub(BigNumber.from(value))
         .toString();
 
-      await UserBalanceModel.updateOne(
-        { address: this.address, user },
-        { partiallyChargedBalance: balance }
-      );
-
-      const newBalance = (await UserBalanceModel.findOne({
-        address: this.address,
-        user,
-      })) as HydratedDocument<IUserBalance>;
-
-      pubSub.publish(`UserBalance.${this.chainId}.${newBalance.user}`, [
-        JSON.stringify(UserBalanceModel.toGraphQL(newBalance)),
-      ]);
+      await this.updateBalanceAndNotify(this.address, user, {
+        partiallyChargedBalance,
+      });
     }
   }
 
@@ -569,33 +485,18 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     user,
     partiallyChargedBalance,
   ]: any[]): Promise<void> {
-    const oldBalance = await UserBalanceModel.findOne({
-      address: this.address,
-      user,
-    });
+    const oldBalance = await this.getBalance(this.address, user);
 
     if (oldBalance !== null) {
       const { dateOfPartiallyCharged } = await this.instance.userLiquiToken(
         user
       );
 
-      await UserBalanceModel.updateOne(
-        { address: this.address, user },
-        {
-          fullyChargedBalance: "0",
-          partiallyChargedBalance,
-          dateOfPartiallyCharged: dateOfPartiallyCharged.toString(),
-        }
-      );
-
-      const newBalance = (await UserBalanceModel.findOne({
-        address: this.address,
-        user,
-      })) as HydratedDocument<IUserBalance>;
-
-      pubSub.publish(`UserBalance.${this.chainId}.${newBalance.user}`, [
-        JSON.stringify(UserBalanceModel.toGraphQL(newBalance)),
-      ]);
+      await this.updateBalanceAndNotify(this.address, user, {
+        fullyChargedBalance: "0",
+        partiallyChargedBalance,
+        dateOfPartiallyCharged: dateOfPartiallyCharged.toString(),
+      });
     }
   }
 }

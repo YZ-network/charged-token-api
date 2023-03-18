@@ -1,6 +1,7 @@
-import { ethers, EventFilter } from "ethers";
+import { BigNumber, ethers, EventFilter } from "ethers";
 import { FlattenMaps, HydratedDocument } from "mongoose";
 import { pubSub } from "../graphql";
+import { IUserBalance, UserBalanceModel } from "../models";
 import { IContract, IEventHandler, IModel } from "../types";
 
 interface ListenerRegistration {
@@ -131,6 +132,36 @@ export abstract class AbstractLoader<T extends IContract> {
     });
   }
 
+  async getBalance(
+    address: string,
+    user: string
+  ): Promise<HydratedDocument<IUserBalance> | null> {
+    return await UserBalanceModel.findOne({
+      address,
+      user,
+    });
+  }
+
+  async updateBalanceAndNotify(
+    address: string,
+    user: string,
+    balanceUpdates: Partial<IUserBalance>
+  ): Promise<void> {
+    await UserBalanceModel.updateOne({ address, user }, balanceUpdates);
+
+    const newBalance = (await this.getBalance(
+      address,
+      user
+    )) as HydratedDocument<IUserBalance>;
+
+    console.log("notifying updated balance :", newBalance.toJSON());
+
+    pubSub.publish(
+      `UserBalance.${this.chainId}.${user}`,
+      JSON.stringify([UserBalanceModel.toGraphQL(newBalance)])
+    );
+  }
+
   /** Saves or updates the document in database with the given data. */
   async saveOrUpdate(data: T): Promise<HydratedDocument<T>> {
     if (await this.exists()) {
@@ -198,7 +229,6 @@ export abstract class AbstractLoader<T extends IContract> {
               event.constructor?.name
             );
           } else {
-            console.log("calling event handler", name);
             await this.onEvent(name, args);
           }
         }
@@ -238,18 +268,14 @@ export abstract class AbstractLoader<T extends IContract> {
   }
 
   protected async applyUpdateAndNotify(data: T) {
-    console.log("saving update for", this.constructor.name);
-
     const saved = await this.saveOrUpdate(data);
-
-    console.log("saved, converting to GraphQL for", this.constructor.name);
 
     this.lastState = this.model.toGraphQL(saved);
     this.lastUpdateBlock = this.actualBlock;
 
     console.log(
-      "notifying update 1 for",
-      `${this.constructor.name}.${this.chainId}.${this.address}`
+      "notifying update for",
+      `${this.constructor.name}.${this.chainId}.${this.address} :`
     );
 
     pubSub.publish(
@@ -276,7 +302,18 @@ export abstract class AbstractLoader<T extends IContract> {
             }
             const decodedLog = this.iface.parseLog(log);
             const args = [...decodedLog.args.values()];
-            console.log("Calling event handler", eventName, "with", ...args);
+            console.log(
+              "Calling event handler",
+              eventName,
+              "on",
+              this.constructor.name,
+              "@",
+              this.address,
+              "with",
+              ...args.map((arg) =>
+                arg instanceof BigNumber ? arg.toString() : arg
+              )
+            );
             this.onEvent(eventName, args);
           },
         };
@@ -315,11 +352,6 @@ export abstract class AbstractLoader<T extends IContract> {
 
   private onEvent(name: string, args: any[]): Promise<void> {
     const eventHandlerName = `on${name}Event` as keyof this;
-    console.log(
-      "Calling event handler",
-      this.constructor.name,
-      eventHandlerName
-    );
     return (this[eventHandlerName] as IEventHandler)(args);
   }
 

@@ -150,10 +150,7 @@ export class Directory extends AbstractLoader<IDirectory> {
           saved.map((balance) => UserBalanceModel.toGraphQL(balance))
         )
       );
-    } else {
-      pubSub.publish(`UserBalance.${this.chainId}.${user}`, JSON.stringify([]));
     }
-
     const stopDate = new Date().getTime();
 
     console.log(
