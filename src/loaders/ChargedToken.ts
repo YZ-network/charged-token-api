@@ -1,7 +1,9 @@
 import { BigNumber, ethers } from "ethers";
+import { HydratedDocument } from "mongoose";
 import { contracts } from "../contracts";
+import { pubSub } from "../graphql";
 import { ChargedTokenModel, IChargedToken } from "../models";
-import { IUserBalance } from "../models/UserBalances";
+import { IUserBalance, UserBalanceModel } from "../models/UserBalances";
 import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
 import { Directory } from "./Directory";
@@ -184,15 +186,69 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
 
   async onTransferEvent([from, to, value]: any[]): Promise<void> {
     if (from !== EMPTY_ADDRESS) {
-      // p2p transfers are not covered by other events
-      await this.directory.loadAllUserBalances(from, this.address);
+      const balanceFrom = await UserBalanceModel.findOne({
+        address: this.address,
+        user: from,
+      });
+
+      if (balanceFrom !== null) {
+        const updatedBalance = BigNumber.from(balanceFrom.balance)
+          .sub(BigNumber.from(value))
+          .toString();
+
+        await UserBalanceModel.updateOne(
+          { address: this.address, user: from },
+          { balance: updatedBalance }
+        );
+
+        const newBalanceFrom = (await UserBalanceModel.findOne({
+          address: this.address,
+          user: from,
+        })) as HydratedDocument<IUserBalance>;
+
+        pubSub.publish(`UserBalance.${this.chainId}.${newBalanceFrom.user}`, [
+          JSON.stringify(UserBalanceModel.toGraphQL(newBalanceFrom)),
+        ]);
+      }
     }
     if (to !== EMPTY_ADDRESS) {
-      await this.directory.loadAllUserBalances(to, this.address);
+      const balanceTo = await UserBalanceModel.findOne({
+        address: this.address,
+        user: to,
+      });
+
+      if (balanceTo !== null) {
+        const updatedBalance = BigNumber.from(balanceTo.balance)
+          .add(BigNumber.from(value))
+          .toString();
+
+        await UserBalanceModel.updateOne(
+          { address: this.address, user: to },
+          { balance: updatedBalance }
+        );
+
+        const newBalanceFrom = (await UserBalanceModel.findOne({
+          address: this.address,
+          user: from,
+        })) as HydratedDocument<IUserBalance>;
+
+        pubSub.publish(`UserBalance.${this.chainId}.${newBalanceFrom.user}`, [
+          JSON.stringify(UserBalanceModel.toGraphQL(newBalanceFrom)),
+        ]);
+      }
     }
-    if (from === EMPTY_ADDRESS || to === EMPTY_ADDRESS) {
+    if (from === EMPTY_ADDRESS) {
       const jsonModel = await this.getJsonModel();
-      jsonModel.totalSupply = (await this.instance.totalSupply()).toString();
+      jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
+        .add(BigNumber.from(value))
+        .toString();
+      await this.applyUpdateAndNotify(jsonModel);
+    }
+    if (to === EMPTY_ADDRESS) {
+      const jsonModel = await this.getJsonModel();
+      jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
+        .sub(BigNumber.from(value))
+        .toString();
       await this.applyUpdateAndNotify(jsonModel);
     }
   }
@@ -239,7 +295,30 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     user,
     value,
   ]: any[]): Promise<void> {
-    await this.directory.loadAllUserBalances(user, this.address);
+    const oldBalance = await UserBalanceModel.findOne({
+      address: this.address,
+      user,
+    });
+
+    if (oldBalance !== null) {
+      const updatedBalance = BigNumber.from(oldBalance.fullyChargedBalance)
+        .add(BigNumber.from(value))
+        .toString();
+
+      await UserBalanceModel.updateOne(
+        { address: this.address, user },
+        { fullyChargedBalance: updatedBalance }
+      );
+
+      const newBalance = (await UserBalanceModel.findOne({
+        address: this.address,
+        user,
+      })) as HydratedDocument<IUserBalance>;
+
+      pubSub.publish(`UserBalance.${this.chainId}.${newBalance.user}`, [
+        JSON.stringify(UserBalanceModel.toGraphQL(newBalance)),
+      ]);
+    }
   }
 
   async onLTAllocatedByOwnerEvent([
@@ -298,7 +377,30 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     user,
     value,
   ]: any[]): Promise<void> {
-    // user balances are loaded by LTReceivedEvent
+    const oldBalance = await UserBalanceModel.findOne({
+      address: this.address,
+      user,
+    });
+
+    if (oldBalance !== null) {
+      const updatedBalance = BigNumber.from(oldBalance.fullyChargedBalance)
+        .sub(BigNumber.from(value))
+        .toString();
+
+      await UserBalanceModel.updateOne(
+        { address: this.address, user },
+        { fullyChargedBalance: updatedBalance }
+      );
+
+      const newBalance = (await UserBalanceModel.findOne({
+        address: this.address,
+        user,
+      })) as HydratedDocument<IUserBalance>;
+
+      pubSub.publish(`UserBalance.${this.chainId}.${newBalance.user}`, [
+        JSON.stringify(UserBalanceModel.toGraphQL(newBalance)),
+      ]);
+    }
 
     const jsonModel = await this.getJsonModel();
 
@@ -316,22 +418,39 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     feesToRewardHodlers,
     hodlRewards,
   ]: any[]): Promise<void> {
-    await this.directory.loadAllUserBalances(user, this.address);
+    // nothing to do, balance have been updated by onTransferEvent handler
   }
 
   async onClaimedRewardPerShareUpdatedEvent([
     user,
     value,
   ]: any[]): Promise<void> {
-    await this.directory.loadAllUserBalances(user, this.address);
+    const oldBalance = await UserBalanceModel.findOne({
+      address: this.address,
+      user,
+    });
+
+    if (oldBalance !== null) {
+      await UserBalanceModel.updateOne(
+        { address: this.address, user },
+        { claimedRewardPerShare1e18: value }
+      );
+
+      const newBalance = (await UserBalanceModel.findOne({
+        address: this.address,
+        user,
+      })) as HydratedDocument<IUserBalance>;
+
+      pubSub.publish(`UserBalance.${this.chainId}.${newBalance.user}`, [
+        JSON.stringify(UserBalanceModel.toGraphQL(newBalance)),
+      ]);
+    }
   }
 
   async onCurrentRewardPerShareAndStakingCheckpointUpdatedEvent([
     rewardPerShare1e18,
     blockTime,
   ]: any[]): Promise<void> {
-    // user rewards updated by ClaimedRewardPerShareUpdatedEvent
-
     const jsonModel = await this.getJsonModel();
 
     jsonModel.currentRewardPerShare1e18 = rewardPerShare1e18;
@@ -406,7 +525,30 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     user,
     value,
   ]: any[]): Promise<void> {
-    // partiallyChargedBalance updated by IncreaseFullyChargedBalanceEvent
+    const oldBalance = await UserBalanceModel.findOne({
+      address: this.address,
+      user,
+    });
+
+    if (oldBalance !== null) {
+      const balance = BigNumber.from(oldBalance.partiallyChargedBalance)
+        .sub(BigNumber.from(value))
+        .toString();
+
+      await UserBalanceModel.updateOne(
+        { address: this.address, user },
+        { partiallyChargedBalance: balance }
+      );
+
+      const newBalance = (await UserBalanceModel.findOne({
+        address: this.address,
+        user,
+      })) as HydratedDocument<IUserBalance>;
+
+      pubSub.publish(`UserBalance.${this.chainId}.${newBalance.user}`, [
+        JSON.stringify(UserBalanceModel.toGraphQL(newBalance)),
+      ]);
+    }
   }
 
   async onUpdatedDateOfPartiallyChargedAndDecreasedStakedLTEvent([
@@ -427,6 +569,33 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     user,
     partiallyChargedBalance,
   ]: any[]): Promise<void> {
-    await this.directory.loadAllUserBalances(user, this.address);
+    const oldBalance = await UserBalanceModel.findOne({
+      address: this.address,
+      user,
+    });
+
+    if (oldBalance !== null) {
+      const { dateOfPartiallyCharged } = await this.instance.userLiquiToken(
+        user
+      );
+
+      await UserBalanceModel.updateOne(
+        { address: this.address, user },
+        {
+          fullyChargedBalance: "0",
+          partiallyChargedBalance,
+          dateOfPartiallyCharged: dateOfPartiallyCharged.toString(),
+        }
+      );
+
+      const newBalance = (await UserBalanceModel.findOne({
+        address: this.address,
+        user,
+      })) as HydratedDocument<IUserBalance>;
+
+      pubSub.publish(`UserBalance.${this.chainId}.${newBalance.user}`, [
+        JSON.stringify(UserBalanceModel.toGraphQL(newBalance)),
+      ]);
+    }
   }
 }

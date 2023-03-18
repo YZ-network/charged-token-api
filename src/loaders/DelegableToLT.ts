@@ -1,5 +1,8 @@
 import { BigNumber, ethers } from "ethers";
+import { HydratedDocument } from "mongoose";
 import { contracts } from "../contracts";
+import { pubSub } from "../graphql";
+import { IUserBalance, UserBalanceModel } from "../models";
 import { DelegableToLTModel, IDelegableToLT } from "../models/DelegableToLT";
 import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
@@ -79,10 +82,57 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   async onTransferEvent([from, to, value]: any[]): Promise<void> {
     if (from !== EMPTY_ADDRESS) {
       // p2p transfers are not covered by other events
-      await this.directory.loadAllUserBalances(from, this.ct.address);
+      const oldBalance = await UserBalanceModel.findOne({
+        address: this.address,
+        user: from,
+      });
+
+      if (oldBalance !== null) {
+        const balancePT = BigNumber.from(oldBalance.balancePT)
+          .sub(BigNumber.from(value))
+          .toString();
+
+        await UserBalanceModel.updateOne(
+          { address: this.address, user: from },
+          { balancePT }
+        );
+
+        const newBalance = (await UserBalanceModel.findOne({
+          address: this.address,
+          user: from,
+        })) as HydratedDocument<IUserBalance>;
+
+        pubSub.publish(`UserBalance.${this.chainId}.${newBalance.user}`, [
+          JSON.stringify(UserBalanceModel.toGraphQL(newBalance)),
+        ]);
+      }
     }
     if (to !== EMPTY_ADDRESS) {
-      await this.directory.loadAllUserBalances(to, this.ct.address);
+      // p2p transfers are not covered by other events
+      const oldBalance = await UserBalanceModel.findOne({
+        address: this.address,
+        user: to,
+      });
+
+      if (oldBalance !== null) {
+        const balancePT = BigNumber.from(oldBalance.balancePT)
+          .add(BigNumber.from(value))
+          .toString();
+
+        await UserBalanceModel.updateOne(
+          { address: this.address, user: to },
+          { balancePT }
+        );
+
+        const newBalance = (await UserBalanceModel.findOne({
+          address: this.address,
+          user: to,
+        })) as HydratedDocument<IUserBalance>;
+
+        pubSub.publish(`UserBalance.${this.chainId}.${newBalance.user}`, [
+          JSON.stringify(UserBalanceModel.toGraphQL(newBalance)),
+        ]);
+      }
     }
     if (from === EMPTY_ADDRESS) {
       const jsonModel = await this.getJsonModel();

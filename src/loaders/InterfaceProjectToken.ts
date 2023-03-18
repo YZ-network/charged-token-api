@@ -1,5 +1,8 @@
 import { BigNumber, ethers } from "ethers";
+import { HydratedDocument } from "mongoose";
 import { contracts } from "../contracts";
+import { pubSub } from "../graphql";
+import { IUserBalance, UserBalanceModel } from "../models";
 import {
   IInterfaceProjectToken,
   InterfaceProjectTokenModel,
@@ -152,14 +155,39 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     fees,
     hodlRewards,
   ]: any[]): Promise<void> {
-    // user balances updated by ChargedToken.ClaimedRewardPerShareUpdatedEvent
+    // user balances & totalSupply updated by TransferEvents
   }
 
   async onIncreasedValueProjectTokenToFullRechargeEvent([
     user,
     valueIncreased,
   ]: any[]): Promise<void> {
-    // balances updated by ChargedToken.TokensDischargedEvent
+    const oldBalance = await UserBalanceModel.findOne({
+      address: this.address,
+      user,
+    });
+
+    if (oldBalance !== null) {
+      const valueProjectTokenToFullRecharge = BigNumber.from(
+        oldBalance.valueProjectTokenToFullRecharge
+      )
+        .add(BigNumber.from(valueIncreased))
+        .toString();
+
+      await UserBalanceModel.updateOne(
+        { address: this.address, user },
+        { valueProjectTokenToFullRecharge }
+      );
+
+      const newBalance = (await UserBalanceModel.findOne({
+        address: this.address,
+        user,
+      })) as HydratedDocument<IUserBalance>;
+
+      pubSub.publish(`UserBalance.${this.chainId}.${newBalance.user}`, [
+        JSON.stringify(UserBalanceModel.toGraphQL(newBalance)),
+      ]);
+    }
   }
 
   async onLTRechargedEvent([
@@ -168,7 +196,32 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     valueProjectToken,
     hodlRewards,
   ]: any[]): Promise<void> {
-    // balances updated by ChargedToken.IncreasedFullyChargedBalance
+    const oldBalance = await UserBalanceModel.findOne({
+      address: this.address,
+      user,
+    });
+
+    if (oldBalance !== null) {
+      const valueProjectTokenToFullRecharge = BigNumber.from(
+        oldBalance.valueProjectTokenToFullRecharge
+      )
+        .sub(BigNumber.from(valueProjectToken))
+        .toString();
+
+      await UserBalanceModel.updateOne(
+        { address: this.address, user },
+        { valueProjectTokenToFullRecharge }
+      );
+
+      const newBalance = (await UserBalanceModel.findOne({
+        address: this.address,
+        user,
+      })) as HydratedDocument<IUserBalance>;
+
+      pubSub.publish(`UserBalance.${this.chainId}.${newBalance.user}`, [
+        JSON.stringify(UserBalanceModel.toGraphQL(newBalance)),
+      ]);
+    }
   }
 
   async onClaimFeesUpdatedEvent([valuePerThousand]: any[]): Promise<void> {
