@@ -205,37 +205,33 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     }
     if (from === EMPTY_ADDRESS) {
       const jsonModel = await this.getJsonModel();
-      jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
-        .add(BigNumber.from(value))
-        .toString();
-      await this.applyUpdateAndNotify(jsonModel);
+      const update = {
+        totalSupply: BigNumber.from(jsonModel.totalSupply)
+          .add(BigNumber.from(value))
+          .toString(),
+      };
+      await this.applyUpdateAndNotify(update);
     }
     if (to === EMPTY_ADDRESS) {
       const jsonModel = await this.getJsonModel();
-      jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
-        .sub(BigNumber.from(value))
-        .toString();
-      await this.applyUpdateAndNotify(jsonModel);
+      const update = {
+        totalSupply: BigNumber.from(jsonModel.totalSupply)
+          .sub(BigNumber.from(value))
+          .toString(),
+      };
+      await this.applyUpdateAndNotify(update);
     }
   }
 
   async onUserFunctionsAreDisabledEvent([
     areUserFunctionsDisabled,
   ]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
-
-    jsonModel.areUserFunctionsDisabled = areUserFunctionsDisabled;
-
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify({ areUserFunctionsDisabled });
   }
 
   async onInterfaceProjectTokenSetEvent([
     interfaceProjectToken,
   ]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
-
-    jsonModel.interfaceProjectToken = interfaceProjectToken;
-
     this.interface = new InterfaceProjectToken(
       this.chainId,
       this.provider,
@@ -246,15 +242,11 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     await this.interface.init();
     this.interface.subscribeToEvents();
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify({ interfaceProjectToken });
   }
 
   async onInterfaceProjectTokenIsLockedEvent([]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
-
-    jsonModel.isInterfaceProjectTokenLocked = true;
-
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify({ isInterfaceProjectTokenLocked: true });
   }
 
   async onIncreasedFullyChargedBalanceEvent([
@@ -280,50 +272,35 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     hodlRewards,
     isAllocationStaked,
   ]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
-
-    const bnValue = BigNumber.from(value);
-
-    jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
-      .add(bnValue)
-      .toString();
-    jsonModel.totalTokenAllocated = BigNumber.from(
-      jsonModel.totalTokenAllocated
-    )
-      .add(bnValue)
-      .toString();
-
-    await this.applyUpdateAndNotify(jsonModel);
+    // total supply updated by transfer events
   }
 
   async onIncreasedTotalTokenAllocatedEvent([value]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.totalTokenAllocated = BigNumber.from(
-      jsonModel.totalTokenAllocated
-    )
-      .add(BigNumber.from(value))
-      .toString();
+    const update = {
+      totalTokenAllocated: BigNumber.from(jsonModel.totalTokenAllocated)
+        .add(BigNumber.from(value))
+        .toString(),
+    };
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 
   async onIncreasedStakedLTEvent([value]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.stakedLT = BigNumber.from(jsonModel.stakedLT)
-      .add(BigNumber.from(value))
-      .toString();
+    const update = {
+      stakedLT: BigNumber.from(jsonModel.stakedLT)
+        .add(BigNumber.from(value))
+        .toString(),
+    };
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 
   async onAllocationsAreTerminatedEvent([]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
-
-    jsonModel.areAllocationsTerminated = true;
-
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify({ areAllocationsTerminated: true });
   }
 
   async onDecreasedFullyChargedBalanceAndStakedLTEvent([
@@ -344,11 +321,13 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
 
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.stakedLT = BigNumber.from(jsonModel.stakedLT)
-      .sub(BigNumber.from(value))
-      .toString();
+    const update = {
+      stakedLT: BigNumber.from(jsonModel.stakedLT)
+        .sub(BigNumber.from(value))
+        .toString(),
+    };
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 
   async onLTReceivedEvent([
@@ -378,24 +357,24 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     rewardPerShare1e18,
     blockTime,
   ]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
-
-    jsonModel.currentRewardPerShare1e18 = rewardPerShare1e18;
-    jsonModel.stakingDateLastCheckpoint = blockTime;
-
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify({
+      currentRewardPerShare1e18: rewardPerShare1e18,
+      stakingDateLastCheckpoint: blockTime,
+    });
   }
 
   async onIncreasedCurrentRewardPerShareEvent([value]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.currentRewardPerShare1e18 = BigNumber.from(
-      jsonModel.currentRewardPerShare1e18
-    )
-      .add(BigNumber.from(value))
-      .toString();
+    const update = {
+      currentRewardPerShare1e18: BigNumber.from(
+        jsonModel.currentRewardPerShare1e18
+      )
+        .add(BigNumber.from(value))
+        .toString(),
+    };
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 
   async onLTDepositedEvent([user, value, hodlRewards]: any[]): Promise<void> {
@@ -411,41 +390,35 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
 
     const bnRewards = BigNumber.from(rewards);
 
-    jsonModel.stakingStartDate = startDate;
-    jsonModel.stakingDateLastCheckpoint = startDate;
-    jsonModel.stakingDuration = duration;
-    jsonModel.campaignStakingRewards = rewards.toString();
-    jsonModel.totalStakingRewards = BigNumber.from(
-      jsonModel.totalStakingRewards
-    )
-      .add(bnRewards)
-      .toString();
-    jsonModel.totalTokenAllocated = BigNumber.from(
-      jsonModel.totalTokenAllocated
-    )
-      .add(bnRewards)
-      .toString();
-    jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
-      .add(bnRewards)
-      .toString();
+    const update = {
+      stakingStartDate: startDate,
+      stakingDateLastCheckpoint: startDate,
+      stakingDuration: duration,
+      campaignStakingRewards: rewards.toString(),
+      totalStakingRewards: BigNumber.from(jsonModel.totalStakingRewards)
+        .add(bnRewards)
+        .toString(),
+      totalTokenAllocated: BigNumber.from(jsonModel.totalTokenAllocated)
+        .add(bnRewards)
+        .toString(),
+      totalSupply: BigNumber.from(jsonModel.totalSupply)
+        .add(bnRewards)
+        .toString(),
+    };
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 
   async onWithdrawalFeesUpdatedEvent([value]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
-
-    jsonModel.withdrawFeesPerThousandForLT = value.toString();
-
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify({
+      withdrawFeesPerThousandForLT: value.toString(),
+    });
   }
 
   async onRatioFeesToRewardHodlersUpdatedEvent([value]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
-
-    jsonModel.ratioFeesToRewardHodlersPerThousand = value.toString();
-
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify({
+      ratioFeesToRewardHodlersPerThousand: value.toString(),
+    });
   }
 
   async onDecreasedPartiallyChargedBalanceEvent([
@@ -474,11 +447,13 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     // dateOfPartiallyCharged updated by TokensDischargedEvent
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.stakedLT = BigNumber.from(jsonModel.stakedLT)
-      .sub(BigNumber.from(value))
-      .toString();
+    const update = {
+      stakedLT: BigNumber.from(jsonModel.stakedLT)
+        .sub(BigNumber.from(value))
+        .toString(),
+    };
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 
   async onTokensDischargedEvent([

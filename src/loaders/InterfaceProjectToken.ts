@@ -138,12 +138,10 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   }
 
   async onStartSetEvent([dateLaunch, dateEndCliff]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
-
-    jsonModel.dateLaunch = dateLaunch;
-    jsonModel.dateEndCliff = dateEndCliff;
-
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify({
+      dateLaunch,
+      dateEndCliff,
+    });
   }
 
   async onProjectTokenReceivedEvent([
@@ -196,10 +194,8 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   }
 
   async onClaimFeesUpdatedEvent([valuePerThousand]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
-
-    jsonModel.claimFeesPerThousandForPT = valuePerThousand.toString();
-
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify({
+      claimFeesPerThousandForPT: valuePerThousand.toString(),
+    });
   }
 }

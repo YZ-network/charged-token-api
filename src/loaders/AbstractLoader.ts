@@ -1,5 +1,5 @@
 import { BigNumber, ethers, EventFilter } from "ethers";
-import { FlattenMaps, HydratedDocument } from "mongoose";
+import mongoose, { FlattenMaps, HydratedDocument } from "mongoose";
 import { pubSub } from "../graphql";
 import { IUserBalance, UserBalanceModel } from "../models";
 import { IContract, IEventHandler, IModel } from "../types";
@@ -163,14 +163,14 @@ export abstract class AbstractLoader<T extends IContract> {
   }
 
   /** Saves or updates the document in database with the given data. */
-  async saveOrUpdate(data: T): Promise<HydratedDocument<T>> {
+  async saveOrUpdate(data: Partial<T> | T): Promise<HydratedDocument<T>> {
     if (await this.exists()) {
       await this.model.updateOne(
         { chainId: this.chainId, address: this.address },
         data
       );
     } else {
-      await this.toModel(data).save();
+      await this.toModel(data as T).save();
     }
 
     const result = await this.get();
@@ -267,7 +267,7 @@ export abstract class AbstractLoader<T extends IContract> {
     return (await this.get())!.toJSON();
   }
 
-  protected async applyUpdateAndNotify(data: T) {
+  protected async applyUpdateAndNotify(data: Partial<T>) {
     const saved = await this.saveOrUpdate(data);
 
     this.lastState = this.model.toGraphQL(saved);
@@ -350,9 +350,14 @@ export abstract class AbstractLoader<T extends IContract> {
     this.registeredListeners.splice(0);
   }
 
-  private onEvent(name: string, args: any[]): Promise<void> {
+  private async onEvent(name: string, args: any[]): Promise<void> {
     const eventHandlerName = `on${name}Event` as keyof this;
-    return (this[eventHandlerName] as IEventHandler)(args);
+    const session = await mongoose.startSession();
+
+    await session.withTransaction(async () => {
+      await (this[eventHandlerName] as IEventHandler)(args);
+      await session.endSession();
+    });
   }
 
   private async updateLastBlock() {

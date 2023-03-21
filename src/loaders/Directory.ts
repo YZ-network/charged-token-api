@@ -180,11 +180,7 @@ export class Directory extends AbstractLoader<IDirectory> {
   async onUserFunctionsAreDisabledEvent([
     areUserFunctionsDisabled,
   ]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
-
-    jsonModel.areUserFunctionsDisabled = areUserFunctionsDisabled;
-
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify({ areUserFunctionsDisabled });
   }
 
   async onProjectOwnerWhitelistedEvent([
@@ -193,19 +189,28 @@ export class Directory extends AbstractLoader<IDirectory> {
   ]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.projects.push(project);
-    jsonModel.whitelistedProjectOwners.push(projectOwner);
-    jsonModel.whitelist[projectOwner] = project;
+    const update = {
+      projects: [...jsonModel.projects, project],
+      whitelistedProjectOwners: [
+        ...jsonModel.whitelistedProjectOwners,
+        projectOwner,
+      ],
+      whitelist: { ...jsonModel.whitelist, [projectOwner]: project },
+    };
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 
   async onAddedLTContractEvent([contract]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.directory.push(contract);
-    jsonModel.projectRelatedToLT[contract] =
-      await this.instance.projectRelatedToLT(contract);
+    const update = {
+      directory: [...jsonModel.directory, contract],
+      projectRelatedToLT: {
+        ...jsonModel.projectRelatedToLT,
+        [contract]: await this.instance.projectRelatedToLT(contract),
+      },
+    };
 
     this.ct[contract] = new ChargedToken(
       this.chainId,
@@ -216,16 +221,19 @@ export class Directory extends AbstractLoader<IDirectory> {
     await this.ct[contract].init(this.actualBlock);
     this.ct[contract].subscribeToEvents();
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 
   async onRemovedLTContractEvent([contract]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.directory = jsonModel.directory.filter(
-      (address) => address !== contract
-    );
-    delete jsonModel.projectRelatedToLT[contract];
+    const update = {
+      directory: jsonModel.directory.filter((address) => address !== contract),
+      projectRelatedToLT: {
+        ...jsonModel.projectRelatedToLT,
+        [contract]: undefined,
+      },
+    };
 
     const balanceAddressList: string[] = [];
 
@@ -251,32 +259,32 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     await UserBalanceModel.deleteMany({ address: { $in: balanceAddressList } });
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 
   async onRemovedProjectByAdminEvent([projectOwner]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.projects = jsonModel.projects.filter(
-      (_, index) => jsonModel.whitelistedProjectOwners[index] !== projectOwner
-    );
-
-    jsonModel.whitelistedProjectOwners =
-      jsonModel.whitelistedProjectOwners.filter(
+    const update = {
+      projects: jsonModel.projects.filter(
+        (_, index) => jsonModel.whitelistedProjectOwners[index] !== projectOwner
+      ),
+      directory: jsonModel.directory.filter(
+        (ltAddress) => jsonModel.projectRelatedToLT[ltAddress] !== undefined
+      ),
+      whitelistedProjectOwners: jsonModel.whitelistedProjectOwners.filter(
         (address) => address !== projectOwner
-      );
+      ),
+      whitelist: { ...jsonModel.whitelist },
+    };
 
-    Object.entries(jsonModel.whitelist).forEach(([ownerAddress]) => {
-      if (!jsonModel.whitelistedProjectOwners.includes(ownerAddress)) {
-        delete jsonModel.whitelist[ownerAddress];
+    Object.entries(update.whitelist).forEach(([ownerAddress]) => {
+      if (!update.whitelistedProjectOwners.includes(ownerAddress)) {
+        delete update.whitelist[ownerAddress];
       }
     });
 
-    jsonModel.directory = jsonModel.directory.filter(
-      (ltAddress) => jsonModel.projectRelatedToLT[ltAddress] !== undefined
-    );
-
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 
   async onChangedProjectOwnerAccountEvent([
@@ -285,11 +293,13 @@ export class Directory extends AbstractLoader<IDirectory> {
   ]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.whitelistedProjectOwners = jsonModel.whitelistedProjectOwners.map(
-      (address) => (address === projectOwnerOld ? projectOwnerNew : address)
-    );
+    const update = {
+      whitelistedProjectOwners: jsonModel.whitelistedProjectOwners.map(
+        (address) => (address === projectOwnerOld ? projectOwnerNew : address)
+      ),
+    };
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 
   async onChangedProjectNameEvent([
@@ -298,20 +308,27 @@ export class Directory extends AbstractLoader<IDirectory> {
   ]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.projects = jsonModel.projects.map((name) =>
-      name === oldProjectName ? newProjectName : name
-    );
+    const update = {
+      projects: jsonModel.projects.map((name) =>
+        name === oldProjectName ? newProjectName : name
+      ),
+    };
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 
   async onAllocatedLTToProjectEvent([contract, project]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.projectRelatedToLT[contract] = project;
-    jsonModel.directory.push(contract);
+    const update = {
+      projectRelatedToLT: {
+        ...jsonModel.projectRelatedToLT,
+        [contract]: project,
+      },
+      directory: [...jsonModel.directory, contract],
+    };
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 
   async onAllocatedProjectOwnerToProjectEvent([
@@ -320,9 +337,14 @@ export class Directory extends AbstractLoader<IDirectory> {
   ]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.whitelistedProjectOwners.push(projectOwner);
-    jsonModel.projects.push(project);
+    const update = {
+      whitelistedProjectOwners: [
+        ...jsonModel.whitelistedProjectOwners,
+        projectOwner,
+      ],
+      projects: [...jsonModel.projects, project],
+    };
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 }

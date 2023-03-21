@@ -103,17 +103,21 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     }
     if (from === EMPTY_ADDRESS) {
       const jsonModel = await this.getJsonModel();
-      jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
-        .add(BigNumber.from(value))
-        .toString();
-      await this.applyUpdateAndNotify(jsonModel);
+      const update = {
+        totalSupply: BigNumber.from(jsonModel.totalSupply)
+          .add(BigNumber.from(value))
+          .toString(),
+      };
+      await this.applyUpdateAndNotify(update);
     }
     if (to === EMPTY_ADDRESS) {
       const jsonModel = await this.getJsonModel();
-      jsonModel.totalSupply = BigNumber.from(jsonModel.totalSupply)
-        .sub(BigNumber.from(value))
-        .toString();
-      await this.applyUpdateAndNotify(jsonModel);
+      const update = {
+        totalSupply: BigNumber.from(jsonModel.totalSupply)
+          .sub(BigNumber.from(value))
+          .toString(),
+      };
+      await this.applyUpdateAndNotify(update);
     }
   }
 
@@ -126,17 +130,20 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   ]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.validatedInterfaceProjectToken.push(interfaceProjectToken);
+    const update = {
+      validatedInterfaceProjectToken: [
+        ...jsonModel.validatedInterfaceProjectToken,
+        interfaceProjectToken,
+      ],
+    };
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 
   async onListOfValidatedInterfaceProjectTokenIsFinalizedEvent([]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
-
-    jsonModel.isListOfInterfaceProjectTokenComplete = true;
-
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify({
+      isListOfInterfaceProjectTokenComplete: true,
+    });
   }
 
   async onInterfaceProjectTokenRemovedEvent([
@@ -144,11 +151,13 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   ]: any[]): Promise<void> {
     const jsonModel = await this.getJsonModel();
 
-    jsonModel.validatedInterfaceProjectToken =
-      jsonModel.validatedInterfaceProjectToken.filter(
-        (address) => address !== interfaceProjectToken
-      );
+    const update = {
+      validatedInterfaceProjectToken:
+        jsonModel.validatedInterfaceProjectToken.filter(
+          (address) => address !== interfaceProjectToken
+        ),
+    };
 
-    await this.applyUpdateAndNotify(jsonModel);
+    await this.applyUpdateAndNotify(update);
   }
 }
