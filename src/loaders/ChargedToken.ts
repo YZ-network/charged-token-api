@@ -191,6 +191,14 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
           .sub(BigNumber.from(value))
           .toString();
         await this.updateBalanceAndNotify(this.address, from, { balance });
+
+        if (from === this.address) {
+          const jsonModel = await this.get();
+          const totalLocked = BigNumber.from(jsonModel!.totalLocked)
+            .sub(BigNumber.from(value))
+            .toString();
+          await this.applyUpdateAndNotify({ totalLocked });
+        }
       }
     }
     if (to !== EMPTY_ADDRESS) {
@@ -202,6 +210,14 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
           .toString();
 
         await this.updateBalanceAndNotify(this.address, to, { balance });
+      }
+
+      if (to === this.address) {
+        const jsonModel = await this.get();
+        const totalLocked = BigNumber.from(jsonModel!.totalLocked)
+          .add(BigNumber.from(value))
+          .toString();
+        await this.applyUpdateAndNotify({ totalLocked });
       }
     }
     if (from === EMPTY_ADDRESS) {
