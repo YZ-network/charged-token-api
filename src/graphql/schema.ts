@@ -82,6 +82,7 @@ const schema = createSchema({
     ratioFeesToRewardHodlersPerThousand: String!
     currentRewardPerShare1e18: String!
     stakedLT: String!
+    totalLocked: String!
     totalTokenAllocated: String!
     withdrawFeesPerThousandForLT: String!
   }

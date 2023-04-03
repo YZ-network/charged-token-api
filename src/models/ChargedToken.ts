@@ -48,6 +48,7 @@ export interface IChargedToken
   ratioFeesToRewardHodlersPerThousand: string;
   currentRewardPerShare1e18: string;
   stakedLT: string;
+  totalLocked: string;
   totalTokenAllocated: string;
   withdrawFeesPerThousandForLT: string;
 }
@@ -87,6 +88,7 @@ const chargedTokenSchema = new mongoose.Schema<
   ratioFeesToRewardHodlersPerThousand: String,
   currentRewardPerShare1e18: String,
   stakedLT: String,
+  totalLocked: String,
   totalTokenAllocated: String,
   withdrawFeesPerThousandForLT: String,
   // maps

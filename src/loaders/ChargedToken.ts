@@ -104,6 +104,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         await ins.currentRewardPerShare1e18()
       ).toString(),
       stakedLT: (await ins.stakedLT()).toString(),
+      totalLocked: (await ins.balanceOf(this.address)).toString(),
       totalTokenAllocated: (await ins.totalTokenAllocated()).toString(),
       withdrawFeesPerThousandForLT: (
         await ins.withdrawFeesPerThousandForLT()
