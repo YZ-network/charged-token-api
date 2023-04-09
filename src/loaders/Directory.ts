@@ -239,25 +239,41 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     this.ct[contract].unsubscribeEvents();
     delete this.ct[contract];
-    await ChargedTokenModel.deleteOne({ address: contract });
+    await ChargedTokenModel.deleteOne({
+      chainId: this.chainId,
+      address: contract,
+    });
     balanceAddressList.push(contract);
 
     const iface = await InterfaceProjectTokenModel.findOne({
+      chainId: this.chainId,
       liquidityToken: contract,
     });
     if (iface !== null) {
       balanceAddressList.push(iface.address);
-      await InterfaceProjectTokenModel.deleteOne({ address: iface.address });
+      await InterfaceProjectTokenModel.deleteOne({
+        chainId: this.chainId,
+        address: iface.address,
+      });
       if (
         iface.projectToken !== EMPTY_ADDRESS &&
-        (await DelegableToLTModel.count({ address: iface.projectToken })) === 1
+        (await DelegableToLTModel.count({
+          chainId: this.chainId,
+          address: iface.projectToken,
+        })) === 1
       ) {
-        await DelegableToLTModel.deleteOne({ address: iface.projectToken });
+        await DelegableToLTModel.deleteOne({
+          chainId: this.chainId,
+          address: iface.projectToken,
+        });
         balanceAddressList.push(iface.projectToken);
       }
     }
 
-    await UserBalanceModel.deleteMany({ address: { $in: balanceAddressList } });
+    await UserBalanceModel.deleteMany({
+      chainId: this.chainId,
+      address: { $in: balanceAddressList },
+    });
 
     await this.applyUpdateAndNotify(update);
   }
