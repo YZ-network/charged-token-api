@@ -273,9 +273,10 @@ export abstract class AbstractLoader<T extends IContract> {
     this.lastState = this.model.toGraphQL(saved);
     this.lastUpdateBlock = this.actualBlock;
 
-    console.log(
+    console.warn(
       "notifying update for",
-      `${this.constructor.name}.${this.chainId}.${this.address} :`
+      `${this.constructor.name}.${this.chainId}.${this.address} :`,
+      this.lastState
     );
 
     pubSub.publish(

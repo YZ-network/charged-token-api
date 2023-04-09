@@ -229,10 +229,12 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     const update = {
       directory: jsonModel.directory.filter((address) => address !== contract),
-      projectRelatedToLT: {
-        ...jsonModel.projectRelatedToLT,
-        [contract]: undefined,
-      },
+      projectRelatedToLT: Object.assign(
+        {},
+        ...Object.entries(jsonModel.projectRelatedToLT)
+          .filter(([key]) => key !== contract)
+          .map(([key, value]) => ({ [key]: value }))
+      ),
     };
 
     const balanceAddressList: string[] = [];
