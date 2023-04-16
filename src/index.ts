@@ -24,22 +24,22 @@ const yoga = createYoga({
   },
   logging: {
     debug(...args) {
-      yogaLog.debug({ args: args });
+      yogaLog.trace({ yogaLevel: "debug", args });
     },
     info(...args) {
-      yogaLog.info({ args: args });
+      yogaLog.trace({ yogaLevel: "info", args });
     },
     warn(...args) {
-      yogaLog.warn({ args });
+      yogaLog.trace({ yogaLevel: "warn", args });
     },
     error(...args) {
-      yogaLog.error({ args });
+      yogaLog.trace({ yogaLevel: "error", args });
     },
   },
   plugins: [
     useLogger({
       logFn: (eventName, args) => {
-        yogaLog.debug({ eventName, args });
+        yogaLog.trace({ eventName, args });
       },
     }),
   ],
@@ -109,12 +109,26 @@ mongoose
       );
 
       const provider = new ethers.providers.WebSocketProvider(rpcs[i]);
+      provider.websocket.onerror = function (event) {
+        log.error({
+          msg: `Websocket establishment error : ${event.message}`,
+          event,
+        });
+      };
 
-      worker(provider, directories[i]).catch((err) => {
-        log.error({ msg: `Error occured during load : ${rpcs[i]}`, err });
-        mongoose.disconnect();
-        process.exit(1);
-      });
+      provider.ready
+        .then((network) => {
+          log.info({ msg: "Connected to network", network });
+
+          worker(provider, directories[i]).catch((err) => {
+            log.error({ msg: `Error occured during load : ${rpcs[i]}`, err });
+            mongoose.disconnect();
+            process.exit(1);
+          });
+        })
+        .catch((err) => {
+          log.error({ msg: `Failed starting worker on RPC ${rpcs[i]}`, err });
+        });
     }
 
     httpServer.listen(bindPort, bindAddress, () =>
