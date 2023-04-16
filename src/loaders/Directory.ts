@@ -66,7 +66,7 @@ export class Directory extends AbstractLoader<IDirectory> {
   }
 
   async load() {
-    console.log(this.chainId, "Reading directory @", this.address);
+    this.log.info("Reading entire directory");
 
     const ins = this.instance;
 
@@ -112,7 +112,7 @@ export class Directory extends AbstractLoader<IDirectory> {
   }
 
   async loadAllUserBalances(user: string, address?: string) {
-    console.log("Loading user balances for", user, "@", address);
+    this.log.info(`Loading user balances for ${user}@${address}`);
 
     const startDate = new Date().getTime();
 
@@ -142,7 +142,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     }).exec();
 
     if (saved !== null) {
-      console.log("Publishing updated user balances for", user);
+      this.log.debug(`Publishing updated user balances for ${user}`);
 
       pubSub.publish(
         `UserBalance.${this.chainId}.${user}`,
@@ -153,10 +153,8 @@ export class Directory extends AbstractLoader<IDirectory> {
     }
     const stopDate = new Date().getTime();
 
-    console.log(
-      "USER BALANCES LOADED IN",
-      (stopDate - startDate) / 1000,
-      "seconds"
+    this.log.debug(
+      `User balances loaded in ${(stopDate - startDate) / 1000} seconds`
     );
 
     return results;

@@ -1,8 +1,10 @@
 import { BigNumber, ethers, EventFilter } from "ethers";
 import mongoose, { FlattenMaps, HydratedDocument } from "mongoose";
+import { Logger } from "pino";
 import { pubSub } from "../graphql";
 import { IUserBalance, UserBalanceModel } from "../models";
 import { IContract, IEventHandler, IModel } from "../types";
+import { rootLogger } from "../util";
 
 interface ListenerRegistration {
   eventName: string;
@@ -22,6 +24,9 @@ export abstract class AbstractLoader<T extends IContract> {
   readonly address: string;
   protected readonly contract: any;
   protected readonly model: IModel<T>;
+  protected readonly log: Logger<{
+    name: string;
+  }>;
 
   protected readonly instance: ethers.Contract;
   protected readonly iface: ethers.utils.Interface;
@@ -53,6 +58,10 @@ export abstract class AbstractLoader<T extends IContract> {
 
     this.instance = new ethers.Contract(address, contract.abi, provider);
     this.iface = new ethers.utils.Interface(contract.abi);
+
+    this.log = rootLogger.child({
+      name: `(${chainId}) ${this.constructor.name}@${address}`,
+    });
   }
 
   async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
@@ -79,13 +88,7 @@ export abstract class AbstractLoader<T extends IContract> {
       this.lastState = this.model.toGraphQL(existing);
       await this.syncEvents(this.lastUpdateBlock + 1, this.actualBlock);
     } else {
-      console.log(
-        this.chainId,
-        "First time loading of",
-        this.constructor.name,
-        "@",
-        this.address
-      );
+      this.log.info("First time loading");
       const saved = await this.saveOrUpdate(await this.load());
       this.lastState = this.model.toGraphQL(saved);
       this.initBlock = this.actualBlock;
@@ -154,7 +157,10 @@ export abstract class AbstractLoader<T extends IContract> {
       user
     )) as HydratedDocument<IUserBalance>;
 
-    console.log("notifying updated balance :", newBalance.toJSON());
+    this.log.trace({
+      msg: "sending balance update :",
+      data: newBalance.toJSON(),
+    });
 
     pubSub.publish(
       `UserBalance.${this.chainId}.${user}`,
@@ -185,10 +191,8 @@ export abstract class AbstractLoader<T extends IContract> {
   }
 
   notifyUpdate(): void {
-    console.log(
-      "notifying update 2 for",
-      `${this.constructor.name}.${this.chainId}.${this.address}`
-    );
+    this.log.trace({ msg: "sending contract update", data: this.lastState });
+
     pubSub.publish(
       `${this.constructor.name}.${this.chainId}.${this.address}`,
       this.lastState
@@ -205,15 +209,11 @@ export abstract class AbstractLoader<T extends IContract> {
 
     if (missedLogs === undefined) {
       try {
+        this.log.info("Loading missed events");
+
         const eventFilter: EventFilter = {
           address: this.address,
         };
-        console.log(
-          "Loading missed events for",
-          this.constructor.name,
-          "@",
-          this.address
-        );
 
         missedEvents = await this.instance.queryFilter(eventFilter, fromBlock);
 
@@ -222,23 +222,20 @@ export abstract class AbstractLoader<T extends IContract> {
           const args = this.filterArgs(event.args);
 
           if (name === undefined) {
-            console.log(
-              "found undefined event :",
+            this.log.warn({
+              msg: "found unnamed event :",
               event,
-              typeof event,
-              event.constructor?.name
-            );
+            });
           } else {
+            this.log.debug("delegating event processing");
             await this.onEvent(name, args);
           }
         }
-      } catch (e) {
-        console.error(
-          "Error retrieving events from block",
-          fromBlock,
-          "to",
-          await this.provider.getBlockNumber()
-        );
+      } catch (err) {
+        this.log.error({
+          msg: `Error retrieving events from block ${fromBlock}`,
+          err,
+        });
       }
     } else {
       for (const log of missedLogs) {
@@ -273,11 +270,7 @@ export abstract class AbstractLoader<T extends IContract> {
     this.lastState = this.model.toGraphQL(saved);
     this.lastUpdateBlock = this.actualBlock;
 
-    console.warn(
-      "notifying update for",
-      `${this.constructor.name}.${this.chainId}.${this.address} :`,
-      this.lastState
-    );
+    this.log.trace({ msg: "sending update to channel", data: this.lastState });
 
     pubSub.publish(
       `${this.constructor.name}.${this.chainId}.${this.address}`,
@@ -298,39 +291,27 @@ export abstract class AbstractLoader<T extends IContract> {
           eventName,
           listener: (log: ethers.providers.Log) => {
             if (log.blockNumber <= this.initBlock) {
-              console.warn("Skipping event from init block");
+              this.log.warn({
+                msg: "Skipping event from init block",
+                event: log,
+              });
               return;
             }
             const decodedLog = this.iface.parseLog(log);
             const args = [...decodedLog.args.values()];
-            console.log(
-              "Calling event handler",
-              eventName,
-              "on",
-              this.constructor.name,
-              "@",
-              this.address,
-              "with",
-              ...args.map((arg) =>
+            this.log.info({
+              msg: `Calling event handler ${eventName}`,
+              args: args.map((arg) =>
                 arg instanceof BigNumber ? arg.toString() : arg
-              )
-            );
+              ),
+            });
             this.onEvent(eventName, args);
           },
         };
       });
 
     eventHandlers.forEach(({ eventName, listener }) => {
-      /*
-      console.log(
-        "Subscribing to",
-        eventName,
-        "on",
-        this.constructor.name,
-        "@",
-        this.address
-      );
-      */
+      this.log.debug(`Subscribing to ${eventName}`);
       this.provider.on(this.instance.filters[eventName](), listener);
       this.registeredListeners.push({ eventName, listener });
     });
@@ -338,14 +319,7 @@ export abstract class AbstractLoader<T extends IContract> {
 
   unsubscribeEvents() {
     this.registeredListeners.forEach(({ eventName, listener }) => {
-      console.log(
-        "Unsubscribing from",
-        eventName,
-        "on",
-        this.constructor.name,
-        "@",
-        this.address
-      );
+      this.log.debug(`Unsubscribing from ${eventName}`);
       this.provider.off(eventName, listener);
     });
     this.registeredListeners.splice(0);

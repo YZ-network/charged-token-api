@@ -7,7 +7,10 @@ import {
   UserBalanceModel,
 } from "../models";
 import { IModel } from "../types";
+import { rootLogger } from "../util";
 import pubSub from "./pubsub";
+
+const log = rootLogger.child({ name: "resolvers" });
 
 const DirectoryQueryResolver = async (
   _: any,
@@ -30,7 +33,7 @@ const UserBalanceQueryResolver = async (
     address,
   }: { chainId: number; user: string; address?: string }
 ) => {
-  console.log("checking existing balances for", chainId, user, address);
+  log.debug(`checking existing balances for ${chainId} ${user} on ${address}`);
 
   if (address !== undefined) {
     if ((await UserBalanceModel.exists({ chainId, user, address })) !== null) {
@@ -46,18 +49,18 @@ const UserBalanceQueryResolver = async (
     const balancesCount = await UserBalanceModel.count({ chainId, user });
 
     if (contractsCount === balancesCount) {
-      console.log("returning cached balances for", user, chainId);
+      log.debug(`returning cached balances for ${chainId} ${user}`);
       return (await UserBalanceModel.find({ chainId, user })).map((balance) =>
         UserBalanceModel.toGraphQL(balance)
       );
     }
   }
 
-  console.log("Notifying worker to load balances for", user);
+  log.debug(`Notifying worker to load balances for ${user}`);
   pubSub.publish(`UserBalance.${chainId}/load`, user);
   const sub = pubSub.subscribe(`UserBalance.${chainId}.${user}`);
   const nextValue = (await sub.next()).value;
-  console.log("Received new value :", nextValue);
+  log.debug({ msg: "Received new value", data: nextValue });
   const resultsList = JSON.parse(nextValue);
   sub.return();
 
@@ -75,23 +78,26 @@ const UserBalanceSubscriptionResolver = {
     _: any,
     { chainId, user }: { chainId: number; user: string }
   ) => {
-    console.log("subscribing to balances for", user);
+    log.info(`subscribing to balances for : ${user}`);
     const sub = pubSub.subscribe(`UserBalance.${chainId}.${user}`);
 
     return new Repeater(async (push, stop) => {
       stop.then((err) => {
         sub.return();
-        console.error("stopped by", err);
+        log.warn(`user balances subscription stopped by ${err}`);
       });
 
       try {
         for await (const value of sub) {
-          console.log("sending balances to subscription", value);
+          log.debug({ msg: "sending balances to subscription", data: value });
           await push(JSON.parse(value));
         }
-        console.log("subscription ended");
+        log.info("user balances subscription ended");
       } catch (err) {
-        console.error("stopped with error", err);
+        log.error({
+          msg: "user balances subscription stopped with error",
+          err,
+        });
         stop("sub closed");
       }
     });
@@ -122,23 +128,30 @@ class ResolverFactory {
   static subscribeByName(modelName: string) {
     return {
       subscribe: async (_: any, { chainId }: { chainId: number }) => {
-        console.log("subscribe to", modelName, chainId);
-        const sub = pubSub.subscribe(`${modelName}.${chainId}`);
+        const channelName = `${modelName}.${chainId}`;
+
+        log.info(`subscribing to ${channelName}`);
+        const sub = pubSub.subscribe(channelName);
 
         return new Repeater(async (push, stop) => {
           stop.then((err) => {
             sub.return();
-            console.error("stopped by", err);
+            log.error({
+              msg: `subscription to ${channelName} stopped by error`,
+              err,
+            });
           });
 
           try {
             for await (const value of sub) {
-              console.log("sending to subscription");
               await push(value);
             }
-            console.log("subscription ended");
+            log.info(`subscription to ${channelName} ended`);
           } catch (err) {
-            console.error("stopped with error", err);
+            log.error({
+              msg: `subscription to ${channelName} stopped with error`,
+              err,
+            });
             stop("sub closed");
           }
         });
@@ -153,24 +166,31 @@ class ResolverFactory {
         _: any,
         { chainId, address }: { chainId: number; address: string }
       ) => {
-        console.log("subscribe to", modelName, chainId, address);
+        const channelName = `${modelName}.${chainId}.${address}`;
 
-        const sub = pubSub.subscribe(`${modelName}.${chainId}.${address}`);
+        log.info(`subscribing to ${channelName}`);
+
+        const sub = pubSub.subscribe(channelName);
 
         return new Repeater(async (push, stop) => {
           stop.then((err) => {
             sub.return();
-            console.error("stopped by", err);
+            log.error({
+              msg: `subscription to ${channelName} stopped with error`,
+              err,
+            });
           });
 
           try {
             for await (const value of sub) {
-              console.log("sending to subscription");
               await push(value);
             }
-            console.log("subscription ended");
+            log.info(`subscription to ${channelName} ended`);
           } catch (err) {
-            console.error("stopped with error", err);
+            log.error({
+              msg: `"subscription to ${channelName} stopped with error`,
+              err,
+            });
             stop("sub closed");
           }
         });

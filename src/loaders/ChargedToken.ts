@@ -53,7 +53,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   }
 
   async load() {
-    console.log(this.chainId, "Reading charged token @", this.address);
+    this.log.info("Reading entire charged token");
 
     const ins = this.instance;
 
@@ -124,7 +124,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   }
 
   async loadUserBalances(user: string): Promise<IUserBalance> {
-    console.log("Loading CT balances for", user, this.address);
+    this.log.debug(`Loading CT balance for ${user}`);
 
     const balance = (await this.instance.balanceOf(user)).toString();
     const fullyChargedBalance = (
@@ -133,17 +133,6 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     const partiallyChargedBalance = (
       await this.instance.getUserPartiallyChargedBalanceLiquiToken(user)
     ).toString();
-
-    console.log(
-      "Loaded balances for user",
-      user,
-      "@ CT",
-      this.address,
-      ":",
-      balance,
-      fullyChargedBalance,
-      partiallyChargedBalance
-    );
 
     return {
       chainId: this.chainId,

@@ -1,11 +1,17 @@
 import { ethers } from "ethers";
 import { useServer } from "graphql-ws/lib/use/ws";
-import { createYoga } from "graphql-yoga";
+import { createYoga, useLogger } from "graphql-yoga";
 import { createServer } from "http";
 import mongoose from "mongoose";
 import { WebSocketServer } from "ws";
 import { schema } from "./graphql";
+import { rootLogger } from "./util";
 import { worker } from "./worker";
+
+const log = rootLogger.child({ name: "index" });
+const yogaLog = log.child({ name: "yoga" });
+
+log.debug("Configuring Yoga GraphQL API");
 
 const yoga = createYoga({
   schema,
@@ -16,7 +22,31 @@ const yoga = createYoga({
     origin: process.env.CORS_ORIGINS,
     methods: ["POST", "OPTIONS"],
   },
+  logging: {
+    debug(...args) {
+      yogaLog.debug({ args: args });
+    },
+    info(...args) {
+      yogaLog.info({ args: args });
+    },
+    warn(...args) {
+      yogaLog.warn({ args });
+    },
+    error(...args) {
+      yogaLog.error({ args });
+    },
+  },
+  plugins: [
+    useLogger({
+      logFn: (eventName, args) => {
+        yogaLog.debug({ eventName, args });
+      },
+    }),
+  ],
 });
+
+log.debug("Configuring HTTP & WS servers");
+
 const httpServer = createServer(yoga);
 const wsServer = new WebSocketServer({
   server: httpServer,
@@ -25,6 +55,8 @@ const wsServer = new WebSocketServer({
 
 const bindAddress = process.env.BIND_ADDRESS || "localhost";
 const bindPort = process.env.BIND_PORT ? Number(process.env.BIND_PORT) : 4000;
+
+log.debug("Integrating everything");
 
 // Integrate Yoga's Envelop instance and NodeJS server with graphql-ws
 useServer(
@@ -60,27 +92,35 @@ useServer(
   wsServer
 );
 
+log.info("Connecting to MongoDB");
+
 mongoose.set("strictQuery", true);
 mongoose
   .connect(`mongodb://${process.env.MONGODB_HOST}:27017/test`)
   .then(() => {
+    log.debug("MongoDB connected !");
+
     const rpcs = process.env.JSON_RPC_URL!.split(",");
     const directories = process.env.DIRECTORY_ADDRESS!.split(",");
 
     for (let i = 0; i < rpcs.length; i++) {
+      log.info(
+        `Creating provider and starting worker for network : ${rpcs[i]} and directory ${directories[i]}`
+      );
+
       const provider = new ethers.providers.WebSocketProvider(rpcs[i]);
 
       worker(provider, directories[i]).catch((err) => {
-        console.error("Error occured during load :", rpcs[i], err);
+        log.error({ msg: `Error occured during load : ${rpcs[i]}`, err });
         mongoose.disconnect();
         process.exit(1);
       });
     }
 
     httpServer.listen(bindPort, bindAddress, () =>
-      console.log(
-        `Running a GraphQL API server at http://${bindAddress}:${bindPort}/`
+      log.info(
+        `GraphQL API server started at http://${bindAddress}:${bindPort}/`
       )
     );
   })
-  .catch((err) => console.error("Error connecting to database :", err));
+  .catch((err) => log.error({ msg: "Error connecting to database :", err }));

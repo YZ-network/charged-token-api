@@ -1,12 +1,19 @@
 import { ethers } from "ethers";
 import { Directory } from "../loaders";
+import { rootLogger } from "../util";
+
+const log = rootLogger.child({ name: "subscribeToNewBlocks" });
 
 export function subscribeToNewBlocks(
   provider: ethers.providers.JsonRpcProvider,
   directory: Directory
 ): void {
+  log.info("Subscribing to new blocks notifications");
+
   provider.on("block", async (newBlockNumber) => {
     if (newBlockNumber >= directory.lastUpdateBlock) {
+      log.debug(`got new block : ${newBlockNumber}`);
+
       const addresses: string[] = [];
 
       await directory.applyFunc(async (loader) => {
@@ -31,7 +38,7 @@ export function subscribeToNewBlocks(
         }
 
         if (eventsCount > 0) {
-          console.log("Events found :", eventsCount);
+          log.info(`Found ${eventsCount} events for block ${newBlockNumber}`);
         }
 
         await directory.applyFunc((loader) =>
@@ -41,16 +48,16 @@ export function subscribeToNewBlocks(
             missedEventsMap[loader.address]
           )
         );
-      } catch (e) {
-        console.error(
-          "Couldn't retrieve logs from block",
-          directory.lastUpdateBlock + 1,
-          "to",
-          newBlockNumber
-        );
+      } catch (err) {
+        log.error({
+          msg: `Couldn't retrieve logs between block ${
+            directory.lastUpdateBlock + 1
+          } and ${newBlockNumber}`,
+          err,
+        });
       }
     } else {
-      console.log("skipping past block :", newBlockNumber);
+      log.warn(`skipping past block : ${newBlockNumber}`);
     }
   });
 }

@@ -56,11 +56,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   }
 
   async load() {
-    console.log(
-      this.chainId,
-      "Reading interface project token @",
-      this.address
-    );
+    this.log.info("Reading entire interface project token");
 
     const ins = this.instance;
 
@@ -87,7 +83,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   }
 
   async loadUserBalancePT(user: string): Promise<string> {
-    console.log("Loading user PT balance for", user);
+    this.log.debug(`Loading user PT balance from interface for ${user}`);
 
     return this.projectToken === undefined
       ? "0"

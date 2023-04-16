@@ -34,7 +34,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   }
 
   async load() {
-    console.log(this.chainId, "Reading project token @", this.address);
+    this.log.info("Reading entire project token");
 
     const ins = this.instance;
 
@@ -73,6 +73,8 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   }
 
   async loadUserBalance(user: string) {
+    this.log.debug(`Loading PT balance for ${user}`);
+
     return (await this.instance.balanceOf(user)).toString();
   }
 
