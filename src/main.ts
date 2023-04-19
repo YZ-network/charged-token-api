@@ -199,7 +199,13 @@ export class Main {
 
     Main.workers.push(chain);
 
-    chain.provider = new ethers.providers.WebSocketProvider(rpc);
+    Main.createProvider(chain);
+    Main.createWorker(chain);
+  }
+
+  private static createProvider(chain: Chain) {
+    chain.provider = new ethers.providers.WebSocketProvider(chain.rpc);
+
     chain.provider.websocket.onerror = function (event) {
       Main.log.error({
         msg: `Websocket failure : ${event.message}`,
@@ -208,23 +214,32 @@ export class Main {
       chain.providerStatus = ProviderStatus.DISCONNECTED;
     };
 
-    chain.worker = chain.provider.ready
-      .then((network) => {
-        Main.log.info({ msg: "Connected to network", network });
+    chain.provider.ready.then((network) => {
+      Main.log.info({ msg: "Connected to network", network });
 
-        chain.chainId = network.chainId;
-        chain.name = network.name;
-        chain.providerStatus = ProviderStatus.CONNECTED;
+      chain.chainId = network.chainId;
+      chain.name = network.name;
+      chain.providerStatus = ProviderStatus.CONNECTED;
+
+      return network;
+    });
+  }
+
+  private static createWorker(chain: Chain) {
+    chain.worker = chain
+      .provider!.ready.then(() => {
         chain.workerStatus = WorkerStatus.STARTED;
 
-        return worker(chain.provider!, directory)
+        return worker(chain.provider!, chain.directory)
           .then(() => {
-            Main.log.info(`Worker stopped itself on network ${network}`);
+            Main.log.info(
+              `Worker stopped itself on network ${chain.name} ${chain.chainId}`
+            );
             chain.workerStatus = WorkerStatus.CRASHED;
           })
           .catch((err: any) => {
             Main.log.error({
-              msg: `Worker crashed on : ${rpc}, ${network}`,
+              msg: `Worker crashed on : ${chain.rpc}, ${chain.name} ${chain.chainId}`,
               err,
             });
             chain.workerStatus = WorkerStatus.CRASHED;
@@ -232,7 +247,7 @@ export class Main {
       })
       .catch((err) => {
         Main.log.error({
-          msg: `Error connecting to rpc ${rpc}`,
+          msg: `Error connecting to rpc ${chain.rpc}`,
           err,
         });
         chain.providerStatus = ProviderStatus.DISCONNECTED;
