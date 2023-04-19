@@ -13,13 +13,12 @@ import pubSub from "./pubsub";
 
 const log = rootLogger.child({ name: "resolvers" });
 
-const HealthQueryResolver = async (...args: any[]) => {
-  log.info({ msg: "Got health check !", args });
-  return [];
+const HealthQueryResolver = () => {
+  return Main.health();
 };
 
 const HealthSubscriptionResolver = {
-  subscribe: async (_: any, { pollingMs }: { pollingMs: number }) => {
+  subscribe: (_: any, { pollingMs }: { pollingMs: number }) => {
     log.info({
       msg: "subscribing to health checks",
     });
@@ -28,6 +27,8 @@ const HealthSubscriptionResolver = {
       stop.then((err) => {
         log.warn(`pushing health check stopped by ${err}`);
       });
+
+      push(Main.health());
 
       setInterval(() => {
         log.debug({ msg: "pushing health status" });
