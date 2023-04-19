@@ -33,6 +33,7 @@ interface Chain {
   providerStatus: ProviderStatus;
   workerStatus: WorkerStatus;
   wsStatus: string;
+  wsWatch?: NodeJS.Timer;
 }
 
 interface ChainHealth {
@@ -243,7 +244,7 @@ export class Main {
         chain.wsStatus = WsStatus[chain.provider!.websocket.readyState];
       });
 
-    setInterval(() => {
+    chain.wsWatch = setInterval(() => {
       chain.wsStatus = WsStatus[chain.provider!.websocket.readyState];
 
       if (
