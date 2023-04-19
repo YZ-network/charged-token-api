@@ -127,6 +127,16 @@ const schema = createSchema({
     valueProjectTokenToFullRecharge: String!
   }
 
+  type IWorkerHealth {
+    index: Int!
+    rpc: String!
+    directory: String!
+    name: String
+    chainId: Int
+    providerStatus: String!
+    workerStatus: String!
+  }
+
   type Query {
     Directory(chainId: Int!): IDirectory
     allChargedTokens(chainId: Int!): [IChargedToken!]!
@@ -137,6 +147,7 @@ const schema = createSchema({
     DelegableToLT(chainId: Int!, address: String!): IDelegableToLT!
     UserBalance(chainId: Int!, user: String!, address: String!): IUserBalancesEntry
     userBalances(chainId: Int!, user: String!): [IUserBalancesEntry!]!
+    health: [IWorkerHealth!]!
   }
 
   type Subscription {
@@ -145,6 +156,7 @@ const schema = createSchema({
     InterfaceProjectToken(chainId: Int!, address: String!): IInterfaceProjectToken!
     DelegableToLT(chainId: Int!, address: String!): IDelegableToLT!
     userBalances(chainId: Int!, user: String!): [IUserBalancesEntry!]!
+    health(pollingMs: Int!): [IWorkerHealth!]!
   }
 `,
   resolvers,

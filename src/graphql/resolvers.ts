@@ -1,4 +1,5 @@
 import { Repeater } from "graphql-yoga";
+import { Main } from "../main";
 import {
   ChargedTokenModel,
   DelegableToLTModel,
@@ -11,6 +12,31 @@ import { rootLogger } from "../util";
 import pubSub from "./pubsub";
 
 const log = rootLogger.child({ name: "resolvers" });
+
+const HealthQueryResolver = async (...args: any[]) => {
+  log.info({ msg: "Got health check !", args });
+  return [];
+};
+
+const HealthSubscriptionResolver = {
+  subscribe: async (_: any, { pollingMs }: { pollingMs: number }) => {
+    log.info({
+      msg: "subscribing to health checks",
+    });
+
+    return new Repeater(async (push, stop) => {
+      stop.then((err) => {
+        log.warn(`pushing health check stopped by ${err}`);
+      });
+
+      setInterval(() => {
+        log.debug({ msg: "pushing health status" });
+        push(Main.health());
+      }, pollingMs);
+    });
+  },
+  resolve: (payload: any) => payload,
+};
 
 const DirectoryQueryResolver = async (
   _: any,
@@ -58,19 +84,8 @@ const UserBalanceQueryResolver = async (
 
   log.debug(`Notifying worker to load balances for ${user}`);
   pubSub.publish(`UserBalance.${chainId}/load`, user);
-  const sub = pubSub.subscribe(`UserBalance.${chainId}.${user}`);
-  const nextValue = (await sub.next()).value;
-  log.debug({ msg: "Received new value", data: nextValue });
-  const resultsList = JSON.parse(nextValue);
-  sub.return();
 
-  if (address !== undefined) {
-    return resultsList.find(
-      (balanceResult: any) => balanceResult.address === address
-    );
-  }
-
-  return resultsList;
+  return [];
 };
 
 const UserBalanceSubscriptionResolver = {
@@ -215,6 +230,7 @@ const resolvers = {
     DelegableToLT: ResolverFactory.findByAddress(DelegableToLTModel),
     UserBalance: UserBalanceQueryResolver,
     userBalances: UserBalanceQueryResolver,
+    health: HealthQueryResolver,
   },
   Subscription: {
     Directory: ResolverFactory.subscribeByName("Directory"),
@@ -224,6 +240,7 @@ const resolvers = {
     ),
     DelegableToLT: ResolverFactory.subscribeByNameAndAddress("DelegableToLT"),
     userBalances: UserBalanceSubscriptionResolver,
+    health: HealthSubscriptionResolver,
   },
 };
 
