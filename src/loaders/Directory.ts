@@ -142,7 +142,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     }).exec();
 
     if (saved !== null) {
-      this.log.debug(`Publishing updated user balances for ${user}`);
+      this.log.info(`Publishing updated user balances for ${user}`);
 
       pubSub.publish(
         `UserBalance.${this.chainId}.${user}`,

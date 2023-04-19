@@ -311,7 +311,7 @@ export abstract class AbstractLoader<T extends IContract> {
       });
 
     eventHandlers.forEach(({ eventName, listener }) => {
-      this.log.debug(`Subscribing to ${eventName}`);
+      this.log.info(`Subscribing to ${eventName}`);
       this.provider.on(this.instance.filters[eventName](), listener);
       this.registeredListeners.push({ eventName, listener });
     });
@@ -319,7 +319,7 @@ export abstract class AbstractLoader<T extends IContract> {
 
   unsubscribeEvents() {
     this.registeredListeners.forEach(({ eventName, listener }) => {
-      this.log.debug(`Unsubscribing from ${eventName}`);
+      this.log.info(`Unsubscribing from ${eventName}`);
       this.provider.off(eventName, listener);
     });
     this.registeredListeners.splice(0);

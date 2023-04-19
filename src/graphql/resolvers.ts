@@ -83,7 +83,7 @@ const UserBalanceQueryResolver = async (
     }
   }
 
-  log.debug(`Notifying worker to load balances for ${user}`);
+  log.info(`Notifying worker to load balances for ${user}`);
   pubSub.publish(`UserBalance.${chainId}/load`, user);
 
   return [];

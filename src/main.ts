@@ -104,7 +104,7 @@ export class Main {
   static start() {
     return Main.connectDB()
       .then(() => {
-        Main.log.debug("MongoDB connected !");
+        Main.log.info("MongoDB connected !");
 
         for (let i = 0; i < Main.rpcs.length; i++) {
           Main.connectChain(i, Main.rpcs[i], Main.directories[i]);
