@@ -11,12 +11,14 @@ export enum ProviderStatus {
   CONNECTING = "CONNECTING",
   CONNECTED = "CONNECTED",
   DISCONNECTED = "DISCONNECTED",
+  DEAD = "DEAD",
 }
 
 export enum WorkerStatus {
   WAITING = "WAITING",
   STARTED = "STARTED",
   CRASHED = "CRASHED",
+  DEAD = "DEAD",
 }
 
 const WsStatus = ["CONNECTING", "OPEN", "CLOSING", "CLOSED"];
@@ -54,6 +56,10 @@ export class ChainWorker {
     this.rpc = rpc;
     this.directoryAddress = directoryAddress;
 
+    this.start();
+  }
+
+  start() {
     this.createProvider();
     this.createWorker();
   }
@@ -76,15 +82,16 @@ export class ChainWorker {
     this.wsStatus = WsStatus[this.provider!.websocket.readyState];
 
     const originalHandler = this.provider.websocket.onerror;
-    const self = this;
-    this.provider.websocket.onerror = function (event) {
+    this.provider.websocket.onerror = (event) => {
       log.error({
         msg: `Websocket failure : ${event.message}`,
         event,
       });
-      self.providerStatus = ProviderStatus.DISCONNECTED;
+      this.providerStatus = ProviderStatus.DISCONNECTED;
 
       if (originalHandler) originalHandler(event);
+
+      this.stop();
     };
 
     this.provider.ready
@@ -104,6 +111,7 @@ export class ChainWorker {
         });
         this.providerStatus = ProviderStatus.DISCONNECTED;
         this.wsStatus = WsStatus[this.provider!.websocket.readyState];
+        this.stop();
       });
 
     this.wsWatch = setInterval(() => {
@@ -117,6 +125,7 @@ export class ChainWorker {
       ) {
         log.info(`Websocket crashed : ${this.name} ${this.chainId}`);
         this.providerStatus = ProviderStatus.DISCONNECTED;
+        this.stop();
       }
 
       if (
@@ -147,6 +156,7 @@ export class ChainWorker {
             `Worker stopped itself on network ${this.name} ${this.chainId}`
           );
           this.workerStatus = WorkerStatus.CRASHED;
+          this.stop();
         })
         .catch((err: any) => {
           log.error({
@@ -154,6 +164,7 @@ export class ChainWorker {
             err,
           });
           this.workerStatus = WorkerStatus.CRASHED;
+          this.stop();
         });
     }).catch((err) => {
       log.error({
@@ -161,10 +172,11 @@ export class ChainWorker {
         err,
       });
       this.providerStatus = ProviderStatus.DISCONNECTED;
+      this.stop();
     });
   }
 
-  async run() {
+  private async run() {
     log.info(`Starting worker on chain ${this.name} chainId=${this.chainId}`);
 
     try {
@@ -186,5 +198,18 @@ export class ChainWorker {
       });
     }
     log.info(`Worker stopped on chain ${this.name} ${this.chainId}`);
+  }
+
+  private async stop() {
+    this.provider?.removeAllListeners();
+    this.worker = undefined;
+    await this.provider?.destroy();
+    this.provider = undefined;
+    if (this.wsWatch !== undefined) {
+      clearInterval(this.wsWatch);
+      this.wsWatch = undefined;
+    }
+    this.providerStatus = ProviderStatus.DEAD;
+    this.workerStatus = WorkerStatus.DEAD;
   }
 }

@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 import { WebSocketServer } from "ws";
 import { schema } from "./graphql";
 import { rootLogger } from "./util";
-import { ChainHealth, ChainWorker } from "./worker";
+import { ChainHealth, ChainWorker, WorkerStatus } from "./worker";
 
 export class Main {
   private static readonly log = rootLogger.child({ name: "Main" });
@@ -15,6 +15,7 @@ export class Main {
   private static directories = process.env.DIRECTORY_ADDRESS!.split(",");
 
   private static readonly workers: ChainWorker[] = [];
+  private static keepAlive: NodeJS.Timer | undefined;
 
   private static readonly yoga = createYoga({
     schema,
@@ -108,6 +109,17 @@ export class Main {
         for (let i = 0; i < Main.rpcs.length; i++) {
           Main.connectChain(i, Main.rpcs[i], Main.directories[i]);
         }
+
+        this.keepAlive = setInterval(() => {
+          for (const worker of Main.workers) {
+            if (worker.workerStatus === WorkerStatus.DEAD) {
+              Main.log.info(
+                `Restarting worker on rpc ${worker.rpc} and chain ${worker.name} ${worker.chainId}`
+              );
+              worker.start();
+            }
+          }
+        }, 30000);
 
         Main.httpServer.listen(Main.bindPort, Main.bindAddress, () =>
           Main.log.info(
