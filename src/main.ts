@@ -3,7 +3,7 @@ import { useServer } from "graphql-ws/lib/use/ws";
 import { createYoga, useLogger } from "graphql-yoga";
 import { createServer } from "http";
 import mongoose from "mongoose";
-import { WebSocketServer } from "ws";
+import { WebSocket, WebSocketServer } from "ws";
 import { schema } from "./graphql";
 import { rootLogger } from "./util";
 import { worker } from "./worker";
@@ -20,6 +20,8 @@ enum WorkerStatus {
   CRASHED = "CRASHED",
 }
 
+const WsStatus = ["CONNECTING", "OPEN", "CLOSING", "CLOSED"];
+
 interface Chain {
   index: number;
   rpc: string;
@@ -30,6 +32,7 @@ interface Chain {
   worker?: Promise<void>;
   providerStatus: ProviderStatus;
   workerStatus: WorkerStatus;
+  wsStatus: string;
 }
 
 interface ChainHealth {
@@ -167,6 +170,7 @@ export class Main {
         chainId,
         providerStatus,
         workerStatus,
+        wsStatus,
       }) => ({
         index,
         rpc,
@@ -175,6 +179,7 @@ export class Main {
         chainId,
         providerStatus,
         workerStatus,
+        wsStatus,
       })
     );
   }
@@ -195,6 +200,7 @@ export class Main {
       directory,
       providerStatus: ProviderStatus.CONNECTING,
       workerStatus: WorkerStatus.WAITING,
+      wsStatus: "WAITING",
     };
 
     Main.workers.push(chain);
@@ -205,24 +211,67 @@ export class Main {
 
   private static createProvider(chain: Chain) {
     chain.provider = new ethers.providers.WebSocketProvider(chain.rpc);
+    chain.wsStatus = WsStatus[chain.provider!.websocket.readyState];
 
+    const originalHandler = chain.provider.websocket.onerror;
     chain.provider.websocket.onerror = function (event) {
       Main.log.error({
         msg: `Websocket failure : ${event.message}`,
         event,
       });
       chain.providerStatus = ProviderStatus.DISCONNECTED;
+
+      if (originalHandler) originalHandler(event);
     };
 
-    chain.provider.ready.then((network) => {
-      Main.log.info({ msg: "Connected to network", network });
+    chain.provider.ready
+      .then((network) => {
+        Main.log.info({ msg: "Connected to network", network });
 
-      chain.chainId = network.chainId;
-      chain.name = network.name;
-      chain.providerStatus = ProviderStatus.CONNECTED;
+        chain.chainId = network.chainId;
+        chain.name = network.name;
+        chain.providerStatus = ProviderStatus.CONNECTED;
 
-      return network;
-    });
+        return network;
+      })
+      .catch((err) => {
+        Main.log.error({
+          msg: `Error connecting to network ${chain.rpc}`,
+          err,
+        });
+        chain.providerStatus = ProviderStatus.DISCONNECTED;
+        chain.wsStatus = WsStatus[chain.provider!.websocket.readyState];
+      });
+
+    setInterval(() => {
+      chain.wsStatus = WsStatus[chain.provider!.websocket.readyState];
+
+      if (
+        chain.providerStatus !== ProviderStatus.DISCONNECTED &&
+        ([WebSocket.CLOSING, WebSocket.CLOSED] as number[]).includes(
+          chain.provider!.websocket.readyState
+        )
+      ) {
+        Main.log.info(`Websocket crashed : ${chain.name} ${chain.chainId}`);
+        chain.providerStatus = ProviderStatus.DISCONNECTED;
+      }
+
+      if (
+        chain.providerStatus !== ProviderStatus.CONNECTING &&
+        chain.provider!.websocket.readyState === WebSocket.CONNECTING
+      ) {
+        Main.log.info(`Websocket connecting : ${chain.name} ${chain.chainId}`);
+        chain.providerStatus = ProviderStatus.CONNECTING;
+      }
+
+      if (
+        chain.providerStatus !== ProviderStatus.CONNECTED &&
+        chain.provider!.websocket.readyState === WebSocket.OPEN
+      ) {
+        Main.log.info(`Websocket connected : ${chain.name} ${chain.chainId}`);
+        chain.providerStatus = ProviderStatus.CONNECTED;
+      }
+    }, 1000);
   }
 
   private static createWorker(chain: Chain) {
