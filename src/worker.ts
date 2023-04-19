@@ -88,6 +88,7 @@ export class ChainWorker {
         event,
       });
       this.providerStatus = ProviderStatus.DISCONNECTED;
+      this.wsStatus = WsStatus[WebSocket.CLOSED];
 
       if (originalHandler) originalHandler(event);
 
