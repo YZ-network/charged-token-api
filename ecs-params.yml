@@ -16,6 +16,8 @@ task_definition:
           name: JSON_RPC_URL
         - value_from: DIRECTORY_ADDRESS
           name: DIRECTORY_ADDRESS
+        - value_from: LOG_LEVEL
+          name: LOG_LEVEL
 
     db:
       essential: true
