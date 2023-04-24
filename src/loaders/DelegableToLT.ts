@@ -79,6 +79,15 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   }
 
   async onTransferEvent([from, to, value]: any[]): Promise<void> {
+    if ((value as BigNumber).isZero()) {
+      this.log.warn("Skipping transfer event processing since value is zero");
+      return;
+    } else {
+      this.log.info(
+        `received transfer event with value : ${value} ${typeof value}`
+      );
+    }
+
     if (from !== EMPTY_ADDRESS) {
       // p2p transfers are not covered by other events
       const oldBalance = await this.getBalance(this.ct.address, from);

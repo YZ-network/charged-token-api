@@ -173,40 +173,55 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   }
 
   async onTransferEvent([from, to, value]: any[]): Promise<void> {
+    if ((value as BigNumber).isZero()) {
+      this.log.warn("Skipping transfer event processing since value is zero");
+      return;
+    } else {
+      this.log.info(
+        `received transfer event with value : ${value} ${typeof value}`
+      );
+    }
+
     if (from !== EMPTY_ADDRESS) {
-      const balanceFrom = await this.getBalance(this.address, from);
-      if (balanceFrom !== null) {
-        const balance = BigNumber.from(balanceFrom.balance)
+      if (from === this.address) {
+        const jsonModel = await this.get();
+        const totalLocked = BigNumber.from(jsonModel!.totalLocked)
           .sub(BigNumber.from(value))
           .toString();
-        await this.updateBalanceAndNotify(this.address, from, { balance });
-
-        if (from === this.address) {
-          const jsonModel = await this.get();
-          const totalLocked = BigNumber.from(jsonModel!.totalLocked)
+        this.log.info(
+          `Updating totalLocked after withdraw to ${totalLocked.toString()}`
+        );
+        await this.applyUpdateAndNotify({ totalLocked });
+      } else {
+        const balanceFrom = await this.getBalance(this.address, from);
+        if (balanceFrom !== null) {
+          const balance = BigNumber.from(balanceFrom.balance)
             .sub(BigNumber.from(value))
             .toString();
-          await this.applyUpdateAndNotify({ totalLocked });
+          await this.updateBalanceAndNotify(this.address, from, { balance });
         }
       }
     }
     if (to !== EMPTY_ADDRESS) {
-      const balanceTo = await this.getBalance(this.address, to);
-
-      if (balanceTo !== null) {
-        const balance = BigNumber.from(balanceTo.balance)
-          .add(BigNumber.from(value))
-          .toString();
-
-        await this.updateBalanceAndNotify(this.address, to, { balance });
-      }
-
       if (to === this.address) {
         const jsonModel = await this.get();
         const totalLocked = BigNumber.from(jsonModel!.totalLocked)
           .add(BigNumber.from(value))
           .toString();
+        this.log.info(
+          `Updating totalLocked after deposit to ${totalLocked.toString()}`
+        );
         await this.applyUpdateAndNotify({ totalLocked });
+      } else {
+        const balanceTo = await this.getBalance(this.address, to);
+
+        if (balanceTo !== null) {
+          const balance = BigNumber.from(balanceTo.balance)
+            .add(BigNumber.from(value))
+            .toString();
+
+          await this.updateBalanceAndNotify(this.address, to, { balance });
+        }
       }
     }
     if (from === EMPTY_ADDRESS) {
@@ -216,6 +231,9 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
           .add(BigNumber.from(value))
           .toString(),
       };
+      this.log.info(
+        `Updating totalSupply after minting to ${update.totalSupply.toString()}`
+      );
       await this.applyUpdateAndNotify(update);
     }
     if (to === EMPTY_ADDRESS) {
@@ -225,6 +243,9 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
           .sub(BigNumber.from(value))
           .toString(),
       };
+      this.log.info(
+        `Updating totalSupply after burning to ${update.totalSupply.toString()}`
+      );
       await this.applyUpdateAndNotify(update);
     }
   }
