@@ -1,4 +1,5 @@
 import { BigNumber, ethers } from "ethers";
+import { ClientSession } from "mongoose";
 import { contracts } from "../contracts";
 import {
   IInterfaceProjectToken,
@@ -37,8 +38,8 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     await this.projectToken?.applyFunc(fn);
   }
 
-  async init(actualBlock?: number) {
-    await super.init(actualBlock);
+  async init(session: ClientSession, actualBlock?: number) {
+    await super.init(session, actualBlock);
 
     this.projectToken = new DelegableToLT(
       this.chainId,
@@ -48,7 +49,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       this.ct
     );
 
-    await this.projectToken.init(actualBlock);
+    await this.projectToken.init(session, actualBlock);
   }
 
   toModel(data: IInterfaceProjectToken) {
@@ -133,26 +134,27 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     this.projectToken!.unsubscribeEvents();
   }
 
-  async onStartSetEvent([dateLaunch, dateEndCliff]: any[]): Promise<void> {
-    await this.applyUpdateAndNotify({
+  async onStartSetEvent(
+    session: ClientSession,
+    [dateLaunch, dateEndCliff]: any[]
+  ): Promise<void> {
+    await this.applyUpdateAndNotify(session, {
       dateLaunch,
       dateEndCliff,
     });
   }
 
-  async onProjectTokenReceivedEvent([
-    user,
-    value,
-    fees,
-    hodlRewards,
-  ]: any[]): Promise<void> {
+  async onProjectTokenReceivedEvent(
+    session: ClientSession,
+    [user, value, fees, hodlRewards]: any[]
+  ): Promise<void> {
     // user balances & totalSupply updated by TransferEvents
   }
 
-  async onIncreasedValueProjectTokenToFullRechargeEvent([
-    user,
-    valueIncreased,
-  ]: any[]): Promise<void> {
+  async onIncreasedValueProjectTokenToFullRechargeEvent(
+    session: ClientSession,
+    [user, valueIncreased]: any[]
+  ): Promise<void> {
     const oldBalance = await this.getBalance(this.ct.address, user);
 
     if (oldBalance !== null) {
@@ -162,18 +164,16 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         .add(BigNumber.from(valueIncreased))
         .toString();
 
-      await this.updateBalanceAndNotify(this.ct.address, user, {
+      await this.updateBalanceAndNotify(session, this.ct.address, user, {
         valueProjectTokenToFullRecharge,
       });
     }
   }
 
-  async onLTRechargedEvent([
-    user,
-    value,
-    valueProjectToken,
-    hodlRewards,
-  ]: any[]): Promise<void> {
+  async onLTRechargedEvent(
+    session: ClientSession,
+    [user, value, valueProjectToken, hodlRewards]: any[]
+  ): Promise<void> {
     const oldBalance = await this.getBalance(this.ct.address, user);
 
     if (oldBalance !== null) {
@@ -183,14 +183,17 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         .sub(BigNumber.from(valueProjectToken))
         .toString();
 
-      await this.updateBalanceAndNotify(this.ct.address, user, {
+      await this.updateBalanceAndNotify(session, this.ct.address, user, {
         valueProjectTokenToFullRecharge,
       });
     }
   }
 
-  async onClaimFeesUpdatedEvent([valuePerThousand]: any[]): Promise<void> {
-    await this.applyUpdateAndNotify({
+  async onClaimFeesUpdatedEvent(
+    session: ClientSession,
+    [valuePerThousand]: any[]
+  ): Promise<void> {
+    await this.applyUpdateAndNotify(session, {
       claimFeesPerThousandForPT: valuePerThousand.toString(),
     });
   }

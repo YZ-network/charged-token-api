@@ -41,12 +41,13 @@ export function subscribeToNewBlocks(
           log.info(`Found ${eventsCount} events for block ${newBlockNumber}`);
         }
 
-        await directory.applyFunc((loader) =>
-          loader.syncEvents(
-            directory.lastUpdateBlock + 1,
-            newBlockNumber,
-            missedEventsMap[loader.address]
-          )
+        await directory.applyFunc(
+          async (loader) =>
+            await loader.syncEvents(
+              directory.lastUpdateBlock + 1,
+              newBlockNumber,
+              missedEventsMap[loader.address]
+            )
         );
       } catch (err) {
         log.error({

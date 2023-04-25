@@ -1,4 +1,4 @@
-import { HydratedDocument, Model } from "mongoose";
+import { ClientSession, HydratedDocument, Model } from "mongoose";
 
 export interface IContract {
   chainId: number;
@@ -26,7 +26,10 @@ export interface IEntry {
 
 export type IKeyValueList = IEntry[];
 
-export type IEventHandler = (args: any[]) => Promise<void>;
+export type IEventHandler = (
+  session: ClientSession,
+  args: any[]
+) => Promise<void>;
 
 export type IToModel<T> = (data: T) => HydratedDocument<T>;
 

@@ -22,6 +22,7 @@ services:
         awslogs-stream-prefix: "yz-api"
   db:
     image: mongo:6.0
+    entrypoint: ["/usr/bin/mongod","--bind_ip_all","--replSet","rs0"]
     ports:
       - "27017:27017"
     healthcheck:
@@ -35,3 +36,15 @@ services:
         awslogs-group: yz-db
         awslogs-region: eu-west-3
         awslogs-stream-prefix: "yz-db"
+  dbsetup:
+    image: mongo:6.0
+    depends_on:
+      - db
+    restart: "no"
+    entrypoint: [ "bash", "-c", "sleep 10 && mongosh --host db:27017 --eval 'rs.initiate()'"]
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: yz-db-setup
+        awslogs-region: eu-west-3
+        awslogs-stream-prefix: "yz-db-setup"

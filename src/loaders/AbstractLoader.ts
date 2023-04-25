@@ -1,10 +1,15 @@
-import { BigNumber, ethers, EventFilter } from "ethers";
-import mongoose, { FlattenMaps, HydratedDocument } from "mongoose";
+import { ethers, EventFilter } from "ethers";
+import mongoose, {
+  ClientSession,
+  FlattenMaps,
+  HydratedDocument,
+} from "mongoose";
 import { Logger } from "pino";
 import { pubSub } from "../graphql";
 import { IUserBalance, UserBalanceModel } from "../models";
 import { IContract, IEventHandler, IModel } from "../types";
 import { rootLogger } from "../util";
+import { EventListener } from "./EventListener";
 
 interface ListenerRegistration {
   eventName: string;
@@ -24,18 +29,19 @@ export abstract class AbstractLoader<T extends IContract> {
   readonly address: string;
   protected readonly contract: any;
   protected readonly model: IModel<T>;
-  protected readonly log: Logger<{
+  readonly log: Logger<{
     name: string;
   }>;
 
   protected readonly instance: ethers.Contract;
-  protected readonly iface: ethers.utils.Interface;
+  readonly iface: ethers.utils.Interface;
   initBlock: number = 0;
   lastUpdateBlock: number = 0;
   protected actualBlock: number = 0;
   protected lastState: FlattenMaps<T> | undefined;
 
   protected readonly registeredListeners: ListenerRegistration[] = [];
+  protected readonly eventsListener: EventListener;
 
   /**
    * @param provider ether provider.
@@ -62,6 +68,7 @@ export abstract class AbstractLoader<T extends IContract> {
     this.log = rootLogger.child({
       name: `(${chainId}) ${this.constructor.name}@${address}`,
     });
+    this.eventsListener = new EventListener(this);
   }
 
   async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
@@ -74,13 +81,13 @@ export abstract class AbstractLoader<T extends IContract> {
    *
    * After initialization, the contract is up to date and the loader is subscribed to events.
    */
-  async init(actualBlock?: number): Promise<void> {
+  async init(session: ClientSession, actualBlock?: number): Promise<void> {
     this.actualBlock =
       actualBlock !== undefined
         ? actualBlock
         : await this.provider.getBlockNumber();
 
-    const existing = await this.get();
+    const existing = await this.get(session);
 
     if (existing != null) {
       this.initBlock = existing.initBlock;
@@ -89,10 +96,8 @@ export abstract class AbstractLoader<T extends IContract> {
       await this.syncEvents(this.lastUpdateBlock + 1, this.actualBlock);
     } else {
       this.log.info("First time loading");
-      const saved = await this.saveOrUpdate(await this.load());
-      this.lastState = this.model.toGraphQL(saved);
+      await this.saveOrUpdate(session, await this.load());
       this.initBlock = this.actualBlock;
-      this.lastUpdateBlock = this.actualBlock;
 
       pubSub.publish(
         `${this.constructor.name}.${this.chainId}.${this.address}`,
@@ -128,31 +133,44 @@ export abstract class AbstractLoader<T extends IContract> {
   }
 
   /** Returns contract state from the database or null. */
-  async get(): Promise<HydratedDocument<T> | null> {
-    return await this.model.findOne({
-      chainId: this.chainId,
-      address: this.address,
-    });
+  async get(session: ClientSession): Promise<HydratedDocument<T> | null> {
+    return await this.model.findOne(
+      {
+        chainId: this.chainId,
+        address: this.address,
+      },
+      undefined,
+      { session }
+    );
   }
 
   async getBalance(
+    session: ClientSession,
     address: string,
     user: string
   ): Promise<HydratedDocument<IUserBalance> | null> {
-    return await UserBalanceModel.findOne({
-      address,
-      user,
-    });
+    return await UserBalanceModel.findOne(
+      {
+        address,
+        user,
+      },
+      undefined,
+      { session }
+    );
   }
 
   async updateBalanceAndNotify(
+    session: ClientSession,
     address: string,
     user: string,
     balanceUpdates: Partial<IUserBalance>
   ): Promise<void> {
-    await UserBalanceModel.updateOne({ address, user }, balanceUpdates);
+    await UserBalanceModel.updateOne({ address, user }, balanceUpdates, {
+      session,
+    });
 
     const newBalance = (await this.getBalance(
+      session,
       address,
       user
     )) as HydratedDocument<IUserBalance>;
@@ -169,17 +187,21 @@ export abstract class AbstractLoader<T extends IContract> {
   }
 
   /** Saves or updates the document in database with the given data. */
-  async saveOrUpdate(data: Partial<T> | T): Promise<HydratedDocument<T>> {
+  async saveOrUpdate(
+    session: ClientSession,
+    data: Partial<T> | T
+  ): Promise<HydratedDocument<T>> {
     if (await this.exists()) {
       await this.model.updateOne(
         { chainId: this.chainId, address: this.address },
-        data
+        data,
+        { session }
       );
     } else {
-      await this.toModel(data as T).save();
+      await this.toModel(data as T).save({ session });
     }
 
-    const result = await this.get();
+    const result = await this.get(session);
     if (result === null) {
       throw new Error("Error connecting to database !");
     }
@@ -208,45 +230,29 @@ export abstract class AbstractLoader<T extends IContract> {
     let missedEvents: ethers.Event[] = [];
 
     if (missedLogs === undefined) {
-      try {
-        this.log.info("Loading missed events");
-
-        const eventFilter: EventFilter = {
-          address: this.address,
-        };
-
-        missedEvents = await this.instance.queryFilter(eventFilter, fromBlock);
-
-        for (const event of missedEvents) {
-          const name = event.event!;
-          const args = this.filterArgs(event.args);
-
-          if (name === undefined) {
-            this.log.warn({
-              msg: "found unnamed event :",
-              event,
-            });
-          } else {
-            this.log.debug("delegating event processing");
-            await this.onEvent(name, args);
-          }
-        }
-      } catch (err) {
-        this.log.error({
-          msg: `Error retrieving events from block ${fromBlock}`,
-          err,
-        });
-      }
+      await this.loadAndSyncEvents(fromBlock);
     } else {
-      for (const log of missedLogs) {
-        const decodedLog = this.iface.parseLog(log);
-        await this.onEvent(decodedLog.name, [...decodedLog.args.values()]);
-      }
-    }
+      await mongoose
+        .startSession()
+        .then(async (session) => {
+          await session.withTransaction(async () => {
+            for (const log of missedLogs) {
+              const decodedLog = this.iface.parseLog(log);
+              await this.onEvent(session, decodedLog.name, [
+                ...decodedLog.args.values(),
+              ]);
+            }
 
-    this.actualBlock = toBlock;
-    this.lastUpdateBlock = this.actualBlock;
-    await this.updateLastBlock();
+            this.actualBlock = toBlock;
+            this.lastUpdateBlock = this.actualBlock;
+            await this.updateLastBlock(session);
+          });
+          await session.endSession();
+        })
+        .catch((err) =>
+          this.log.error({ msg: "Error occured within transaction", err })
+        );
+    }
 
     if (missedEvents.length > 0) {
       pubSub.publish(
@@ -260,17 +266,71 @@ export abstract class AbstractLoader<T extends IContract> {
     }
   }
 
-  protected async getJsonModel(): Promise<FlattenMaps<T>> {
-    return (await this.get())!.toJSON();
+  private async loadAndSyncEvents(fromBlock: number) {
+    let missedEvents: ethers.Event[] = [];
+
+    try {
+      this.log.info("Loading missed events");
+
+      const eventFilter: EventFilter = {
+        address: this.address,
+      };
+
+      missedEvents = await this.instance.queryFilter(eventFilter, fromBlock);
+    } catch (err) {
+      this.log.error({
+        msg: `Error retrieving events from block ${fromBlock}`,
+        err,
+      });
+    }
+
+    if (missedEvents.length === 0) return;
+
+    await mongoose
+      .startSession()
+      .then(async (session) => {
+        await session.withTransaction(async () => {
+          for (const event of missedEvents) {
+            const name = event.event!;
+            const args = this.filterArgs(event.args);
+
+            if (name === undefined) {
+              this.log.warn({
+                msg: "found unnamed event :",
+                event,
+              });
+            } else {
+              this.log.debug("delegating event processing");
+              await this.onEvent(session, name, args);
+            }
+          }
+        });
+        await session.endSession();
+      })
+      .catch((err) =>
+        this.log.error({ msg: "Error occured within transaction", err })
+      );
   }
 
-  protected async applyUpdateAndNotify(data: Partial<T>) {
-    const saved = await this.saveOrUpdate(data);
+  protected async getJsonModel(
+    session: ClientSession
+  ): Promise<FlattenMaps<T>> {
+    return (await this.get(session))!.toJSON();
+  }
 
-    this.lastState = this.model.toGraphQL(saved);
-    this.lastUpdateBlock = this.actualBlock;
+  protected async applyUpdateAndNotify(
+    session: ClientSession,
+    data: Partial<T>
+  ) {
+    await this.saveOrUpdate(session, data);
 
-    this.log.trace({ msg: "sending update to channel", data: this.lastState });
+    this.log.debug({
+      msg: "sending update to channel",
+      data: this.lastState,
+      loader: this.constructor.name,
+      chainId: this.chainId,
+      address: this.address,
+    });
 
     pubSub.publish(
       `${this.constructor.name}.${this.chainId}.${this.address}`,
@@ -297,15 +357,8 @@ export abstract class AbstractLoader<T extends IContract> {
               });
               return;
             }
-            const decodedLog = this.iface.parseLog(log);
-            const args = [...decodedLog.args.values()];
-            this.log.info({
-              msg: `Calling event handler ${eventName}`,
-              args: args.map((arg) =>
-                arg instanceof BigNumber ? arg.toString() : arg
-              ),
-            });
-            this.onEvent(eventName, args);
+
+            this.eventsListener.queueLog(eventName, log);
           },
         };
       });
@@ -325,20 +378,31 @@ export abstract class AbstractLoader<T extends IContract> {
     this.registeredListeners.splice(0);
   }
 
-  private async onEvent(name: string, args: any[]): Promise<void> {
+  async onEvent(
+    session: ClientSession,
+    name: string,
+    args: any[]
+  ): Promise<void> {
     const eventHandlerName = `on${name}Event` as keyof this;
-    const session = await mongoose.startSession();
 
-    await session.withTransaction(async () => {
-      await (this[eventHandlerName] as IEventHandler)(args);
-      await session.endSession();
-    });
+    try {
+      await (this[eventHandlerName] as IEventHandler)(session, args);
+    } catch (err) {
+      const msg = `Event handler not found for event ${
+        eventHandlerName as string
+      } on ${this.constructor.name} ${this.chainId} ${
+        this.address
+      } or is not a function : ${typeof this[eventHandlerName]}`;
+      this.log.error({ msg, err });
+      throw new Error(msg);
+    }
   }
 
-  private async updateLastBlock() {
+  private async updateLastBlock(session: ClientSession) {
     await this.model.updateOne(
       { chainId: this.chainId, address: this.address },
-      { lastUpdateBlock: this.lastUpdateBlock }
+      { lastUpdateBlock: this.lastUpdateBlock },
+      { session }
     );
   }
 

@@ -138,7 +138,9 @@ export class Main {
 
   private static connectDB() {
     mongoose.set("strictQuery", true);
-    return mongoose.connect(`mongodb://${process.env.MONGODB_HOST}:27017/test`);
+    return mongoose.connect(
+      `mongodb://${process.env.MONGODB_HOST}:27017/test?replicaSet=rs0`
+    );
   }
 
   private static connectChain(index: number, rpc: string, directory: string) {

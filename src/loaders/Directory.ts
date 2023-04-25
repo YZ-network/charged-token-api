@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+import { ClientSession } from "mongoose";
 import { contracts } from "../contracts";
 import { pubSub } from "../graphql";
 import {
@@ -6,6 +7,7 @@ import {
   DelegableToLTModel,
   DirectoryModel,
   IDirectory,
+  IUserBalance,
   InterfaceProjectTokenModel,
   UserBalanceModel,
 } from "../models";
@@ -37,8 +39,8 @@ export class Directory extends AbstractLoader<IDirectory> {
     );
   }
 
-  async init(actualBlock?: number) {
-    await super.init(actualBlock);
+  async init(session: ClientSession, actualBlock?: number) {
+    await super.init(session, actualBlock);
 
     this.lastState!.directory.forEach(
       (address) =>
@@ -52,7 +54,7 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     await Promise.all(
       Object.values(this.ct).map((ct: ChargedToken) =>
-        ct.init(this.actualBlock)
+        ct.init(session, this.actualBlock)
       )
     );
   }
@@ -65,7 +67,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     pubSub.publish(`${this.constructor.name}`, this.lastState);
   }
 
-  async load() {
+  async load(): Promise<IDirectory> {
     this.log.info("Reading entire directory");
 
     const ins = this.instance;
@@ -111,7 +113,11 @@ export class Directory extends AbstractLoader<IDirectory> {
     };
   }
 
-  async loadAllUserBalances(user: string, address?: string) {
+  async loadAllUserBalances(
+    session: ClientSession,
+    user: string,
+    address?: string
+  ): Promise<IUserBalance[]> {
     this.log.info(`Loading user balances for ${user}@${address}`);
 
     const startDate = new Date().getTime();
@@ -127,19 +133,28 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     for (const entry of results) {
       if (await this.existUserBalances(user, entry.address)) {
+        this.log.info(`updating balance for ${user} on ${entry.address}`);
         await UserBalanceModel.updateOne(
           { chainId: this.chainId, user, address: entry.address },
-          entry
+          entry,
+          { session }
         );
       } else {
-        await UserBalanceModel.toModel(entry).save();
+        this.log.info(
+          `first time saving balance for ${user} on ${entry.address}`
+        );
+        await UserBalanceModel.toModel(entry).save({ session });
       }
     }
 
-    const saved = await UserBalanceModel.find({
-      chainId: this.chainId,
-      user,
-    }).exec();
+    const saved = await UserBalanceModel.find(
+      {
+        chainId: this.chainId,
+        user,
+      },
+      undefined,
+      { session }
+    ).exec();
 
     if (saved !== null) {
       this.log.info(`Publishing updated user balances for ${user}`);
@@ -149,6 +164,10 @@ export class Directory extends AbstractLoader<IDirectory> {
         JSON.stringify(
           saved.map((balance) => UserBalanceModel.toGraphQL(balance))
         )
+      );
+    } else {
+      this.log.warn(
+        `Error while reloading balances after save for user ${user}`
       );
     }
     const stopDate = new Date().getTime();
@@ -175,19 +194,20 @@ export class Directory extends AbstractLoader<IDirectory> {
     Object.values(this.ct).forEach((ct) => ct.subscribeToEvents());
   }
 
-  async onUserFunctionsAreDisabledEvent([
-    areUserFunctionsDisabled,
-  ]: any[]): Promise<void> {
-    await this.applyUpdateAndNotify({ areUserFunctionsDisabled });
+  async onUserFunctionsAreDisabledEvent(
+    session: ClientSession,
+    [areUserFunctionsDisabled]: any[]
+  ): Promise<void> {
+    await this.applyUpdateAndNotify(session, { areUserFunctionsDisabled });
   }
 
-  async onProjectOwnerWhitelistedEvent([
-    projectOwner,
-    project,
-  ]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
+  async onProjectOwnerWhitelistedEvent(
+    session: ClientSession,
+    [projectOwner, project]: any[]
+  ): Promise<void> {
+    const jsonModel = await this.getJsonModel(session);
 
-    const update = {
+    const updates = {
       projects: [...jsonModel.projects, project],
       whitelistedProjectOwners: [
         ...jsonModel.whitelistedProjectOwners,
@@ -196,13 +216,16 @@ export class Directory extends AbstractLoader<IDirectory> {
       whitelist: { ...jsonModel.whitelist, [projectOwner]: project },
     };
 
-    await this.applyUpdateAndNotify(update);
+    await this.applyUpdateAndNotify(session, updates);
   }
 
-  async onAddedLTContractEvent([contract]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
+  async onAddedLTContractEvent(
+    session: ClientSession,
+    [contract]: any[]
+  ): Promise<void> {
+    const jsonModel = await this.getJsonModel(session);
 
-    const update = {
+    const updates = {
       directory: [...jsonModel.directory, contract],
       projectRelatedToLT: {
         ...jsonModel.projectRelatedToLT,
@@ -216,14 +239,18 @@ export class Directory extends AbstractLoader<IDirectory> {
       contract,
       this
     );
-    await this.ct[contract].init(this.actualBlock);
+
+    await this.ct[contract].init(session, this.actualBlock);
     this.ct[contract].subscribeToEvents();
 
-    await this.applyUpdateAndNotify(update);
+    await this.applyUpdateAndNotify(session, updates);
   }
 
-  async onRemovedLTContractEvent([contract]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
+  async onRemovedLTContractEvent(
+    session: ClientSession,
+    [contract]: any[]
+  ): Promise<void> {
+    const jsonModel = await this.getJsonModel(session);
 
     const update = {
       directory: jsonModel.directory.filter((address) => address !== contract),
@@ -239,22 +266,32 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     this.ct[contract].unsubscribeEvents();
     delete this.ct[contract];
-    await ChargedTokenModel.deleteOne({
-      chainId: this.chainId,
-      address: contract,
-    });
+    await ChargedTokenModel.deleteOne(
+      {
+        chainId: this.chainId,
+        address: contract,
+      },
+      { session }
+    );
     balanceAddressList.push(contract);
 
-    const iface = await InterfaceProjectTokenModel.findOne({
-      chainId: this.chainId,
-      liquidityToken: contract,
-    });
+    const iface = await InterfaceProjectTokenModel.findOne(
+      {
+        chainId: this.chainId,
+        liquidityToken: contract,
+      },
+      undefined,
+      { session }
+    );
     if (iface !== null) {
       balanceAddressList.push(iface.address);
-      await InterfaceProjectTokenModel.deleteOne({
-        chainId: this.chainId,
-        address: iface.address,
-      });
+      await InterfaceProjectTokenModel.deleteOne(
+        {
+          chainId: this.chainId,
+          address: iface.address,
+        },
+        { session }
+      );
       if (
         iface.projectToken !== EMPTY_ADDRESS &&
         (await DelegableToLTModel.count({
@@ -262,24 +299,33 @@ export class Directory extends AbstractLoader<IDirectory> {
           address: iface.projectToken,
         })) === 1
       ) {
-        await DelegableToLTModel.deleteOne({
-          chainId: this.chainId,
-          address: iface.projectToken,
-        });
+        await DelegableToLTModel.deleteOne(
+          {
+            chainId: this.chainId,
+            address: iface.projectToken,
+          },
+          { session }
+        );
         balanceAddressList.push(iface.projectToken);
       }
     }
 
-    await UserBalanceModel.deleteMany({
-      chainId: this.chainId,
-      address: { $in: balanceAddressList },
-    });
+    await UserBalanceModel.deleteMany(
+      {
+        chainId: this.chainId,
+        address: { $in: balanceAddressList },
+      },
+      { session }
+    );
 
-    await this.applyUpdateAndNotify(update);
+    await this.applyUpdateAndNotify(session, update);
   }
 
-  async onRemovedProjectByAdminEvent([projectOwner]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
+  async onRemovedProjectByAdminEvent(
+    session: ClientSession,
+    [projectOwner]: any[]
+  ): Promise<void> {
+    const jsonModel = await this.getJsonModel(session);
 
     const update = {
       projects: jsonModel.projects.filter(
@@ -300,14 +346,14 @@ export class Directory extends AbstractLoader<IDirectory> {
       }
     });
 
-    await this.applyUpdateAndNotify(update);
+    await this.applyUpdateAndNotify(session, update);
   }
 
-  async onChangedProjectOwnerAccountEvent([
-    projectOwnerOld,
-    projectOwnerNew,
-  ]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
+  async onChangedProjectOwnerAccountEvent(
+    session: ClientSession,
+    [projectOwnerOld, projectOwnerNew]: any[]
+  ): Promise<void> {
+    const jsonModel = await this.getJsonModel(session);
 
     const update = {
       whitelistedProjectOwners: jsonModel.whitelistedProjectOwners.map(
@@ -315,14 +361,14 @@ export class Directory extends AbstractLoader<IDirectory> {
       ),
     };
 
-    await this.applyUpdateAndNotify(update);
+    await this.applyUpdateAndNotify(session, update);
   }
 
-  async onChangedProjectNameEvent([
-    oldProjectName,
-    newProjectName,
-  ]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
+  async onChangedProjectNameEvent(
+    session: ClientSession,
+    [oldProjectName, newProjectName]: any[]
+  ): Promise<void> {
+    const jsonModel = await this.getJsonModel(session);
 
     const update = {
       projects: jsonModel.projects.map((name) =>
@@ -330,11 +376,14 @@ export class Directory extends AbstractLoader<IDirectory> {
       ),
     };
 
-    await this.applyUpdateAndNotify(update);
+    await this.applyUpdateAndNotify(session, update);
   }
 
-  async onAllocatedLTToProjectEvent([contract, project]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
+  async onAllocatedLTToProjectEvent(
+    session: ClientSession,
+    [contract, project]: any[]
+  ): Promise<void> {
+    const jsonModel = await this.getJsonModel(session);
 
     const update = {
       projectRelatedToLT: {
@@ -344,14 +393,14 @@ export class Directory extends AbstractLoader<IDirectory> {
       directory: [...jsonModel.directory, contract],
     };
 
-    await this.applyUpdateAndNotify(update);
+    await this.applyUpdateAndNotify(session, update);
   }
 
-  async onAllocatedProjectOwnerToProjectEvent([
-    projectOwner,
-    project,
-  ]: any[]): Promise<void> {
-    const jsonModel = await this.getJsonModel();
+  async onAllocatedProjectOwnerToProjectEvent(
+    session: ClientSession,
+    [projectOwner, project]: any[]
+  ): Promise<void> {
+    const jsonModel = await this.getJsonModel(session);
 
     const update = {
       whitelistedProjectOwners: [
@@ -361,6 +410,6 @@ export class Directory extends AbstractLoader<IDirectory> {
       projects: [...jsonModel.projects, project],
     };
 
-    await this.applyUpdateAndNotify(update);
+    await this.applyUpdateAndNotify(session, update);
   }
 }

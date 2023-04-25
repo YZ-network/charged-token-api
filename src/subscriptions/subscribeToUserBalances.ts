@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { pubSub } from "../graphql";
 import { Directory } from "../loaders";
 import { rootLogger } from "../util";
@@ -14,7 +15,17 @@ export async function subscribeToUserBalancesLoading(
 
   for await (const user of sub) {
     log.info(`Got user balances reload message for ${user}`);
-    await directory.loadAllUserBalances(user);
+    await mongoose
+      .startSession()
+      .then(async (session) => {
+        await session.withTransaction(async () => {
+          await directory.loadAllUserBalances(session, user);
+        });
+        await session.endSession();
+      })
+      .catch((err) =>
+        log.error({ msg: "Error occured within transaction", err })
+      );
   }
 }
 
