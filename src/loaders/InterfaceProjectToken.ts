@@ -155,7 +155,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     session: ClientSession,
     [user, valueIncreased]: any[]
   ): Promise<void> {
-    const oldBalance = await this.getBalance(this.ct.address, user);
+    const oldBalance = await this.getBalance(session, this.ct.address, user);
 
     if (oldBalance !== null) {
       const valueProjectTokenToFullRecharge = BigNumber.from(
@@ -174,7 +174,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     session: ClientSession,
     [user, value, valueProjectToken, hodlRewards]: any[]
   ): Promise<void> {
-    const oldBalance = await this.getBalance(this.ct.address, user);
+    const oldBalance = await this.getBalance(session, this.ct.address, user);
 
     if (oldBalance !== null) {
       const valueProjectTokenToFullRecharge = BigNumber.from(
