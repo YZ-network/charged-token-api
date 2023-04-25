@@ -2,7 +2,7 @@ version: "3"
 services:
   api:
     image: 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz:${TAG}
-    entrypoint: ["bash", "-c", "sleep 20 && node lib/index.js"]
+    entrypoint: ["bash", "-c", "sleep 60 && node lib/index.js"]
     ports:
       - "80:80"
     environment:
@@ -27,7 +27,7 @@ services:
       [
         "bash",
         "-c",
-        "sleep 5 && mongosh --host localhost:27017 --eval 'rs.initiate()'",
+        "sleep 30 && mongosh --host localhost:27017 --eval 'rs.initiate()'",
       ]
     logging:
       driver: awslogs
