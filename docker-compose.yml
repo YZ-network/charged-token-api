@@ -14,7 +14,7 @@ services:
       test: curl -f http://localhost/health
       interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 10
     logging:
       driver: awslogs
       options:
