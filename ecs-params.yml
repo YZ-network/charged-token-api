@@ -19,6 +19,11 @@ task_definition:
         - value_from: LOG_LEVEL
           name: LOG_LEVEL
 
+    dbsetup:
+      depends_on:
+        - container_name: db
+          condition: HEALTHY
+
     db:
       essential: true
 
