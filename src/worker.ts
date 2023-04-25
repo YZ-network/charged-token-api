@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+import mongoose from "mongoose";
 import { WebSocket } from "ws";
 import { Directory } from "./loaders/Directory";
 import { subscribeToUserBalancesLoading } from "./subscriptions";
@@ -186,7 +187,12 @@ export class ChainWorker {
         this.provider!,
         this.directoryAddress
       );
-      await this.directory.init();
+      await mongoose.startSession().then(async (session) => {
+        session.withTransaction(
+          async () => await this.directory!.init(session)
+        );
+        await session.endSession();
+      });
       log.info(
         `Initialization complete for ${this.name} ${this.chainId}subscribing to updates`
       );
