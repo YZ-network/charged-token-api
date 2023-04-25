@@ -20,6 +20,7 @@ task_definition:
           name: LOG_LEVEL
 
     dbsetup:
+      essential: false
       depends_on:
         - container_name: db
           condition: HEALTHY
