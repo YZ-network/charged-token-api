@@ -187,12 +187,11 @@ export class ChainWorker {
         this.provider!,
         this.directoryAddress
       );
-      await mongoose.startSession().then(async (session) => {
-        session.withTransaction(
-          async () => await this.directory!.init(session)
-        );
-        await session.endSession();
-      });
+      const session = await mongoose.startSession();
+      await session.withTransaction(
+        async () => await this.directory!.init(session)
+      );
+      await session.endSession();
       log.info(
         `Initialization complete for ${this.name} ${this.chainId}subscribing to updates`
       );

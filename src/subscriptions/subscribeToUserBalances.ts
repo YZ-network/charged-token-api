@@ -15,17 +15,15 @@ export async function subscribeToUserBalancesLoading(
 
   for await (const user of sub) {
     log.info(`Got user balances reload message for ${user}`);
-    await mongoose
-      .startSession()
-      .then(async (session) => {
-        await session.withTransaction(async () => {
-          await directory.loadAllUserBalances(session, user);
-        });
-        await session.endSession();
-      })
-      .catch((err) =>
-        log.error({ msg: "Error occured within transaction", err })
-      );
+    try {
+      const session = await mongoose.startSession();
+      await session.withTransaction(async () => {
+        await directory.loadAllUserBalances(session, user);
+      });
+      await session.endSession();
+    } catch (err) {
+      log.error({ msg: "Error occured within transaction", err });
+    }
   }
 }
 

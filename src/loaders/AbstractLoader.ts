@@ -232,26 +232,24 @@ export abstract class AbstractLoader<T extends IContract> {
     if (missedLogs === undefined) {
       await this.loadAndSyncEvents(fromBlock);
     } else {
-      await mongoose
-        .startSession()
-        .then(async (session) => {
-          await session.withTransaction(async () => {
-            for (const log of missedLogs) {
-              const decodedLog = this.iface.parseLog(log);
-              await this.onEvent(session, decodedLog.name, [
-                ...decodedLog.args.values(),
-              ]);
-            }
+      try {
+        const session = await mongoose.startSession();
+        await session.withTransaction(async () => {
+          for (const log of missedLogs) {
+            const decodedLog = this.iface.parseLog(log);
+            await this.onEvent(session, decodedLog.name, [
+              ...decodedLog.args.values(),
+            ]);
+          }
 
-            this.actualBlock = toBlock;
-            this.lastUpdateBlock = this.actualBlock;
-            await this.updateLastBlock(session);
-          });
-          await session.endSession();
-        })
-        .catch((err) =>
-          this.log.error({ msg: "Error occured within transaction", err })
-        );
+          this.actualBlock = toBlock;
+          this.lastUpdateBlock = this.actualBlock;
+          await this.updateLastBlock(session);
+        });
+        await session.endSession();
+      } catch (err) {
+        this.log.error({ msg: "Error occured within transaction", err });
+      }
     }
 
     if (missedEvents.length > 0) {
@@ -286,30 +284,28 @@ export abstract class AbstractLoader<T extends IContract> {
 
     if (missedEvents.length === 0) return;
 
-    await mongoose
-      .startSession()
-      .then(async (session) => {
-        await session.withTransaction(async () => {
-          for (const event of missedEvents) {
-            const name = event.event!;
-            const args = this.filterArgs(event.args);
+    try {
+      const session = await mongoose.startSession();
+      await session.withTransaction(async () => {
+        for (const event of missedEvents) {
+          const name = event.event!;
+          const args = this.filterArgs(event.args);
 
-            if (name === undefined) {
-              this.log.warn({
-                msg: "found unnamed event :",
-                event,
-              });
-            } else {
-              this.log.debug("delegating event processing");
-              await this.onEvent(session, name, args);
-            }
+          if (name === undefined) {
+            this.log.warn({
+              msg: "found unnamed event :",
+              event,
+            });
+          } else {
+            this.log.debug("delegating event processing");
+            await this.onEvent(session, name, args);
           }
-        });
-        await session.endSession();
-      })
-      .catch((err) =>
-        this.log.error({ msg: "Error occured within transaction", err })
-      );
+        }
+      });
+      await session.endSession();
+    } catch (err) {
+      this.log.error({ msg: "Error occured within transaction", err });
+    }
   }
 
   protected async getJsonModel(

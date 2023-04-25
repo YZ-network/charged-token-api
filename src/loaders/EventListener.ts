@@ -76,35 +76,34 @@ export class EventListener {
   }
 
   async executePendingLogs() {
-    await mongoose.startSession().then(async (session) => {
-      await session.withTransaction(async () => {
-        while (this.queue.length > 0) {
-          const [{ eventName, log }] = this.queue;
+    const session = await mongoose.startSession();
+    await session.withTransaction(async () => {
+      while (this.queue.length > 0) {
+        const [{ eventName, log }] = this.queue;
 
-          const decodedLog = this.loader.iface.parseLog(log);
-          const args = [...decodedLog.args.values()];
+        const decodedLog = this.loader.iface.parseLog(log);
+        const args = [...decodedLog.args.values()];
 
-          this.loader.log.info({
-            msg: `Calling event handler ${eventName} block=${log.blockNumber} txIdx=${log.transactionIndex} evIdx=${log.logIndex}`,
-            args: args.map((arg) =>
-              arg instanceof BigNumber ? arg.toString() : arg
-            ),
+        this.loader.log.info({
+          msg: `Calling event handler ${eventName} block=${log.blockNumber} txIdx=${log.transactionIndex} evIdx=${log.logIndex}`,
+          args: args.map((arg) =>
+            arg instanceof BigNumber ? arg.toString() : arg
+          ),
+        });
+
+        try {
+          await this.loader.onEvent(session, eventName, args);
+          this.queue.splice(0, 1);
+        } catch (err) {
+          this.loader.log.error({
+            msg: `Error running event handler on chain ${this.loader.chainId}`,
+            err,
+            eventName,
+            args,
           });
-
-          try {
-            await this.loader.onEvent(session, eventName, args);
-            this.queue.splice(0, 1);
-          } catch (err) {
-            this.loader.log.error({
-              msg: `Error running event handler on chain ${this.loader.chainId}`,
-              err,
-              eventName,
-              args,
-            });
-          }
         }
-      });
-      await session.endSession();
+      }
     });
+    await session.endSession();
   }
 }
