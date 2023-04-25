@@ -12,9 +12,9 @@ services:
       - CORS_ORIGINS=https://test.yz-network.com
     healthcheck:
       test: curl -f http://localhost/health
-      interval: 30s
+      interval: 60s
       timeout: 10s
-      retries: 20
+      retries: 10
     logging:
       driver: awslogs
       options:
