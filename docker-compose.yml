@@ -22,7 +22,6 @@ services:
         awslogs-stream-prefix: "yz-api"
   dbsetup:
     image: mongo:6.0
-    restart: "no"
     entrypoint:
       [
         "bash",
