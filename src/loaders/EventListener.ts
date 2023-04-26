@@ -12,6 +12,7 @@ export class EventListener {
     log: ethers.providers.Log;
   }[] = [];
   private readonly timer: NodeJS.Timer;
+  private running = false;
 
   constructor(loader: AbstractLoader<any>) {
     this.loader = loader;
@@ -76,35 +77,50 @@ export class EventListener {
   }
 
   async executePendingLogs() {
-    const session = await mongoose.startSession();
-    await session.withTransaction(async () => {
-      while (this.queue.length > 0) {
-        const [{ eventName, log }] = this.queue;
+    if (this.running) return;
 
-        const decodedLog = this.loader.iface.parseLog(log);
-        const args = [...decodedLog.args.values()];
+    this.running = true;
 
-        this.loader.log.info({
-          msg: `Calling event handler ${eventName} block=${log.blockNumber} txIdx=${log.transactionIndex} evIdx=${log.logIndex}`,
-          args: args.map((arg) =>
-            arg instanceof BigNumber ? arg.toString() : arg
-          ),
-        });
+    try {
+      const session = await mongoose.startSession();
+      await session.withTransaction(async () => {
+        while (this.queue.length > 0) {
+          const [{ eventName, log }] = this.queue;
 
-        try {
-          await this.loader.onEvent(session, eventName, args);
-          this.queue.splice(0, 1);
-        } catch (err) {
-          this.loader.log.error({
-            msg: `Error running event handler on chain ${this.loader.chainId}`,
-            err,
-            eventName,
-            args,
+          const decodedLog = this.loader.iface.parseLog(log);
+          const args = [...decodedLog.args.values()];
+
+          this.loader.log.info({
+            msg: `Calling event handler ${eventName} block=${log.blockNumber} txIdx=${log.transactionIndex} evIdx=${log.logIndex}`,
+            args: args.map((arg) =>
+              arg instanceof BigNumber ? arg.toString() : arg
+            ),
           });
+
+          try {
+            await this.loader.onEvent(session, eventName, args);
+            this.loader.log.info(
+              `event handler called, removing from queue of size ${this.queue.length}`
+            );
+            this.queue.splice(0, 1);
+            this.loader.log.info(`new queue size : ${this.queue.length}`);
+          } catch (err) {
+            this.loader.log.error({
+              msg: `Error running event handler on chain ${this.loader.chainId}`,
+              err,
+              eventName,
+              args,
+            });
+          }
         }
-      }
-    });
-    await session.endSession();
+      });
+      await session.endSession();
+    } catch (err) {
+      this.loader.log.error({ msg: "Event handlers execution failed !", err });
+      throw err;
+    } finally {
+      this.running = false;
+    }
   }
 
   destroy() {

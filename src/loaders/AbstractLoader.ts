@@ -387,7 +387,10 @@ export abstract class AbstractLoader<T extends IContract> {
     const eventHandlerName = `on${name}Event` as keyof this;
 
     try {
-      await (this[eventHandlerName] as IEventHandler)(session, args);
+      await (this[eventHandlerName] as IEventHandler).apply(this, [
+        session,
+        args,
+      ]);
     } catch (err) {
       const msg = `Event handler not found for event ${
         eventHandlerName as string
@@ -397,6 +400,10 @@ export abstract class AbstractLoader<T extends IContract> {
       this.log.error({ msg, err });
       throw new Error(msg);
     }
+  }
+
+  async onOwnershipTransferredEvent(session: ClientSession): Promise<void> {
+    // ignoring ownership transfered events globally
   }
 
   private async updateLastBlock(session: ClientSession) {
