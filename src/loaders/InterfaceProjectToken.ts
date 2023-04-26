@@ -129,9 +129,9 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     this.projectToken!.subscribeToEvents();
   }
 
-  unsubscribeEvents(): void {
-    super.unsubscribeEvents();
-    this.projectToken!.unsubscribeEvents();
+  destroy() {
+    if (this.projectToken !== undefined) this.projectToken.destroy();
+    super.destroy();
   }
 
   async onStartSetEvent(

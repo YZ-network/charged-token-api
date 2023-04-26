@@ -207,6 +207,7 @@ export class ChainWorker {
   }
 
   private async stop() {
+    this.directory?.destroy();
     this.provider?.removeAllListeners();
     this.worker = undefined;
     await this.provider?.destroy();

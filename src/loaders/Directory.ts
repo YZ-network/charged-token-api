@@ -189,6 +189,11 @@ export class Directory extends AbstractLoader<IDirectory> {
     );
   }
 
+  destroy() {
+    Object.values(this.ct).forEach((ct) => ct.destroy());
+    super.destroy();
+  }
+
   subscribeToEvents(): void {
     super.subscribeToEvents();
     Object.values(this.ct).forEach((ct) => ct.subscribeToEvents());

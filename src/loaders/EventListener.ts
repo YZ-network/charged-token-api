@@ -106,4 +106,8 @@ export class EventListener {
     });
     await session.endSession();
   }
+
+  destroy() {
+    if (this.timer !== undefined) clearInterval(this.timer);
+  }
 }

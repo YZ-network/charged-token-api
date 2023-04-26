@@ -374,6 +374,11 @@ export abstract class AbstractLoader<T extends IContract> {
     this.registeredListeners.splice(0);
   }
 
+  destroy() {
+    this.unsubscribeEvents();
+    this.eventsListener.destroy();
+  }
+
   async onEvent(
     session: ClientSession,
     name: string,
