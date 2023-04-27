@@ -28,7 +28,10 @@ export class EventListener {
       return true;
     }
     if (this.queue[0].ev > 0) {
-      this.loader.log.info("First event in queue is not indexed zero, waiting");
+      this.loader.log.info({
+        msg: "First event in queue is not indexed zero, waiting",
+        log: this.queue[0],
+      });
       return true;
     }
 
