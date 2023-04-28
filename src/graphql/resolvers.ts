@@ -110,7 +110,7 @@ const UserBalanceSubscriptionResolver = {
         }
         log.info("user balances subscription ended");
       } catch (err) {
-        log.error({
+        log.warn({
           msg: "user balances subscription stopped with error",
           err,
         });
@@ -152,7 +152,7 @@ class ResolverFactory {
         return new Repeater(async (push, stop) => {
           stop.then((err) => {
             sub.return();
-            log.error({
+            log.warn({
               msg: `subscription to ${channelName} stopped by error`,
               err,
             });
@@ -164,7 +164,7 @@ class ResolverFactory {
             }
             log.info(`subscription to ${channelName} ended`);
           } catch (err) {
-            log.error({
+            log.warn({
               msg: `subscription to ${channelName} stopped with error`,
               err,
             });
@@ -191,7 +191,7 @@ class ResolverFactory {
         return new Repeater(async (push, stop) => {
           stop.then((err) => {
             sub.return();
-            log.error({
+            log.warn({
               msg: `subscription to ${channelName} stopped with error`,
               err,
             });
@@ -203,7 +203,7 @@ class ResolverFactory {
             }
             log.info(`subscription to ${channelName} ended`);
           } catch (err) {
-            log.error({
+            log.warn({
               msg: `"subscription to ${channelName} stopped with error`,
               err,
             });
