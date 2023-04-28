@@ -374,9 +374,10 @@ export abstract class AbstractLoader<T extends IContract> {
     this.registeredListeners.splice(0);
   }
 
-  destroy() {
+  async destroy() {
     this.unsubscribeEvents();
     this.eventsListener.destroy();
+    await this.model.deleteMany({ chainId: this.chainId });
   }
 
   async onEvent(

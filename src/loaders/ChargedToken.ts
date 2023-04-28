@@ -166,9 +166,9 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     }
   }
 
-  destroy() {
-    if (this.interface !== undefined) this.interface.destroy();
-    super.destroy();
+  async destroy() {
+    if (this.interface !== undefined) await this.interface.destroy();
+    await super.destroy();
   }
 
   async onTransferEvent(

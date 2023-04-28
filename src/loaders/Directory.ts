@@ -189,9 +189,9 @@ export class Directory extends AbstractLoader<IDirectory> {
     );
   }
 
-  destroy() {
-    Object.values(this.ct).forEach((ct) => ct.destroy());
-    super.destroy();
+  async destroy() {
+    await Promise.all(Object.values(this.ct).map((ct) => ct.destroy()));
+    await super.destroy();
   }
 
   subscribeToEvents(): void {

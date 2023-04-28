@@ -2,6 +2,7 @@ import { ethers } from "ethers";
 import mongoose from "mongoose";
 import { WebSocket } from "ws";
 import { Directory } from "./loaders/Directory";
+import { UserBalanceModel } from "./models";
 import { subscribeToUserBalancesLoading } from "./subscriptions";
 import { rootLogger } from "./util";
 
@@ -209,6 +210,9 @@ export class ChainWorker {
   private async stop() {
     this.directory?.destroy();
     this.provider?.removeAllListeners();
+    if (this.chainId !== undefined) {
+      await UserBalanceModel.deleteMany({ chainId: this.chainId });
+    }
     this.worker = undefined;
     await this.provider?.destroy();
     this.provider = undefined;
