@@ -136,6 +136,7 @@ const schema = createSchema({
     providerStatus: String!
     workerStatus: String!
     wsStatus: String!
+    restartCount: Int!
   }
 
   type Query {

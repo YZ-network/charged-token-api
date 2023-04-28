@@ -34,6 +34,7 @@ export interface ChainHealth {
   providerStatus: ProviderStatus;
   workerStatus: WorkerStatus;
   wsStatus: string;
+  restartCount: number;
 }
 
 export class ChainWorker {
@@ -42,6 +43,7 @@ export class ChainWorker {
   readonly directoryAddress: string;
   chainId: number | undefined;
   name: string | undefined;
+  restartCount: number = 0;
 
   provider: ethers.providers.WebSocketProvider | undefined;
   worker: Promise<void> | undefined;
@@ -76,6 +78,7 @@ export class ChainWorker {
       providerStatus: this.providerStatus,
       workerStatus: this.workerStatus,
       wsStatus: this.wsStatus,
+      restartCount: this.restartCount,
     };
   }
 
@@ -222,5 +225,6 @@ export class ChainWorker {
     }
     this.providerStatus = ProviderStatus.DEAD;
     this.workerStatus = WorkerStatus.DEAD;
+    this.restartCount++;
   }
 }
