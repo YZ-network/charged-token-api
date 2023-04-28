@@ -13,12 +13,15 @@ export class EventListener {
   }[] = [];
   private readonly timer: NodeJS.Timer;
   private running = false;
+  private eventsAdded = false;
 
   constructor(loader: AbstractLoader<any>) {
     this.loader = loader;
     this.timer = setInterval(() => {
-      if (!this.queueHasHoles()) {
+      if (!this.eventsAdded && !this.queueHasHoles()) {
         this.executePendingLogs();
+      } else {
+        this.eventsAdded = false;
       }
     }, 1000);
   }
@@ -27,6 +30,7 @@ export class EventListener {
     if (this.queue.length === 0) {
       return true;
     }
+    /* TODO this rule is invalid since events are numbered by order in the same block, for a single contract it can start at 21, 22, etc
     if (this.queue[0].ev > 0) {
       this.loader.log.info({
         msg: "First event in queue is not indexed zero, waiting",
@@ -34,6 +38,7 @@ export class EventListener {
       });
       return true;
     }
+    */
 
     let { block, tx, ev } = this.queue[0];
 
@@ -68,6 +73,7 @@ export class EventListener {
       tx: log.transactionIndex,
       ev: log.logIndex,
     });
+
     this.queue.sort((a, b) => {
       if (a.block < b.block) return -1;
       if (a.block > b.block) return 1;
@@ -77,6 +83,8 @@ export class EventListener {
       if (a.ev > b.ev) return 1;
       throw new Error(`Found duplicate event while sorting : ${a} ${b}`);
     });
+
+    this.eventsAdded = true;
   }
 
   async executePendingLogs() {
