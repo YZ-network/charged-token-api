@@ -1,4 +1,4 @@
-import { BigNumber, ethers } from "ethers";
+import { ethers } from "ethers";
 import mongoose, { ClientSession } from "mongoose";
 import { EventHandlerStatus, EventModel } from "../models/Event";
 import { AbstractLoader } from "./AbstractLoader";
@@ -115,13 +115,6 @@ export class EventListener {
           const decodedLog = this.loader.iface.parseLog(log);
           const args = [...decodedLog.args.values()];
 
-          this.loader.log.info({
-            msg: `Calling event handler ${eventName} block=${log.blockNumber} txIdx=${log.transactionIndex} evIdx=${log.logIndex}`,
-            args: args.map((arg) =>
-              arg instanceof BigNumber ? arg.toString() : arg
-            ),
-          });
-
           try {
             await this.loader.onEvent(session, eventName, args);
             await this.updateEventStatus(
@@ -129,11 +122,7 @@ export class EventListener {
               log,
               EventHandlerStatus.SUCCESS
             );
-            this.loader.log.info(
-              `event handler called, removing from queue of size ${this.queue.length}`
-            );
             this.queue.splice(0, 1);
-            this.loader.log.info(`new queue size : ${this.queue.length}`);
           } catch (err) {
             this.loader.log.error({
               msg: `Error running event handler on chain ${this.loader.chainId}`,
@@ -172,7 +161,6 @@ export class EventListener {
         chainId: this.loader.chainId,
         address: this.loader.address,
         blockNumber: log.blockNumber,
-        txHash: log.transactionHash,
         txIndex: log.transactionIndex,
         logIndex: log.logIndex,
       },

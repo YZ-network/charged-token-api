@@ -1,10 +1,7 @@
-import { dumpEvents } from "./logevents";
 import { Main } from "./main";
 import { rootLogger } from "./util";
 
 const log = rootLogger.child({ name: "index" });
-
-dumpEvents();
 
 Main.init();
 Main.start().catch((err) =>

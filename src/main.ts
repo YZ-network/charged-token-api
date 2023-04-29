@@ -3,6 +3,7 @@ import { createYoga, useLogger } from "graphql-yoga";
 import { createServer } from "http";
 import mongoose from "mongoose";
 import { WebSocketServer } from "ws";
+import { encodeEvents } from "./encodeevents";
 import { schema } from "./graphql";
 import { rootLogger } from "./util";
 import { ChainHealth, ChainWorker, WorkerStatus } from "./worker";
@@ -16,6 +17,9 @@ export class Main {
 
   private static readonly workers: ChainWorker[] = [];
   private static keepAlive: NodeJS.Timer | undefined;
+
+  static readonly topicsMap: Record<string, Record<string, string>> =
+    encodeEvents();
 
   private static readonly yoga = createYoga({
     schema,

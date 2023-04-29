@@ -1,21 +1,13 @@
-import { ethers, EventFilter } from "ethers";
-import mongoose, {
-  ClientSession,
-  FlattenMaps,
-  HydratedDocument,
-} from "mongoose";
+import { BigNumber, ethers, EventFilter } from "ethers";
+import { ClientSession, FlattenMaps, HydratedDocument } from "mongoose";
 import { Logger } from "pino";
 import { pubSub } from "../graphql";
+import { Main } from "../main";
 import { IUserBalance, UserBalanceModel } from "../models";
 import { EventModel } from "../models/Event";
-import { IContract, IEventHandler, IModel } from "../types";
+import { IEventHandler, IModel, IOwnable } from "../types";
 import { rootLogger } from "../util";
 import { EventListener } from "./EventListener";
-
-interface ListenerRegistration {
-  eventName: string;
-  listener: ethers.providers.Listener;
-}
 
 /**
  * Generic contract loader. Used for loading initial contracts state, keeping
@@ -24,7 +16,7 @@ interface ListenerRegistration {
  * When a document already exists, it will sync all events from the last checkpoint
  * to the latest block number before watching new blocks.
  */
-export abstract class AbstractLoader<T extends IContract> {
+export abstract class AbstractLoader<T extends IOwnable> {
   readonly chainId: number;
   protected readonly provider: ethers.providers.JsonRpcProvider;
   readonly address: string;
@@ -41,7 +33,6 @@ export abstract class AbstractLoader<T extends IContract> {
   protected actualBlock: number = 0;
   protected lastState: FlattenMaps<T> | undefined;
 
-  protected readonly registeredListeners: ListenerRegistration[] = [];
   protected readonly eventsListener: EventListener;
 
   /**
@@ -94,7 +85,7 @@ export abstract class AbstractLoader<T extends IContract> {
       this.initBlock = existing.initBlock;
       this.lastUpdateBlock = existing.lastUpdateBlock;
       this.lastState = this.model.toGraphQL(existing);
-      await this.loadAndSyncEvents(this.lastUpdateBlock);
+      await this.loadAndSyncEvents(this.lastUpdateBlock, session);
     } else {
       this.log.info("First time loading");
       await this.saveOrUpdate(session, await this.load());
@@ -223,7 +214,7 @@ export abstract class AbstractLoader<T extends IContract> {
     pubSub.publish(`${this.constructor.name}.${this.chainId}`, this.lastState);
   }
 
-  private async loadAndSyncEvents(fromBlock: number) {
+  private async loadAndSyncEvents(fromBlock: number, session: ClientSession) {
     let missedEvents: ethers.Event[] = [];
 
     try {
@@ -236,29 +227,33 @@ export abstract class AbstractLoader<T extends IContract> {
       missedEvents = await this.instance.queryFilter(eventFilter, fromBlock);
       const sizeBeforeFilter = missedEvents.length;
 
-      missedEvents = await Promise.all(
-        missedEvents.filter(
-          async (log) =>
-            (await EventModel.exists({
-              chainId: this.chainId,
-              address: this.address,
-              blockNumber: log.blockNumber,
-              txHash: log.transactionHash,
-              txIndex: log.transactionIndex,
-              logIndex: log.logIndex,
-            })) !== null
-        )
-      );
+      const filteredEvents: ethers.Event[] = [];
+      for (const event of missedEvents) {
+        if (
+          (await EventModel.exists({
+            chainId: this.chainId,
+            address: this.address,
+            blockNumber: event.blockNumber,
+            txIndex: event.transactionIndex,
+            logIndex: event.logIndex,
+          })) !== null
+        ) {
+          filteredEvents.push(event);
+        }
+      }
+      if (sizeBeforeFilter > missedEvents.length) {
+        this.log.info({
+          msg: `Skipped ${
+            sizeBeforeFilter - missedEvents.length
+          } events already played`,
+          skipped: missedEvents.filter((log) => filteredEvents.includes(log)),
+        });
+      }
+
+      missedEvents = filteredEvents;
 
       if (missedEvents.length > 0) {
         this.log.info(`Found ${missedEvents.length} missed events`);
-      }
-      if (sizeBeforeFilter > missedEvents.length) {
-        this.log.info(
-          `Skipped ${
-            sizeBeforeFilter - missedEvents.length
-          } events already played`
-        );
       }
     } catch (err) {
       this.log.error({
@@ -269,27 +264,19 @@ export abstract class AbstractLoader<T extends IContract> {
 
     if (missedEvents.length === 0) return;
 
-    try {
-      const session = await mongoose.startSession();
-      await session.withTransaction(async () => {
-        for (const event of missedEvents) {
-          const name = event.event!;
-          const args = this.filterArgs(event.args);
+    for (const event of missedEvents) {
+      const name = event.event!;
+      const args = this.filterArgs(event.args);
 
-          if (name === undefined) {
-            this.log.warn({
-              msg: "found unnamed event :",
-              event,
-            });
-          } else {
-            this.log.debug("delegating event processing");
-            await this.onEvent(session, name, args);
-          }
-        }
-      });
-      await session.endSession();
-    } catch (err) {
-      this.log.error({ msg: "Error occured within transaction", err });
+      if (name === undefined) {
+        this.log.warn({
+          msg: "found unnamed event :",
+          event,
+        });
+      } else {
+        this.log.info("delegating event processing");
+        await this.onEvent(session, name, args);
+      }
     }
   }
 
@@ -321,68 +308,39 @@ export abstract class AbstractLoader<T extends IContract> {
   }
 
   subscribeToEvents() {
-    const eventHandlers = Object.getOwnPropertyNames(
-      Object.getPrototypeOf(this)
-    )
-      .filter((prop) => prop.match(/^on.*Event$/) !== null)
-      .map((prop) => {
-        const match = prop.match(/^on(.*)Event$/)!;
-        const eventName = match[1];
-        return {
-          eventName,
-          listener: (log: ethers.providers.Log) => {
-            if (log.blockNumber <= this.initBlock) {
-              this.log.warn({
-                msg: "Skipping event from init block",
-                event: log,
-              });
-              return;
-            }
+    const eventFilter: EventFilter = {
+      address: this.address,
+    };
 
-            this.eventsListener
-              .queueLog(eventName, log)
-              .then(() => this.log.info(`queued event ${eventName}`))
-              .catch((err) =>
-                this.log.error({
-                  msg: `error queuing event ${eventName}`,
-                  err,
-                  log,
-                })
-              );
-          },
-        };
-      });
+    this.instance.on(eventFilter, (log: ethers.providers.Log) => {
+      if (log.blockNumber <= this.initBlock) {
+        this.log.warn({
+          msg: "Skipping event from init block",
+          event: log,
+        });
+        return;
+      }
 
-    if (eventHandlers.length > 0) {
-      eventHandlers.forEach(({ eventName, listener }) => {
-        this.log.debug(`Subscribing to ${eventName}`);
-        this.provider.on(this.instance.filters[eventName](), listener);
-        this.registeredListeners.push({ eventName, listener });
-      });
+      const eventName = Main.topicsMap[this.constructor.name][log.topics[0]];
+      this.eventsListener
+        .queueLog(eventName, log)
+        .then(() => this.log.info(`queued event ${eventName}`))
+        .catch((err) =>
+          this.log.error({
+            msg: `error queuing event ${eventName}`,
+            err,
+            log,
+          })
+        );
+    });
 
-      this.log.info(
-        `Subscribed to ${eventHandlers.length} events on ${this.constructor.name}@${this.address}`
-      );
-    }
-  }
-
-  unsubscribeEvents() {
-    if (this.registeredListeners.length > 0) {
-      this.registeredListeners.forEach(({ eventName, listener }) => {
-        this.log.debug(`Unsubscribing from ${eventName}`);
-        this.provider.off(eventName, listener);
-      });
-
-      this.log.info(
-        `Unsubscribed from ${this.registeredListeners.length} event handlers on ${this.constructor.name}@${this.address}`
-      );
-
-      this.registeredListeners.splice(0);
-    }
+    this.log.info(
+      `Subscribed to all events on ${this.constructor.name}@${this.address}`
+    );
   }
 
   async destroy() {
-    this.unsubscribeEvents();
+    this.provider.removeAllListeners();
     this.eventsListener.destroy();
   }
 
@@ -394,31 +352,31 @@ export abstract class AbstractLoader<T extends IContract> {
     const eventHandlerName = `on${name}Event` as keyof this;
 
     try {
+      this.log.info({
+        msg: `Running event handler for ${name} on ${this.constructor.name}@${this.address}`,
+        args: args.map((arg) =>
+          arg instanceof BigNumber ? arg.toString() : arg
+        ),
+      });
       await (this[eventHandlerName] as IEventHandler).apply(this, [
         session,
         args,
       ]);
     } catch (err) {
-      const msg = `Event handler not found for event ${
+      const msg = `Error running Event handler for event ${
         eventHandlerName as string
-      } on ${this.constructor.name} ${this.chainId} ${
-        this.address
-      } or is not a function : ${typeof this[eventHandlerName]}`;
+      } on ${this.constructor.name} ${this.chainId} ${this.address}`;
       this.log.error({ msg, err });
       throw new Error(msg);
     }
   }
 
-  async onOwnershipTransferredEvent(session: ClientSession): Promise<void> {
-    // ignoring ownership transfered events globally
-  }
-
-  private async updateLastBlock(session: ClientSession) {
-    await this.model.updateOne(
-      { chainId: this.chainId, address: this.address },
-      { lastUpdateBlock: this.lastUpdateBlock },
-      { session }
-    );
+  async onOwnershipTransferredEvent(
+    session: ClientSession,
+    [owner]: any[]
+  ): Promise<void> {
+    // common handler for all ownable contracts
+    await this.applyUpdateAndNotify(session, { owner } as Partial<T>);
   }
 
   private filterArgs(inputArgs: Record<string, any> | undefined): any[] {
