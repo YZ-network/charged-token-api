@@ -19,7 +19,7 @@ const HealthQueryResolver = () => {
 
 const HealthSubscriptionResolver = {
   subscribe: (_: any, { pollingMs }: { pollingMs: number }) => {
-    log.info({
+    log.debug({
       msg: "client subscribing to health checks",
     });
 
@@ -94,13 +94,13 @@ const UserBalanceSubscriptionResolver = {
     _: any,
     { chainId, user }: { chainId: number; user: string }
   ) => {
-    log.info(`client subscribing to balances for : ${user}`);
+    log.debug(`client subscribing to balances for : ${user}`);
     const sub = pubSub.subscribe(`UserBalance.${chainId}.${user}`);
 
     return new Repeater(async (push, stop) => {
       stop.then((err) => {
         sub.return();
-        log.warn(`client user balances subscription stopped by ${err}`);
+        log.debug(`client user balances subscription stopped by ${err}`);
       });
 
       try {
@@ -108,9 +108,9 @@ const UserBalanceSubscriptionResolver = {
           log.debug({ msg: "sending balances to subscription", data: value });
           await push(JSON.parse(value));
         }
-        log.info("client user balances subscription ended");
+        log.debug("client user balances subscription ended");
       } catch (err) {
-        log.warn({
+        log.debug({
           msg: "client user balances subscription stopped with error",
           err,
         });
@@ -146,13 +146,13 @@ class ResolverFactory {
       subscribe: async (_: any, { chainId }: { chainId: number }) => {
         const channelName = `${modelName}.${chainId}`;
 
-        log.info(`client subscribing to ${channelName}`);
+        log.debug(`client subscribing to ${channelName}`);
         const sub = pubSub.subscribe(channelName);
 
         return new Repeater(async (push, stop) => {
           stop.then((err) => {
             sub.return();
-            log.warn({
+            log.debug({
               msg: `client subscription to ${channelName} stopped by error`,
               err,
             });
@@ -162,9 +162,9 @@ class ResolverFactory {
             for await (const value of sub) {
               await push(value);
             }
-            log.info(`client subscription to ${channelName} ended`);
+            log.debug(`client subscription to ${channelName} ended`);
           } catch (err) {
-            log.warn({
+            log.debug({
               msg: `client subscription to ${channelName} stopped with error`,
               err,
             });
@@ -184,14 +184,14 @@ class ResolverFactory {
       ) => {
         const channelName = `${modelName}.${chainId}.${address}`;
 
-        log.info(`client subscribing to ${channelName}`);
+        log.debug(`client subscribing to ${channelName}`);
 
         const sub = pubSub.subscribe(channelName);
 
         return new Repeater(async (push, stop) => {
           stop.then((err) => {
             sub.return();
-            log.warn({
+            log.debug({
               msg: `client subscription to ${channelName} stopped with error`,
               err,
             });
@@ -201,9 +201,9 @@ class ResolverFactory {
             for await (const value of sub) {
               await push(value);
             }
-            log.info(`client subscription to ${channelName} ended`);
+            log.debug(`client subscription to ${channelName} ended`);
           } catch (err) {
-            log.warn({
+            log.debug({
               msg: `client subscription to ${channelName} stopped with error`,
               err,
             });
