@@ -20,12 +20,12 @@ const HealthQueryResolver = () => {
 const HealthSubscriptionResolver = {
   subscribe: (_: any, { pollingMs }: { pollingMs: number }) => {
     log.info({
-      msg: "subscribing to health checks",
+      msg: "client subscribing to health checks",
     });
 
     return new Repeater(async (push, stop) => {
       stop.then((err) => {
-        log.warn(`pushing health check stopped by ${err}`);
+        log.warn(`client health check sub stopped by ${err}`);
       });
 
       push(Main.health());
@@ -94,13 +94,13 @@ const UserBalanceSubscriptionResolver = {
     _: any,
     { chainId, user }: { chainId: number; user: string }
   ) => {
-    log.info(`subscribing to balances for : ${user}`);
+    log.info(`client subscribing to balances for : ${user}`);
     const sub = pubSub.subscribe(`UserBalance.${chainId}.${user}`);
 
     return new Repeater(async (push, stop) => {
       stop.then((err) => {
         sub.return();
-        log.warn(`user balances subscription stopped by ${err}`);
+        log.warn(`client user balances subscription stopped by ${err}`);
       });
 
       try {
@@ -108,10 +108,10 @@ const UserBalanceSubscriptionResolver = {
           log.debug({ msg: "sending balances to subscription", data: value });
           await push(JSON.parse(value));
         }
-        log.info("user balances subscription ended");
+        log.info("client user balances subscription ended");
       } catch (err) {
         log.warn({
-          msg: "user balances subscription stopped with error",
+          msg: "client user balances subscription stopped with error",
           err,
         });
         stop("sub closed");
@@ -146,14 +146,14 @@ class ResolverFactory {
       subscribe: async (_: any, { chainId }: { chainId: number }) => {
         const channelName = `${modelName}.${chainId}`;
 
-        log.info(`subscribing to ${channelName}`);
+        log.info(`client subscribing to ${channelName}`);
         const sub = pubSub.subscribe(channelName);
 
         return new Repeater(async (push, stop) => {
           stop.then((err) => {
             sub.return();
             log.warn({
-              msg: `subscription to ${channelName} stopped by error`,
+              msg: `client subscription to ${channelName} stopped by error`,
               err,
             });
           });
@@ -162,10 +162,10 @@ class ResolverFactory {
             for await (const value of sub) {
               await push(value);
             }
-            log.info(`subscription to ${channelName} ended`);
+            log.info(`client subscription to ${channelName} ended`);
           } catch (err) {
             log.warn({
-              msg: `subscription to ${channelName} stopped with error`,
+              msg: `client subscription to ${channelName} stopped with error`,
               err,
             });
             stop("sub closed");
@@ -184,7 +184,7 @@ class ResolverFactory {
       ) => {
         const channelName = `${modelName}.${chainId}.${address}`;
 
-        log.info(`subscribing to ${channelName}`);
+        log.info(`client subscribing to ${channelName}`);
 
         const sub = pubSub.subscribe(channelName);
 
@@ -192,7 +192,7 @@ class ResolverFactory {
           stop.then((err) => {
             sub.return();
             log.warn({
-              msg: `subscription to ${channelName} stopped with error`,
+              msg: `client subscription to ${channelName} stopped with error`,
               err,
             });
           });
@@ -201,10 +201,10 @@ class ResolverFactory {
             for await (const value of sub) {
               await push(value);
             }
-            log.info(`subscription to ${channelName} ended`);
+            log.info(`client subscription to ${channelName} ended`);
           } catch (err) {
             log.warn({
-              msg: `"subscription to ${channelName} stopped with error`,
+              msg: `client subscription to ${channelName} stopped with error`,
               err,
             });
             stop("sub closed");

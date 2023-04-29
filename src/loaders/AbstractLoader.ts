@@ -218,13 +218,15 @@ export abstract class AbstractLoader<T extends IOwnable> {
     let missedEvents: ethers.Event[] = [];
 
     try {
-      this.log.info("Loading missed events");
-
       const eventFilter: EventFilter = {
         address: this.address,
       };
 
+      this.log.info(
+        `Querying missed events from block ${fromBlock} and address ${this.address}`
+      );
       missedEvents = await this.instance.queryFilter(eventFilter, fromBlock);
+      this.log.info({ msg: "Found missed events", missedEvents });
       const sizeBeforeFilter = missedEvents.length;
 
       const filteredEvents: ethers.Event[] = [];
