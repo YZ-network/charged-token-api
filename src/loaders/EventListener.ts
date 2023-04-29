@@ -1,5 +1,6 @@
 import { BigNumber, ethers } from "ethers";
-import mongoose from "mongoose";
+import mongoose, { ClientSession } from "mongoose";
+import { EventHandlerStatus, EventModel } from "../models/Event";
 import { AbstractLoader } from "./AbstractLoader";
 
 export class EventListener {
@@ -30,15 +31,6 @@ export class EventListener {
     if (this.queue.length === 0) {
       return true;
     }
-    /* TODO this rule is invalid since events are numbered by order in the same block, for a single contract it can start at 21, 22, etc
-    if (this.queue[0].ev > 0) {
-      this.loader.log.info({
-        msg: "First event in queue is not indexed zero, waiting",
-        log: this.queue[0],
-      });
-      return true;
-    }
-    */
 
     let { block, tx, ev } = this.queue[0];
 
@@ -65,13 +57,25 @@ export class EventListener {
     return false;
   }
 
-  queueLog(eventName: string, log: ethers.providers.Log) {
+  async queueLog(eventName: string, log: ethers.providers.Log) {
     this.queue.push({
       eventName,
       log,
       block: log.blockNumber,
       tx: log.transactionIndex,
       ev: log.logIndex,
+    });
+
+    await EventModel.create({
+      status: EventHandlerStatus.QUEUED,
+      chainId: this.loader.chainId,
+      address: this.loader.address,
+      blockNumber: log.blockNumber,
+      txHash: log.transactionHash,
+      txIndex: log.transactionIndex,
+      logIndex: log.logIndex,
+      name: eventName,
+      topics: log.topics,
     });
 
     this.queue.sort((a, b) => {
@@ -95,8 +99,18 @@ export class EventListener {
     try {
       const session = await mongoose.startSession();
       await session.withTransaction(async () => {
+        let lastBlockNumber = 0;
         while (this.queue.length > 0) {
           const [{ eventName, log }] = this.queue;
+
+          if (lastBlockNumber > 0 && lastBlockNumber !== log.blockNumber) {
+            this.loader.log.info(
+              "Got events spanned on different blocks, stopping now"
+            );
+            break;
+          } else {
+            lastBlockNumber = log.blockNumber;
+          }
 
           const decodedLog = this.loader.iface.parseLog(log);
           const args = [...decodedLog.args.values()];
@@ -110,6 +124,11 @@ export class EventListener {
 
           try {
             await this.loader.onEvent(session, eventName, args);
+            await this.updateEventStatus(
+              session,
+              log,
+              EventHandlerStatus.SUCCESS
+            );
             this.loader.log.info(
               `event handler called, removing from queue of size ${this.queue.length}`
             );
@@ -122,6 +141,11 @@ export class EventListener {
               eventName,
               args,
             });
+            await this.updateEventStatus(
+              session,
+              log,
+              EventHandlerStatus.FAILURE
+            );
           }
         }
       });
@@ -136,5 +160,26 @@ export class EventListener {
 
   destroy() {
     if (this.timer !== undefined) clearInterval(this.timer);
+  }
+
+  private async updateEventStatus(
+    session: ClientSession,
+    log: ethers.providers.Log,
+    status: EventHandlerStatus
+  ) {
+    await EventModel.updateOne(
+      {
+        chainId: this.loader.chainId,
+        address: this.loader.address,
+        blockNumber: log.blockNumber,
+        txHash: log.transactionHash,
+        txIndex: log.transactionIndex,
+        logIndex: log.logIndex,
+      },
+      {
+        status,
+      },
+      { session }
+    );
   }
 }
