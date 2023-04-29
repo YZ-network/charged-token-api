@@ -269,7 +269,8 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     const balanceAddressList: string[] = [];
 
-    this.ct[contract].unsubscribeEvents();
+    await this.ct[contract].destroy();
+
     delete this.ct[contract];
     await ChargedTokenModel.deleteOne(
       {
