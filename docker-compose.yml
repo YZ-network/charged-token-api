@@ -2,7 +2,7 @@ version: "3"
 services:
   api:
     image: 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz:${TAG}
-    entrypoint: ["bash", "-c", "sleep 60 && node lib/index.js"]
+    entrypoint: ["bash", "-c", "sleep 15 && node lib/index.js"]
     ports:
       - "80:80"
     environment:
@@ -14,7 +14,7 @@ services:
       test: curl -f http://localhost/health
       interval: 60s
       timeout: 10s
-      retries: 10
+      retries: 5
     logging:
       driver: awslogs
       options:
@@ -24,11 +24,7 @@ services:
   dbsetup:
     image: mongo:6.0
     entrypoint:
-      [
-        "bash",
-        "-c",
-        "sleep 30 && mongosh --host localhost:27017 --eval 'rs.initiate()'",
-      ]
+      ["mongosh", "--host", "localhost:27017", "--eval", "'rs.initiate()'"]
     logging:
       driver: awslogs
       options:
