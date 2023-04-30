@@ -85,19 +85,14 @@ export class ChainWorker {
     this.provider = new ethers.providers.WebSocketProvider(this.rpc);
     this.wsStatus = WsStatus[this.provider!.websocket.readyState];
 
-    const originalHandler = this.provider.websocket.onerror;
-    this.provider.websocket.onerror = (event) => {
-      log.error({
-        msg: `Websocket failure : ${event.message}`,
-        event,
-      });
+    this.provider._websocket.on("open", () => {
+      this.providerStatus = ProviderStatus.CONNECTED;
+    });
+    this.provider._websocket.on("close", () => {
       this.providerStatus = ProviderStatus.DISCONNECTED;
-      this.wsStatus = WsStatus[WebSocket.CLOSED];
-
-      if (originalHandler) originalHandler(event);
-
+      this.wsStatus = WsStatus[this.provider!.websocket.readyState];
       this.stop();
-    };
+    });
 
     this.provider.ready
       .then((network) => {
@@ -129,8 +124,6 @@ export class ChainWorker {
         )
       ) {
         log.info(`Websocket crashed : ${this.name} ${this.chainId}`);
-        this.providerStatus = ProviderStatus.DISCONNECTED;
-        this.stop();
       }
 
       if (
@@ -138,7 +131,6 @@ export class ChainWorker {
         this.provider!.websocket.readyState === WebSocket.CONNECTING
       ) {
         log.info(`Websocket connecting : ${this.name} ${this.chainId}`);
-        this.providerStatus = ProviderStatus.CONNECTING;
       }
 
       if (
@@ -146,7 +138,6 @@ export class ChainWorker {
         this.provider!.websocket.readyState === WebSocket.OPEN
       ) {
         log.info(`Websocket connected : ${this.name} ${this.chainId}`);
-        this.providerStatus = ProviderStatus.CONNECTED;
       }
     }, 1000);
   }
@@ -171,13 +162,6 @@ export class ChainWorker {
           this.workerStatus = WorkerStatus.CRASHED;
           this.stop();
         });
-    }).catch((err) => {
-      log.error({
-        msg: `Error connecting to rpc ${this.rpc}`,
-        err,
-      });
-      this.providerStatus = ProviderStatus.DISCONNECTED;
-      this.stop();
     });
   }
 
