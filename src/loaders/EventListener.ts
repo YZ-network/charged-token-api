@@ -19,42 +19,12 @@ export class EventListener {
   constructor(loader: AbstractLoader<any>) {
     this.loader = loader;
     this.timer = setInterval(() => {
-      if (!this.eventsAdded && !this.queueHasHoles()) {
+      if (this.queue.length > 0 && !this.eventsAdded) {
         this.executePendingLogs();
       } else {
         this.eventsAdded = false;
       }
     }, 1000);
-  }
-
-  queueHasHoles(): boolean {
-    if (this.queue.length === 0) {
-      return true;
-    }
-
-    let { block, tx, ev } = this.queue[0];
-
-    for (const logEntry of this.queue) {
-      if ((logEntry.block > block || logEntry.tx > tx) && ev !== 0) {
-        this.loader.log.info(
-          "Event block or tx changed but event not indexed at zero, waiting"
-        );
-        return true;
-      }
-      block = logEntry.block;
-      tx = logEntry.tx;
-
-      if (logEntry.ev - ev > 1) {
-        this.loader.log.info(
-          "Missing an event between two in same tx, waiting"
-        );
-        return true;
-      }
-
-      ev = logEntry.ev;
-    }
-
-    return false;
   }
 
   async queueLog(eventName: string, log: ethers.providers.Log) {
@@ -78,6 +48,7 @@ export class EventListener {
       topics: log.topics,
     });
 
+    /*
     this.queue.sort((a, b) => {
       if (a.block < b.block) return -1;
       if (a.block > b.block) return 1;
@@ -87,6 +58,7 @@ export class EventListener {
       if (a.ev > b.ev) return 1;
       throw new Error(`Found duplicate event while sorting : ${a} ${b}`);
     });
+    */
 
     this.eventsAdded = true;
   }
