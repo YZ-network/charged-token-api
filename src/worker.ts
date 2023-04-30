@@ -52,6 +52,8 @@ export class ChainWorker {
   providerStatus: ProviderStatus = ProviderStatus.STARTING;
   wsStatus: string = "STARTING";
   wsWatch: NodeJS.Timer | undefined;
+  pingInterval: NodeJS.Timer | undefined;
+  pongTimeout: NodeJS.Timeout | undefined;
   workerStatus: WorkerStatus = WorkerStatus.WAITING;
 
   constructor(index: number, rpc: string, directoryAddress: string) {
@@ -103,6 +105,25 @@ export class ChainWorker {
       this.providerStatus = ProviderStatus.DISCONNECTED;
       this.stop();
     });
+    this.provider._websocket.on("pong", () => {
+      if (this.pongTimeout !== undefined) {
+        clearTimeout(this.pongTimeout);
+        this.pongTimeout = undefined;
+      }
+    });
+
+    this.pingInterval = setInterval(() => {
+      if (this.pongTimeout === undefined) {
+        this.provider!._websocket.ping();
+        this.pongTimeout = setTimeout(() => {
+          if (this.pingInterval !== undefined) {
+            clearInterval(this.pingInterval);
+            this.pingInterval = undefined;
+          }
+          this.provider!._websocket.terminate();
+        }, 6000);
+      }
+    }, 3000);
 
     this.provider.ready
       .then((network) => {
@@ -219,6 +240,14 @@ export class ChainWorker {
     if (this.wsWatch !== undefined) {
       clearInterval(this.wsWatch);
       this.wsWatch = undefined;
+    }
+    if (this.pingInterval !== undefined) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = undefined;
+    }
+    if (this.pongTimeout !== undefined) {
+      clearTimeout(this.pongTimeout);
+      this.pongTimeout = undefined;
     }
     this.providerStatus = ProviderStatus.DEAD;
     this.workerStatus = WorkerStatus.DEAD;
