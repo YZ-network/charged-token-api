@@ -89,8 +89,18 @@ export class ChainWorker {
       this.providerStatus = ProviderStatus.CONNECTED;
     });
     this.provider._websocket.on("close", () => {
+      log.warn({
+        msg: `Websocket disconnected on rpc ${this.rpc}`,
+      });
       this.providerStatus = ProviderStatus.DISCONNECTED;
       this.wsStatus = WsStatus[this.provider!.websocket.readyState];
+      this.stop();
+    });
+    this.provider._websocket.on("error", () => {
+      log.error({
+        msg: `Error connecting to rpc ${this.rpc}`,
+      });
+      this.providerStatus = ProviderStatus.DISCONNECTED;
       this.stop();
     });
 
@@ -162,6 +172,13 @@ export class ChainWorker {
           this.workerStatus = WorkerStatus.CRASHED;
           this.stop();
         });
+    }).catch((err) => {
+      log.error({
+        msg: `Error connecting to rpc ${this.rpc}`,
+        err,
+      });
+      this.providerStatus = ProviderStatus.DISCONNECTED;
+      this.stop();
     });
   }
 
