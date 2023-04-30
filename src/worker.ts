@@ -89,6 +89,19 @@ export class ChainWorker {
 
     this.provider._websocket.on("open", () => {
       this.providerStatus = ProviderStatus.CONNECTED;
+
+      this.pingInterval = setInterval(() => {
+        if (this.pongTimeout === undefined) {
+          this.provider!._websocket.ping();
+          this.pongTimeout = setTimeout(() => {
+            if (this.pingInterval !== undefined) {
+              clearInterval(this.pingInterval);
+              this.pingInterval = undefined;
+            }
+            this.provider!._websocket.terminate();
+          }, 6000);
+        }
+      }, 3000);
     });
     this.provider._websocket.on("close", () => {
       log.warn({
@@ -111,19 +124,6 @@ export class ChainWorker {
         this.pongTimeout = undefined;
       }
     });
-
-    this.pingInterval = setInterval(() => {
-      if (this.pongTimeout === undefined) {
-        this.provider!._websocket.ping();
-        this.pongTimeout = setTimeout(() => {
-          if (this.pingInterval !== undefined) {
-            clearInterval(this.pingInterval);
-            this.pingInterval = undefined;
-          }
-          this.provider!._websocket.terminate();
-        }, 6000);
-      }
-    }, 3000);
 
     this.provider.ready
       .then((network) => {
