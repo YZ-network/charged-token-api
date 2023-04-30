@@ -2,6 +2,7 @@ import { ethers } from "ethers";
 import mongoose from "mongoose";
 import { WebSocket } from "ws";
 import { Directory } from "./loaders/Directory";
+import { EventHandlerStatus, EventModel } from "./models/Event";
 import { subscribeToUserBalancesLoading } from "./subscriptions";
 import { rootLogger } from "./util";
 
@@ -248,6 +249,15 @@ export class ChainWorker {
     if (this.pongTimeout !== undefined) {
       clearTimeout(this.pongTimeout);
       this.pongTimeout = undefined;
+    }
+    const pendingEvents = await EventModel.find({
+      chainId: this.chainId,
+      status: EventHandlerStatus.QUEUED,
+    });
+    if (pendingEvents.length > 0) {
+      log.warn(
+        `Found ${pendingEvents.length} pending events ! maybe remove them`
+      );
     }
     this.providerStatus = ProviderStatus.DEAD;
     this.workerStatus = WorkerStatus.DEAD;

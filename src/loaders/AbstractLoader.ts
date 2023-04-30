@@ -186,7 +186,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
     if (await this.exists()) {
       await this.model.updateOne(
         { chainId: this.chainId, address: this.address },
-        data,
+        { ...data, lastUpdateBlock: this.actualBlock },
         { session }
       );
     } else {
@@ -226,36 +226,43 @@ export abstract class AbstractLoader<T extends IOwnable> {
         `Querying missed events from block ${fromBlock} and address ${this.address}`
       );
       missedEvents = await this.instance.queryFilter(eventFilter, fromBlock);
-      this.log.info({ msg: "Found missed events", missedEvents });
-      const sizeBeforeFilter = missedEvents.length;
+      if (missedEvents.length === 0) {
+        this.log.info("No events missed");
+        return;
+      }
+
+      this.log.info(`Found ${missedEvents.length} potentially missed events`);
 
       const filteredEvents: ethers.Event[] = [];
       for (const event of missedEvents) {
         if (
-          (await EventModel.exists({
+          !(await EventModel.exists({
             chainId: this.chainId,
             address: this.address,
             blockNumber: event.blockNumber,
             txIndex: event.transactionIndex,
             logIndex: event.logIndex,
-          })) !== null
+          }))
         ) {
           filteredEvents.push(event);
         }
       }
-      if (sizeBeforeFilter > missedEvents.length) {
+      if (missedEvents.length > filteredEvents.length) {
         this.log.info({
           msg: `Skipped ${
-            sizeBeforeFilter - missedEvents.length
+            missedEvents.length - filteredEvents.length
           } events already played`,
-          skipped: missedEvents.filter((log) => filteredEvents.includes(log)),
+          skipped: missedEvents.filter((log) => !filteredEvents.includes(log)),
         });
       }
 
       missedEvents = filteredEvents;
 
       if (missedEvents.length > 0) {
-        this.log.info(`Found ${missedEvents.length} missed events`);
+        this.log.info({
+          msg: `Found ${missedEvents.length} really missed events`,
+          missedEvents,
+        });
       }
     } catch (err) {
       this.log.error({
@@ -277,7 +284,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
         });
       } else {
         this.log.info("delegating event processing");
-        await this.onEvent(session, name, args);
+        await this.onEvent(session, name, args, event.blockNumber);
       }
     }
   }
@@ -349,8 +356,11 @@ export abstract class AbstractLoader<T extends IOwnable> {
   async onEvent(
     session: ClientSession,
     name: string,
-    args: any[]
+    args: any[],
+    blockNumber: number
   ): Promise<void> {
+    if (this.actualBlock < blockNumber) this.actualBlock = blockNumber;
+
     const eventHandlerName = `on${name}Event` as keyof this;
 
     try {

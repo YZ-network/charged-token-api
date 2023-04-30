@@ -22,7 +22,6 @@ const schema = createSchema({
     symbol: String!
     decimals: String!
     totalSupply: String!
-    balances: [IEntry!]!
   }
 
   type IUserLiquiToken {
@@ -54,7 +53,6 @@ const schema = createSchema({
     symbol: String!
     decimals: String!
     totalSupply: String!
-    balances: [IEntry!]!
 
     fractionInitialUnlockPerThousand: String!
     durationCliff: String!
@@ -108,7 +106,6 @@ const schema = createSchema({
     symbol: String!
     decimals: String!
     totalSupply: String!
-    balances: [IEntry!]!
 
     validatedInterfaceProjectToken: [String!]!
     isListOfInterfaceProjectTokenComplete: Boolean

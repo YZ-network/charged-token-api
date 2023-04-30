@@ -88,7 +88,12 @@ export class EventListener {
           const args = [...decodedLog.args.values()];
 
           try {
-            await this.loader.onEvent(session, eventName, args);
+            await this.loader.onEvent(
+              session,
+              eventName,
+              args,
+              log.blockNumber
+            );
             await this.updateEventStatus(
               session,
               log,

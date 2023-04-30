@@ -16,7 +16,6 @@ export interface IErc20 extends IOwnable {
   symbol: string;
   decimals: string;
   totalSupply: string;
-  balances: Record<string, string>;
 }
 
 export interface IEntry {

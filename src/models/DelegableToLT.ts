@@ -1,5 +1,4 @@
 import mongoose, { HydratedDocument } from "mongoose";
-import { recordToEntryList } from "../functions";
 import { IErc20, IModel } from "../types";
 
 export interface IDelegableToLT extends IErc20 {
@@ -22,7 +21,6 @@ const delegableToLTSchema = new mongoose.Schema<
   name: { type: String, required: true },
   symbol: { type: String, required: true },
   decimals: Number,
-  balances: { type: Map, of: String },
   totalSupply: String,
   // other
   validatedInterfaceProjectToken: [String],
@@ -41,11 +39,7 @@ delegableToLTSchema.static(
 delegableToLTSchema.static(
   "toGraphQL",
   function (doc: HydratedDocument<IDelegableToLT>): any {
-    const result = doc.toJSON();
-    return {
-      ...result,
-      balances: recordToEntryList(result.balances),
-    };
+    return doc.toJSON();
   }
 );
 
