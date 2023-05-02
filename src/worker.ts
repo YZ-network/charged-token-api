@@ -112,7 +112,7 @@ export class ChainWorker {
         msg: `Websocket disconnected on rpc ${this.rpc}`,
       });
       this.providerStatus = ProviderStatus.DISCONNECTED;
-      this.wsStatus = WsStatus[this.provider!.websocket.readyState];
+      this.wsStatus = WsStatus[WebSocket.CLOSED];
       this.stop();
     });
     this.provider._websocket.on("error", () => {
@@ -125,9 +125,7 @@ export class ChainWorker {
     this.provider._websocket.on("pong", () => {
       if (this.chainId === 80001 || this.chainId === 1337) {
         log.info(
-          `pong received chainId=${this.chainId} wsStatus=${
-            WsStatus[this.provider!.websocket.readyState]
-          }`
+          `pong received chainId=${this.chainId} wsStatus=${this.wsStatus}`
         );
       }
       if (this.pongTimeout !== undefined) {
@@ -152,32 +150,32 @@ export class ChainWorker {
           err,
         });
         this.providerStatus = ProviderStatus.DISCONNECTED;
-        this.wsStatus = WsStatus[this.provider!.websocket.readyState];
+        this.wsStatus = WsStatus[WebSocket.CLOSED];
         this.stop();
       });
 
     this.wsWatch = setInterval(() => {
+      if (!this.provider || !this.provider.websocket) return;
+
       this.wsStatus = WsStatus[this.provider!.websocket.readyState];
 
       if (
         this.providerStatus !== ProviderStatus.DISCONNECTED &&
-        ([WebSocket.CLOSING, WebSocket.CLOSED] as number[]).includes(
-          this.provider!.websocket.readyState
-        )
+        ["CLOSING", "CLOSED"].includes(this.wsStatus)
       ) {
         log.info(`Websocket crashed : ${this.name} ${this.chainId}`);
       }
 
       if (
         this.providerStatus !== ProviderStatus.CONNECTING &&
-        this.provider!.websocket.readyState === WebSocket.CONNECTING
+        this.wsStatus === "CONNECTING"
       ) {
         log.info(`Websocket connecting : ${this.name} ${this.chainId}`);
       }
 
       if (
         this.providerStatus !== ProviderStatus.CONNECTED &&
-        this.provider!.websocket.readyState === WebSocket.OPEN
+        this.wsStatus === "OPEN"
       ) {
         log.info(`Websocket connected : ${this.name} ${this.chainId}`);
       }
