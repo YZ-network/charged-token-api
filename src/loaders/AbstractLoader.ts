@@ -226,6 +226,12 @@ export abstract class AbstractLoader<T extends IOwnable> {
         `Querying missed events from block ${fromBlock} and address ${this.address}`
       );
       missedEvents = await this.instance.queryFilter(eventFilter, fromBlock);
+      if (missedEvents === null) {
+        this.log.warn(
+          `Events querying returned null for ${this.constructor.name}@${this.address} since block ${fromBlock}`
+        );
+        return;
+      }
       if (missedEvents.length === 0) {
         this.log.info("No events missed");
         return;
