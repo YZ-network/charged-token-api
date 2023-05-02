@@ -233,7 +233,7 @@ export class ChainWorker {
       await subscribeToUserBalancesLoading(this.directory);
     } catch (err) {
       log.error({
-        msg: `Error happened killing worker on network ${this.name} chainId=${this.chainId}`,
+        msg: `Error happened running worker on network ${this.name} chainId=${this.chainId}`,
         err,
       });
     }
