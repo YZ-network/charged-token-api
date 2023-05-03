@@ -98,6 +98,9 @@ export class ChainWorker {
           }
           this.provider!._websocket.ping();
           this.pongTimeout = setTimeout(() => {
+            log.warn({
+              msg: `Websocket crashed on rpc ${this.rpc}`,
+            });
             if (this.pingInterval !== undefined) {
               clearInterval(this.pingInterval);
               this.pingInterval = undefined;
@@ -109,7 +112,7 @@ export class ChainWorker {
     });
     this.provider._websocket.on("close", () => {
       log.warn({
-        msg: `Websocket disconnected on rpc ${this.rpc}`,
+        msg: `Websocket crashed on rpc ${this.rpc}`,
       });
       this.providerStatus = ProviderStatus.DISCONNECTED;
       this.wsStatus = WsStatus[WebSocket.CLOSED];
@@ -163,7 +166,7 @@ export class ChainWorker {
         this.providerStatus !== ProviderStatus.DISCONNECTED &&
         ["CLOSING", "CLOSED"].includes(this.wsStatus)
       ) {
-        log.info(`Websocket crashed : ${this.name} ${this.chainId}`);
+        log.warn(`Websocket crashed : ${this.name} ${this.chainId}`);
       }
 
       if (
