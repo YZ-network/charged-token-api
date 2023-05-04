@@ -94,7 +94,7 @@ export class ChainWorker {
       this.pingInterval = setInterval(() => {
         if (this.pongTimeout === undefined) {
           if (this.chainId === 80001 || this.chainId === 1337) {
-            log.info(`ping sent chainId=${this.chainId}`);
+            log.trace(`ping sent chainId=${this.chainId}`);
           }
           this.provider!._websocket.ping();
           this.pongTimeout = setTimeout(() => {
@@ -126,11 +126,9 @@ export class ChainWorker {
       this.stop();
     });
     this.provider._websocket.on("pong", () => {
-      if (this.chainId === 80001 || this.chainId === 1337) {
-        log.info(
-          `pong received chainId=${this.chainId} wsStatus=${this.wsStatus}`
-        );
-      }
+      log.trace(
+        `pong received chainId=${this.chainId} wsStatus=${this.wsStatus}`
+      );
       if (this.pongTimeout !== undefined) {
         clearTimeout(this.pongTimeout);
         this.pongTimeout = undefined;
