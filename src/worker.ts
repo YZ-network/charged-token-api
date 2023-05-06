@@ -216,7 +216,7 @@ export class ChainWorker {
         });
     }).catch((err) => {
       log.error({
-        msg: `Error connecting to rpc ${this.rpc}`,
+        msg: `Websocket crashed on ${this.rpc}`,
         err,
       });
       this.providerStatus = ProviderStatus.DISCONNECTED;
