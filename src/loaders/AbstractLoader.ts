@@ -85,7 +85,13 @@ export abstract class AbstractLoader<T extends IOwnable> {
       this.initBlock = existing.initBlock;
       this.lastUpdateBlock = existing.lastUpdateBlock;
       this.lastState = this.model.toGraphQL(existing);
-      await this.loadAndSyncEvents(this.lastUpdateBlock, session);
+
+      const eventsStartBlock =
+        actualBlock !== undefined && actualBlock > 0
+          ? actualBlock - 100
+          : this.lastUpdateBlock;
+
+      await this.loadAndSyncEvents(eventsStartBlock, session);
     } else {
       this.log.info("First time loading");
       await this.saveOrUpdate(session, await this.load());

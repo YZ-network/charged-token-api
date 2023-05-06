@@ -44,6 +44,7 @@ export class ChainWorker {
   chainId: number | undefined;
   name: string | undefined;
   restartCount: number = 0;
+  blockNumberBeforeDisconnect: number = 0;
 
   provider: ethers.providers.WebSocketProvider | undefined;
   worker: Promise<void> | undefined;
@@ -143,6 +144,8 @@ export class ChainWorker {
         this.name = network.name;
         this.providerStatus = ProviderStatus.CONNECTED;
 
+        this.subscribeToNewBlocks();
+
         return network;
       })
       .catch((err) => {
@@ -181,6 +184,14 @@ export class ChainWorker {
         log.info(`Websocket connected : ${this.name} ${this.chainId}`);
       }
     }, 1000);
+  }
+
+  private subscribeToNewBlocks() {
+    this.provider!.on("block", (blockNumber: number) => {
+      if (this.blockNumberBeforeDisconnect < blockNumber) {
+        this.blockNumberBeforeDisconnect = blockNumber;
+      }
+    });
   }
 
   private createWorker() {
@@ -224,7 +235,8 @@ export class ChainWorker {
       );
       const session = await mongoose.startSession();
       await session.withTransaction(
-        async () => await this.directory!.init(session)
+        async () =>
+          await this.directory!.init(session, this.blockNumberBeforeDisconnect)
       );
       await session.endSession();
       log.info(
