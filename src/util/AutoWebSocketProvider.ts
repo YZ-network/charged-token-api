@@ -4,7 +4,6 @@ import { BigNumber } from "@ethersproject/bignumber";
 import { Network, Networkish } from "@ethersproject/networks";
 import { defineReadOnly } from "@ethersproject/properties";
 
-import { Logger } from "@ethersproject/logger";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { Event } from "@ethersproject/providers/lib/base-provider";
 import {
@@ -13,8 +12,13 @@ import {
   WebSocketLike,
 } from "@ethersproject/providers/lib/websocket-provider";
 import { WebSocket } from "ws";
+import { rootLogger } from "./rootLogger";
 
-const logger = new Logger("AutoWebSocketProvider");
+const logger = rootLogger.child({ name: "AutoWebSocketProvider" });
+
+interface IdInflightRequest extends InflightRequest {
+  id: number;
+}
 
 /**
  *  Notes:
@@ -37,8 +41,8 @@ let NextId = 1;
 //   https://geth.ethereum.org/docs/rpc/pubsub
 
 export class AutoWebSocketProvider extends JsonRpcProvider {
-  readonly _websocket: any;
-  readonly _requests: { [name: string]: InflightRequest };
+  readonly _websocket: WebSocket;
+  readonly _requests: IdInflightRequest[];
   readonly _detectNetwork: Promise<Network>;
 
   // Maps event tag to subscription ID (we dedupe identical events)
@@ -49,15 +53,14 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
 
   _wsReady: boolean;
 
+  private pingInterval: NodeJS.Timer | undefined;
+  private pongTimeout: NodeJS.Timeout | undefined;
+
   constructor(url: string | WebSocketLike, network?: Networkish) {
     // This will be added in the future; please open an issue to expedite
     if (network === "any") {
-      logger.throwError(
-        "AutoWebSocketProvider does not support 'any' network yet",
-        Logger.errors.UNSUPPORTED_OPERATION,
-        {
-          operation: "network:any",
-        }
+      throw new Error(
+        "AutoWebSocketProvider does not support 'any' network yet"
       );
     }
 
@@ -73,67 +76,51 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
 
     if (typeof url === "string") {
       this._websocket = new WebSocket(this.connection.url);
-    } else {
+    } else if (url instanceof WebSocket) {
       this._websocket = url;
+    } else {
+      throw Error(
+        "This provider only accepts websocket URL or a real WebSocket as parameter"
+      );
     }
 
-    this._requests = {};
+    this._requests = [];
     this._subs = {};
     this._subIds = {};
     this._detectNetwork = super.detectNetwork();
 
+    this.websocket.onerror = (...args) => {
+      this.emit("error", ...args);
+    };
+    this._websocket.onclose = (event) => {
+      this.emit("error", "WebSocket closed", event);
+    };
+
     // Stall sending requests until the socket is open...
     this.websocket.onopen = () => {
       this._wsReady = true;
-      Object.keys(this._requests).forEach((id) => {
-        this.websocket.send(this._requests[id].payload);
-      });
+      this._setupPings();
+      if (this._requests.length > 0) {
+        this._sendLastRequest();
+      }
     };
 
     this.websocket.onmessage = (messageEvent: { data: string }) => {
       const data = messageEvent.data;
       const result = JSON.parse(data);
-      if (result.id != null) {
-        const id = String(result.id);
-        const request = this._requests[id];
-        delete this._requests[id];
-
-        if (result.result !== undefined) {
-          request.callback(null as unknown as Error, result.result);
-
-          this.emit("debug", {
-            action: "response",
-            request: JSON.parse(request.payload),
-            response: result.result,
-            provider: this,
-          });
-        } else {
-          let error: Error | null = null;
-          if (result.error) {
-            error = new Error(result.error.message || "unknown error");
-            defineReadOnly(<any>error, "code", result.error.code || null);
-            defineReadOnly(<any>error, "response", data);
-          } else {
-            error = new Error("unknown error");
-          }
-
-          request.callback(error, undefined);
-
-          this.emit("debug", {
-            action: "response",
-            error: error,
-            request: JSON.parse(request.payload),
-            provider: this,
-          });
-        }
+      if (result.id != null && result.id === this._requests[0].id) {
+        this._onRequestResponse(data, result);
       } else if (result.method === "eth_subscription") {
-        // Subscription...
-        const sub = this._subs[result.params.subscription];
-        if (sub) {
-          //this.emit.apply(this,                  );
-          sub.processFunc(result.params.result);
-        }
+        this._onSubscriptionMessage(result);
+      } else if (result.error && result.error.code === 429) {
+        this._onRateLimitingError();
       } else {
+        logger.debug({
+          action: "error",
+          msg: "Unknown error handling message",
+          messageEvent,
+        });
+
         console.warn("this should not happen");
       }
     };
@@ -147,6 +134,60 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     if (fauxPoll.unref) {
       fauxPoll.unref();
     }
+  }
+
+  _onRequestResponse(data: string, result: any) {
+    const request = this._requests.shift()!;
+
+    if (result.result !== undefined) {
+      logger.debug({
+        action: "response",
+        request: JSON.parse(request.payload),
+        response: result.result,
+      });
+
+      request.callback(null as unknown as Error, result.result);
+
+      this._sendLastRequest();
+    } else {
+      let error: Error | null = null;
+      if (result.error) {
+        error = new Error(result.error.message || "unknown error");
+        defineReadOnly(<any>error, "code", result.error.code || null);
+        defineReadOnly(<any>error, "response", data);
+      } else {
+        error = new Error("unknown error");
+      }
+
+      logger.debug({
+        action: "response",
+        error: error,
+        request: JSON.parse(request.payload),
+      });
+
+      request.callback(error, undefined);
+    }
+  }
+
+  _onSubscriptionMessage(result: any) {
+    logger.debug({
+      action: "subscribe",
+      result,
+    });
+
+    // Subscription...
+    const sub = this._subs[result.params.subscription];
+    if (sub) {
+      //this.emit.apply(this,                  );
+      sub.processFunc(result.params.result);
+    }
+  }
+
+  _onRateLimitingError() {
+    logger.warn(
+      "Rate limiting error caught, programming retry of last request"
+    );
+    setTimeout(() => this._sendLastRequest(), 100);
   }
 
   // Cannot narrow the type of _websocket, as that is not backwards compatible
@@ -164,23 +205,11 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
   }
 
   resetEventsBlock(blockNumber: number): void {
-    logger.throwError(
-      "cannot reset events block on AutoWebSocketProvider",
-      Logger.errors.UNSUPPORTED_OPERATION,
-      {
-        operation: "resetEventBlock",
-      }
-    );
+    throw new Error("cannot reset events block on AutoWebSocketProvider");
   }
 
   set pollingInterval(value: number) {
-    logger.throwError(
-      "cannot set polling interval on AutoWebSocketProvider",
-      Logger.errors.UNSUPPORTED_OPERATION,
-      {
-        operation: "setPollingInterval",
-      }
-    );
+    throw new Error("cannot set polling interval on AutoWebSocketProvider");
   }
 
   async poll(): Promise<void> {
@@ -192,17 +221,18 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
       return;
     }
 
-    logger.throwError(
-      "cannot set polling on AutoWebSocketProvider",
-      Logger.errors.UNSUPPORTED_OPERATION,
-      {
-        operation: "setPolling",
-      }
-    );
+    throw new Error("cannot set polling on AutoWebSocketProvider");
   }
 
   send(method: string, params?: Array<any>): Promise<any> {
-    const rid = NextId++;
+    const id = NextId++;
+
+    logger.debug({
+      action: "prepare-request",
+      id,
+      method,
+      params,
+    });
 
     return new Promise((resolve, reject) => {
       function callback(error: Error, result: any) {
@@ -215,20 +245,19 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
       const payload = JSON.stringify({
         method: method,
         params: params,
-        id: rid,
+        id,
         jsonrpc: "2.0",
       });
 
-      this.emit("debug", {
-        action: "request",
+      logger.debug({
+        action: "queue-request",
         request: JSON.parse(payload),
-        provider: this,
       });
 
-      this._requests[String(rid)] = { callback, payload };
+      this._requests.push({ id, callback, payload });
 
-      if (this._wsReady) {
-        this.websocket.send(payload);
+      if (this._requests.length === 1) {
+        this._sendLastRequest();
       }
     });
   }
@@ -354,6 +383,15 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
   }
 
   async destroy(): Promise<void> {
+    if (this.pingInterval !== undefined) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = undefined;
+    }
+    if (this.pongTimeout !== undefined) {
+      clearTimeout(this.pongTimeout);
+      this.pongTimeout = undefined;
+    }
+
     // Wait until we have connected before trying to disconnect
     if (this.websocket.readyState === WebSocket.CONNECTING) {
       await new Promise((resolve) => {
@@ -370,5 +408,41 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     // Hangup
     // See: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent#Status_codes
     this.websocket.close(1000);
+  }
+
+  private _sendLastRequest() {
+    if (this._requests.length > 0) {
+      this._websocket.send(this._requests[0].payload);
+      logger.debug({
+        action: "send-request",
+        payload: JSON.parse(this._requests[0].payload),
+        request: this._requests[0],
+      });
+    }
+  }
+
+  private _setupPings() {
+    this.pingInterval = setInterval(() => {
+      if (this.pongTimeout === undefined) {
+        this._websocket.ping();
+        this.pongTimeout = setTimeout(() => {
+          logger.warn({
+            msg: "Websocket crashed",
+          });
+          if (this.pingInterval !== undefined) {
+            clearInterval(this.pingInterval);
+            this.pingInterval = undefined;
+          }
+          this._websocket.terminate();
+        }, 6000);
+      }
+    }, 3000);
+
+    this._websocket.on("pong", () => {
+      if (this.pongTimeout !== undefined) {
+        clearTimeout(this.pongTimeout);
+        this.pongTimeout = undefined;
+      }
+    });
   }
 }

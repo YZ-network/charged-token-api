@@ -88,51 +88,16 @@ export class ChainWorker {
     this.provider = new AutoWebSocketProvider(this.rpc);
     this.wsStatus = WsStatus[this.provider!.websocket.readyState];
 
-    this.provider._websocket.on("open", () => {
-      this.providerStatus = ProviderStatus.CONNECTED;
-
-      this.pingInterval = setInterval(() => {
-        if (this.pongTimeout === undefined) {
-          if (this.chainId === 80001 || this.chainId === 1337) {
-            log.trace(`ping sent chainId=${this.chainId}`);
-          }
-          this.provider!._websocket.ping();
-          this.pongTimeout = setTimeout(() => {
-            log.warn({
-              msg: `Websocket crashed on rpc ${this.rpc}`,
-            });
-            if (this.pingInterval !== undefined) {
-              clearInterval(this.pingInterval);
-              this.pingInterval = undefined;
-            }
-            this.provider!._websocket.terminate();
-          }, 6000);
-        }
-      }, 3000);
-    });
-    this.provider._websocket.on("close", () => {
-      log.warn({
-        msg: `Websocket crashed on rpc ${this.rpc}`,
-      });
-      this.providerStatus = ProviderStatus.DISCONNECTED;
-      this.wsStatus = WsStatus[WebSocket.CLOSED];
-      this.stop();
-    });
-    this.provider._websocket.on("error", () => {
+    this.provider.on("error", (...args) => {
       log.warn({
         msg: `Websocket connection lost to rpc ${this.rpc}`,
+        args,
       });
       this.providerStatus = ProviderStatus.DISCONNECTED;
       this.stop();
     });
-    this.provider._websocket.on("pong", () => {
-      log.trace(
-        `pong received chainId=${this.chainId} wsStatus=${this.wsStatus}`
-      );
-      if (this.pongTimeout !== undefined) {
-        clearTimeout(this.pongTimeout);
-        this.pongTimeout = undefined;
-      }
+    this.provider.on("debug", (...args) => {
+      log.debug({ args });
     });
 
     this.provider.ready
