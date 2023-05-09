@@ -404,7 +404,8 @@ export abstract class AbstractLoader<T extends IOwnable> {
     [owner]: any[]
   ): Promise<void> {
     // common handler for all ownable contracts
-    await this.applyUpdateAndNotify(session, { owner } as Partial<T>);
+    // we do nothing since it happens only when a ChargedToken is added, which will be read in the same session
+    // await this.applyUpdateAndNotify(session, { owner } as Partial<T>);
   }
 
   private filterArgs(inputArgs: Record<string, any> | undefined): any[] {
