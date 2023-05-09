@@ -1,10 +1,9 @@
-import { ethers } from "ethers";
 import mongoose from "mongoose";
 import { WebSocket } from "ws";
 import { Directory } from "./loaders/Directory";
 import { EventHandlerStatus, EventModel } from "./models/Event";
 import { subscribeToUserBalancesLoading } from "./subscriptions";
-import { rootLogger } from "./util";
+import { AutoWebSocketProvider, rootLogger } from "./util";
 
 const log = rootLogger.child({ name: "worker" });
 
@@ -46,7 +45,7 @@ export class ChainWorker {
   restartCount: number = 0;
   blockNumberBeforeDisconnect: number = 0;
 
-  provider: ethers.providers.WebSocketProvider | undefined;
+  provider: AutoWebSocketProvider | undefined;
   worker: Promise<void> | undefined;
 
   directory: Directory | undefined;
@@ -86,7 +85,7 @@ export class ChainWorker {
   }
 
   private createProvider() {
-    this.provider = new ethers.providers.WebSocketProvider(this.rpc);
+    this.provider = new AutoWebSocketProvider(this.rpc);
     this.wsStatus = WsStatus[this.provider!.websocket.readyState];
 
     this.provider._websocket.on("open", () => {
