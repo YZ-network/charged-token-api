@@ -120,8 +120,8 @@ export class ChainWorker {
       this.stop();
     });
     this.provider._websocket.on("error", () => {
-      log.error({
-        msg: `Error connecting to rpc ${this.rpc}`,
+      log.warn({
+        msg: `Websocket connection lost to rpc ${this.rpc}`,
       });
       this.providerStatus = ProviderStatus.DISCONNECTED;
       this.stop();
