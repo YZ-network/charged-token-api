@@ -275,11 +275,25 @@ export class ChainWorker {
       chainId: this.chainId,
       status: EventHandlerStatus.QUEUED,
     });
+    const failedEvents = await EventModel.find({
+      chainId: this.chainId,
+      status: EventHandlerStatus.FAILURE,
+    });
     if (pendingEvents.length > 0) {
       log.warn(
         `Found ${pendingEvents.length} pending events ! maybe remove them`
       );
     }
+    if (failedEvents.length > 0) {
+      log.warn({
+        msg: `Found ${failedEvents.length} failed events ! maybe remove them`,
+        events: failedEvents.map((event) => event.toJSON()),
+      });
+    }
+    await EventModel.deleteMany({
+      chainId: this.chainId,
+      status: { $in: [EventHandlerStatus.QUEUED, EventHandlerStatus.FAILURE] },
+    });
     this.providerStatus = ProviderStatus.DEAD;
     this.workerStatus = WorkerStatus.DEAD;
     this.restartCount++;
