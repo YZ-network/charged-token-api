@@ -3,6 +3,7 @@ import { createYoga, useLogger } from "graphql-yoga";
 import { createServer } from "http";
 import mongoose from "mongoose";
 import { WebSocketServer } from "ws";
+import { Config } from "./config";
 import { encodeEvents } from "./encodeevents";
 import { schema } from "./graphql";
 import { rootLogger } from "./util";
@@ -12,22 +13,25 @@ export class Main {
   private static readonly log = rootLogger.child({ name: "Main" });
   private static readonly yogaLog = Main.log.child({ name: "yoga" });
 
-  private static rpcs = process.env.JSON_RPC_URL!.split(",");
-  private static directories = process.env.DIRECTORY_ADDRESS!.split(",");
+  private static rpcs = Config.rpcUrl;
+  private static directories = Config.directoryAddress;
+
+  private static keepAlive: NodeJS.Timer | undefined;
 
   private static readonly workers: ChainWorker[] = [];
-  private static keepAlive: NodeJS.Timer | undefined;
 
   static readonly topicsMap: Record<string, Record<string, string>> =
     encodeEvents();
 
   private static readonly yoga = createYoga({
     schema,
-    graphiql: {
-      subscriptionsProtocol: "WS",
-    },
+    graphiql: Config.enableGraphiQL
+      ? {
+          subscriptionsProtocol: "WS",
+        }
+      : false,
     cors: {
-      origin: process.env.CORS_ORIGINS,
+      origin: Config.corsOrigins,
       methods: ["POST", "OPTIONS"],
     },
     logging: {
@@ -59,10 +63,8 @@ export class Main {
     path: Main.yoga.graphqlEndpoint,
   });
 
-  private static readonly bindAddress = process.env.BIND_ADDRESS || "localhost";
-  private static readonly bindPort = process.env.BIND_PORT
-    ? Number(process.env.BIND_PORT)
-    : 4000;
+  private static readonly bindAddress = Config.bindAddress;
+  private static readonly bindPort = Config.bindPort;
 
   static init() {
     useServer(
@@ -123,7 +125,7 @@ export class Main {
               worker.start();
             }
           }
-        }, 30000);
+        }, Config.workerRestartDelayMs);
 
         Main.httpServer.listen(Main.bindPort, Main.bindAddress, () =>
           Main.log.info(
@@ -131,9 +133,13 @@ export class Main {
           )
         );
       })
-      .catch((err) =>
-        Main.log.error({ msg: "Error connecting to database :", err })
-      );
+      .catch((err) => {
+        Main.log.error({ msg: "Error connecting to database :", err });
+        if (this.keepAlive !== undefined) {
+          clearInterval(this.keepAlive);
+          this.keepAlive = undefined;
+        }
+      });
   }
 
   static health(): ChainHealth[] {
@@ -143,7 +149,7 @@ export class Main {
   private static connectDB() {
     mongoose.set("strictQuery", true);
     return mongoose.connect(
-      `mongodb://${process.env.MONGODB_HOST}:27017/test?replicaSet=rs0`
+      `mongodb://${Config.mongodbHost}:27017/test?replicaSet=rs0`
     );
   }
 
