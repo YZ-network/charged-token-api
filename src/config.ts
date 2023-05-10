@@ -10,6 +10,11 @@ interface Config {
   logLevel: string;
   enableGraphiQL: boolean;
   workerRestartDelayMs: number;
+  rpcMaxParallelRequests: number;
+  rpcMaxRetryCount: number;
+  rpcPingDelayMs: number;
+  rpcPongMaxWaitMs: number;
+  rpcRetryDelayMs: number;
 }
 
 export const Config = {
@@ -22,4 +27,9 @@ export const Config = {
   logLevel: process.env.LOG_LEVEL || "info",
   enableGraphiQL: process.env.ENABLE_GRAPHIQL === "true",
   workerRestartDelayMs: Number(process.env.WORKER_RESTART_DELAY_MS || 3000),
+  rpcMaxParallelRequests: Number(process.env.RPC_MAX_PARALLEL || 4),
+  rpcMaxRetryCount: Number(process.env.RPC_MAX_RETRIES || 3),
+  rpcPingDelayMs: Number(process.env.RPC_PING_DELAY_MS || 3000),
+  rpcPongMaxWaitMs: Number(process.env.RPC_PONG_TIMEOUT || 6000),
+  rpcRetryDelayMs: Number(process.env.RPC_RETRY_DELAY_MS || 10),
 };

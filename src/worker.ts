@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { WebSocket } from "ws";
+import { Config } from "./config";
 import { Directory } from "./loaders/Directory";
 import { EventHandlerStatus, EventModel } from "./models/Event";
 import { subscribeToUserBalancesLoading } from "./subscriptions";
@@ -85,7 +86,13 @@ export class ChainWorker {
   }
 
   private createProvider() {
-    this.provider = new AutoWebSocketProvider(this.rpc);
+    this.provider = new AutoWebSocketProvider(this.rpc, {
+      maxParallelRequests: Config.rpcMaxParallelRequests,
+      maxRetryCount: Config.rpcMaxRetryCount,
+      pingDelayMs: Config.rpcPingDelayMs,
+      pongMaxWaitMs: Config.rpcPongMaxWaitMs,
+      retryDelayMs: Config.rpcRetryDelayMs,
+    });
     this.wsStatus = WsStatus[this.provider!.websocket.readyState];
 
     this.provider.on("error", (...args) => {

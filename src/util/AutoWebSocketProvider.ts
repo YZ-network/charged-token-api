@@ -20,6 +20,22 @@ interface IdInflightRequest extends InflightRequest {
   id: number;
 }
 
+interface AutoWebSocketProviderOptions {
+  maxParallelRequests: number;
+  maxRetryCount: number;
+  retryDelayMs: number;
+  pingDelayMs: number;
+  pongMaxWaitMs: number;
+}
+
+const DEFAULTS: AutoWebSocketProviderOptions = {
+  maxParallelRequests: 4,
+  maxRetryCount: 3,
+  retryDelayMs: 50,
+  pingDelayMs: 3000,
+  pongMaxWaitMs: 6000,
+};
+
 /**
  *  Notes:
  *
@@ -51,12 +67,20 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
   // Maps Subscription ID to Subscription
   readonly _subs: { [name: string]: Subscription };
 
+  _retryCount: number;
+
+  readonly options: AutoWebSocketProviderOptions;
+
   _wsReady: boolean;
 
   private pingInterval: NodeJS.Timer | undefined;
   private pongTimeout: NodeJS.Timeout | undefined;
 
-  constructor(url: string | WebSocketLike, network?: Networkish) {
+  constructor(
+    url: string | WebSocketLike,
+    options: Partial<AutoWebSocketProviderOptions> = {},
+    network?: Networkish
+  ) {
     // This will be added in the future; please open an issue to expedite
     if (network === "any") {
       throw new Error(
@@ -69,6 +93,11 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     } else {
       super("_websocket", network);
     }
+
+    this.options = {
+      ...DEFAULTS,
+      ...options,
+    };
 
     this._pollingInterval = -1;
 
@@ -87,6 +116,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     this._requests = [];
     this._subs = {};
     this._subIds = {};
+    this._retryCount = 0;
     this._detectNetwork = super.detectNetwork();
 
     this.websocket.onerror = (...args) => {
@@ -108,7 +138,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     this.websocket.onmessage = (messageEvent: { data: string }) => {
       const data = messageEvent.data;
       const result = JSON.parse(data);
-      if (result.id != null && result.id === this._requests[0].id) {
+      if (result.id != null && result.id !== 0) {
         this._onRequestResponse(data, result);
       } else if (result.method === "eth_subscription") {
         this._onSubscriptionMessage(result);
@@ -147,8 +177,6 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
       });
 
       request.callback(null as unknown as Error, result.result);
-
-      this._sendLastRequest();
     } else {
       let error: Error | null = null;
       if (result.error) {
@@ -167,6 +195,9 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
 
       request.callback(error, undefined);
     }
+
+    this._retryCount = 0;
+    this._sendLastRequest();
   }
 
   _onSubscriptionMessage(result: any) {
@@ -187,7 +218,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     logger.warn(
       "Rate limiting error caught, programming retry of last request"
     );
-    setTimeout(() => this._sendLastRequest(), 100);
+    setTimeout(() => this._sendLastRequest(), this.options.retryDelayMs);
   }
 
   // Cannot narrow the type of _websocket, as that is not backwards compatible
@@ -411,14 +442,29 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
   }
 
   private _sendLastRequest() {
-    if (this._requests.length > 0) {
-      this._websocket.send(this._requests[0].payload);
-      logger.debug({
-        action: "send-request",
-        payload: JSON.parse(this._requests[0].payload),
-        request: this._requests[0],
-      });
+    if (this._requests.length === 0) return;
+
+    const request = this._requests[0];
+    this._retryCount++;
+
+    if (this._retryCount > this.options.maxRetryCount) {
+      logger.warn(
+        "found exceeded retries for request",
+        request,
+        ":",
+        this._retryCount,
+        ">",
+        this.options.maxRetryCount
+      );
+      throw new Error("Too many retries failed, crashing");
     }
+
+    this._websocket.send(request.payload);
+    logger.debug({
+      action: "send-request",
+      payload: JSON.parse(request.payload),
+      request,
+    });
   }
 
   private _setupPings() {
@@ -434,9 +480,9 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
             this.pingInterval = undefined;
           }
           this._websocket.terminate();
-        }, 6000);
+        }, this.options.pongMaxWaitMs);
       }
-    }, 3000);
+    }, this.options.pingDelayMs);
 
     this._websocket.on("pong", () => {
       if (this.pongTimeout !== undefined) {
