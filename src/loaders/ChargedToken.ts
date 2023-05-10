@@ -440,9 +440,11 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       totalTokenAllocated: BigNumber.from(jsonModel.totalTokenAllocated)
         .add(bnRewards)
         .toString(),
+      /*
       totalSupply: BigNumber.from(jsonModel.totalSupply)
         .add(bnRewards)
         .toString(),
+        */
     };
 
     await this.applyUpdateAndNotify(session, update);
