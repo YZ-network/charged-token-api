@@ -361,9 +361,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
   }
 
   async destroy() {
-    if (this.provider) {
-      this.provider.removeAllListeners();
-    }
+    this.instance.removeAllListeners();
     if (this.eventsListener) {
       this.eventsListener.destroy();
     }
