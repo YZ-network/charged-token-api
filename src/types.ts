@@ -27,7 +27,8 @@ export type IKeyValueList = IEntry[];
 
 export type IEventHandler = (
   session: ClientSession,
-  args: any[]
+  args: any[],
+  eventName: string
 ) => Promise<void>;
 
 export type IToModel<T> = (data: T) => HydratedDocument<T>;

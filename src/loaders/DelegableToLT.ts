@@ -81,7 +81,8 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
 
   async onTransferEvent(
     session: ClientSession,
-    [from, to, value]: any[]
+    [from, to, value]: any[],
+    eventName?: string
   ): Promise<void> {
     if ((value as BigNumber).isZero()) {
       this.log.warn("Skipping transfer event processing since value is zero");
@@ -97,9 +98,15 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
           .sub(BigNumber.from(value))
           .toString();
 
-        await this.updateBalanceAndNotify(session, this.ct.address, from, {
-          balancePT,
-        });
+        await this.updateBalanceAndNotify(
+          session,
+          this.ct.address,
+          from,
+          {
+            balancePT,
+          },
+          eventName
+        );
       }
     }
     if (to !== EMPTY_ADDRESS) {
@@ -111,9 +118,15 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
           .add(BigNumber.from(value))
           .toString();
 
-        await this.updateBalanceAndNotify(session, this.ct.address, to, {
-          balancePT,
-        });
+        await this.updateBalanceAndNotify(
+          session,
+          this.ct.address,
+          to,
+          {
+            balancePT,
+          },
+          eventName
+        );
       }
     }
     if (from === EMPTY_ADDRESS) {
@@ -123,7 +136,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
           .add(BigNumber.from(value))
           .toString(),
       };
-      await this.applyUpdateAndNotify(session, update);
+      await this.applyUpdateAndNotify(session, update, eventName);
     }
     if (to === EMPTY_ADDRESS) {
       const jsonModel = await this.getJsonModel(session);
@@ -132,18 +145,20 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
           .sub(BigNumber.from(value))
           .toString(),
       };
-      await this.applyUpdateAndNotify(session, update);
+      await this.applyUpdateAndNotify(session, update, eventName);
     }
   }
 
   async onAddedAllTimeValidatedInterfaceProjectTokenEvent(
     session: ClientSession,
-    [interfaceProjectToken]: any[]
+    [interfaceProjectToken]: any[],
+    eventName?: string
   ): Promise<void> {}
 
   async onAddedInterfaceProjectTokenEvent(
     session: ClientSession,
-    [interfaceProjectToken]: any[]
+    [interfaceProjectToken]: any[],
+    eventName?: string
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
@@ -154,21 +169,27 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
       ],
     };
 
-    await this.applyUpdateAndNotify(session, update);
+    await this.applyUpdateAndNotify(session, update, eventName);
   }
 
   async onListOfValidatedInterfaceProjectTokenIsFinalizedEvent(
     session: ClientSession,
-    []: any[]
+    []: any[],
+    eventName?: string
   ): Promise<void> {
-    await this.applyUpdateAndNotify(session, {
-      isListOfInterfaceProjectTokenComplete: true,
-    });
+    await this.applyUpdateAndNotify(
+      session,
+      {
+        isListOfInterfaceProjectTokenComplete: true,
+      },
+      eventName
+    );
   }
 
   async onInterfaceProjectTokenRemovedEvent(
     session: ClientSession,
-    [interfaceProjectToken]: any[]
+    [interfaceProjectToken]: any[],
+    eventName?: string
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
@@ -179,6 +200,6 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
         ),
     };
 
-    await this.applyUpdateAndNotify(session, update);
+    await this.applyUpdateAndNotify(session, update, eventName);
   }
 }

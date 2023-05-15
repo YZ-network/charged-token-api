@@ -136,24 +136,31 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
 
   async onStartSetEvent(
     session: ClientSession,
-    [dateLaunch, dateEndCliff]: any[]
+    [dateLaunch, dateEndCliff]: any[],
+    eventName?: string
   ): Promise<void> {
-    await this.applyUpdateAndNotify(session, {
-      dateLaunch,
-      dateEndCliff,
-    });
+    await this.applyUpdateAndNotify(
+      session,
+      {
+        dateLaunch,
+        dateEndCliff,
+      },
+      eventName
+    );
   }
 
   async onProjectTokenReceivedEvent(
     session: ClientSession,
-    [user, value, fees, hodlRewards]: any[]
+    [user, value, fees, hodlRewards]: any[],
+    eventName?: string
   ): Promise<void> {
     // user balances & totalSupply updated by TransferEvents
   }
 
   async onIncreasedValueProjectTokenToFullRechargeEvent(
     session: ClientSession,
-    [user, valueIncreased]: any[]
+    [user, valueIncreased]: any[],
+    eventName?: string
   ): Promise<void> {
     const oldBalance = await this.getBalance(session, this.ct.address, user);
 
@@ -164,15 +171,22 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         .add(BigNumber.from(valueIncreased))
         .toString();
 
-      await this.updateBalanceAndNotify(session, this.ct.address, user, {
-        valueProjectTokenToFullRecharge,
-      });
+      await this.updateBalanceAndNotify(
+        session,
+        this.ct.address,
+        user,
+        {
+          valueProjectTokenToFullRecharge,
+        },
+        eventName
+      );
     }
   }
 
   async onLTRechargedEvent(
     session: ClientSession,
-    [user, value, valueProjectToken, hodlRewards]: any[]
+    [user, value, valueProjectToken, hodlRewards]: any[],
+    eventName?: string
   ): Promise<void> {
     const oldBalance = await this.getBalance(session, this.ct.address, user);
 
@@ -183,18 +197,29 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         .sub(BigNumber.from(valueProjectToken))
         .toString();
 
-      await this.updateBalanceAndNotify(session, this.ct.address, user, {
-        valueProjectTokenToFullRecharge,
-      });
+      await this.updateBalanceAndNotify(
+        session,
+        this.ct.address,
+        user,
+        {
+          valueProjectTokenToFullRecharge,
+        },
+        eventName
+      );
     }
   }
 
   async onClaimFeesUpdatedEvent(
     session: ClientSession,
-    [valuePerThousand]: any[]
+    [valuePerThousand]: any[],
+    eventName?: string
   ): Promise<void> {
-    await this.applyUpdateAndNotify(session, {
-      claimFeesPerThousandForPT: valuePerThousand.toString(),
-    });
+    await this.applyUpdateAndNotify(
+      session,
+      {
+        claimFeesPerThousandForPT: valuePerThousand.toString(),
+      },
+      eventName
+    );
   }
 }

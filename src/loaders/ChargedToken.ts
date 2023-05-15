@@ -173,7 +173,8 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
 
   async onTransferEvent(
     session: ClientSession,
-    [from, to, value]: any[]
+    [from, to, value]: any[],
+    eventName?: string
   ): Promise<void> {
     if ((value as BigNumber).isZero()) {
       this.log.warn("Skipping transfer event processing since value is zero");
@@ -186,16 +187,22 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         const totalLocked = BigNumber.from(jsonModel!.totalLocked)
           .sub(BigNumber.from(value))
           .toString();
-        await this.applyUpdateAndNotify(session, { totalLocked });
+        await this.applyUpdateAndNotify(session, { totalLocked }, eventName);
       } else {
         const balanceFrom = await this.getBalance(session, this.address, from);
         if (balanceFrom !== null) {
           const balance = BigNumber.from(balanceFrom.balance)
             .sub(BigNumber.from(value))
             .toString();
-          await this.updateBalanceAndNotify(session, this.address, from, {
-            balance,
-          });
+          await this.updateBalanceAndNotify(
+            session,
+            this.address,
+            from,
+            {
+              balance,
+            },
+            eventName
+          );
         } else {
           this.log.info(
             "Skipping from balance update since it was not found in db"
@@ -209,7 +216,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         const totalLocked = BigNumber.from(jsonModel!.totalLocked)
           .add(BigNumber.from(value))
           .toString();
-        await this.applyUpdateAndNotify(session, { totalLocked });
+        await this.applyUpdateAndNotify(session, { totalLocked }, eventName);
       } else {
         const balanceTo = await this.getBalance(session, this.address, to);
 
@@ -218,9 +225,15 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
             .add(BigNumber.from(value))
             .toString();
 
-          await this.updateBalanceAndNotify(session, this.address, to, {
-            balance,
-          });
+          await this.updateBalanceAndNotify(
+            session,
+            this.address,
+            to,
+            {
+              balance,
+            },
+            eventName
+          );
         } else {
           this.log.info(
             "Skipping to balance update since it was not found in db"
@@ -235,7 +248,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
           .add(BigNumber.from(value))
           .toString(),
       };
-      await this.applyUpdateAndNotify(session, update);
+      await this.applyUpdateAndNotify(session, update, eventName);
     }
     if (to === EMPTY_ADDRESS) {
       const jsonModel = await this.getJsonModel(session);
@@ -244,20 +257,26 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
           .sub(BigNumber.from(value))
           .toString(),
       };
-      await this.applyUpdateAndNotify(session, update);
+      await this.applyUpdateAndNotify(session, update, eventName);
     }
   }
 
   async onUserFunctionsAreDisabledEvent(
     session: ClientSession,
-    [areUserFunctionsDisabled]: any[]
+    [areUserFunctionsDisabled]: any[],
+    eventName?: string
   ): Promise<void> {
-    await this.applyUpdateAndNotify(session, { areUserFunctionsDisabled });
+    await this.applyUpdateAndNotify(
+      session,
+      { areUserFunctionsDisabled },
+      eventName
+    );
   }
 
   async onInterfaceProjectTokenSetEvent(
     session: ClientSession,
-    [interfaceProjectToken]: any[]
+    [interfaceProjectToken]: any[],
+    eventName?: string
   ): Promise<void> {
     this.interface = new InterfaceProjectToken(
       this.chainId,
@@ -269,21 +288,31 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     await this.interface.init(session);
     this.interface.subscribeToEvents();
 
-    await this.applyUpdateAndNotify(session, { interfaceProjectToken });
+    await this.applyUpdateAndNotify(
+      session,
+      { interfaceProjectToken },
+      eventName
+    );
   }
 
   async onInterfaceProjectTokenIsLockedEvent(
     session: ClientSession,
-    []: never[]
+    []: never[],
+    eventName?: string
   ): Promise<void> {
-    await this.applyUpdateAndNotify(session, {
-      isInterfaceProjectTokenLocked: true,
-    });
+    await this.applyUpdateAndNotify(
+      session,
+      {
+        isInterfaceProjectTokenLocked: true,
+      },
+      eventName
+    );
   }
 
   async onIncreasedFullyChargedBalanceEvent(
     session: ClientSession,
-    [user, value]: any[]
+    [user, value]: any[],
+    eventName?: string
   ): Promise<void> {
     const oldBalance = await this.getBalance(session, this.address, user);
 
@@ -292,9 +321,15 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         .add(BigNumber.from(value))
         .toString();
 
-      await this.updateBalanceAndNotify(session, this.address, user, {
-        fullyChargedBalance,
-      });
+      await this.updateBalanceAndNotify(
+        session,
+        this.address,
+        user,
+        {
+          fullyChargedBalance,
+        },
+        eventName
+      );
     } else {
       await this.directory.loadAllUserBalances(session, user, this.address);
     }
@@ -302,49 +337,66 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
 
   async onLTAllocatedByOwnerEvent(
     session: ClientSession,
-    [user, value, hodlRewards, isAllocationStaked]: any[]
+    [user, value, hodlRewards, isAllocationStaked]: any[],
+    eventName?: string
   ): Promise<void> {
     // total supply updated by transfer events
   }
 
   async onIncreasedTotalTokenAllocatedEvent(
     session: ClientSession,
-    [value]: any[]
+    [value]: any[],
+    eventName?: string
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
-    await this.applyUpdateAndNotify(session, {
-      totalTokenAllocated: BigNumber.from(jsonModel.totalTokenAllocated)
-        .add(BigNumber.from(value))
-        .toString(),
-    });
+    await this.applyUpdateAndNotify(
+      session,
+      {
+        totalTokenAllocated: BigNumber.from(jsonModel.totalTokenAllocated)
+          .add(BigNumber.from(value))
+          .toString(),
+      },
+      eventName
+    );
   }
 
   async onIncreasedStakedLTEvent(
     session: ClientSession,
-    [value]: any[]
+    [value]: any[],
+    eventName?: string
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
-    await this.applyUpdateAndNotify(session, {
-      stakedLT: BigNumber.from(jsonModel.stakedLT)
-        .add(BigNumber.from(value))
-        .toString(),
-    });
+    await this.applyUpdateAndNotify(
+      session,
+      {
+        stakedLT: BigNumber.from(jsonModel.stakedLT)
+          .add(BigNumber.from(value))
+          .toString(),
+      },
+      eventName
+    );
   }
 
   async onAllocationsAreTerminatedEvent(
     session: ClientSession,
-    []: any[]
+    []: any[],
+    eventName?: string
   ): Promise<void> {
-    await this.applyUpdateAndNotify(session, {
-      areAllocationsTerminated: true,
-    });
+    await this.applyUpdateAndNotify(
+      session,
+      {
+        areAllocationsTerminated: true,
+      },
+      eventName
+    );
   }
 
   async onDecreasedFullyChargedBalanceAndStakedLTEvent(
     session: ClientSession,
-    [user, value]: any[]
+    [user, value]: any[],
+    eventName?: string
   ): Promise<void> {
     const oldBalance = await this.getBalance(session, this.address, user);
 
@@ -353,53 +405,77 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         .sub(BigNumber.from(value))
         .toString();
 
-      await this.updateBalanceAndNotify(session, this.address, user, {
-        fullyChargedBalance,
-      });
+      await this.updateBalanceAndNotify(
+        session,
+        this.address,
+        user,
+        {
+          fullyChargedBalance,
+        },
+        eventName
+      );
     }
 
     const jsonModel = await this.getJsonModel(session);
 
-    await this.applyUpdateAndNotify(session, {
-      stakedLT: BigNumber.from(jsonModel.stakedLT)
-        .sub(BigNumber.from(value))
-        .toString(),
-    });
+    await this.applyUpdateAndNotify(
+      session,
+      {
+        stakedLT: BigNumber.from(jsonModel.stakedLT)
+          .sub(BigNumber.from(value))
+          .toString(),
+      },
+      eventName
+    );
   }
 
   async onLTReceivedEvent(
     session: ClientSession,
-    [user, value, totalFees, feesToRewardHodlers, hodlRewards]: any[]
+    [user, value, totalFees, feesToRewardHodlers, hodlRewards]: any[],
+    eventName?: string
   ): Promise<void> {
     // nothing to do, balance have been updated by onTransferEvent handler
   }
 
   async onClaimedRewardPerShareUpdatedEvent(
     session: ClientSession,
-    [user, value]: any[]
+    [user, value]: any[],
+    eventName?: string
   ): Promise<void> {
     const oldBalance = await this.getBalance(session, this.address, user);
 
     if (oldBalance !== null) {
-      await this.updateBalanceAndNotify(session, this.address, user, {
-        claimedRewardPerShare1e18: value,
-      });
+      await this.updateBalanceAndNotify(
+        session,
+        this.address,
+        user,
+        {
+          claimedRewardPerShare1e18: value.toString(),
+        },
+        eventName
+      );
     }
   }
 
   async onCurrentRewardPerShareAndStakingCheckpointUpdatedEvent(
     session: ClientSession,
-    [rewardPerShare1e18, blockTime]: any[]
+    [rewardPerShare1e18, blockTime]: any[],
+    eventName?: string
   ): Promise<void> {
-    await this.applyUpdateAndNotify(session, {
-      currentRewardPerShare1e18: rewardPerShare1e18,
-      stakingDateLastCheckpoint: blockTime,
-    });
+    await this.applyUpdateAndNotify(
+      session,
+      {
+        currentRewardPerShare1e18: rewardPerShare1e18.toString(),
+        stakingDateLastCheckpoint: blockTime,
+      },
+      eventName
+    );
   }
 
   async onIncreasedCurrentRewardPerShareEvent(
     session: ClientSession,
-    [value]: any[]
+    [value]: any[],
+    eventName?: string
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
@@ -411,19 +487,21 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         .toString(),
     };
 
-    await this.applyUpdateAndNotify(session, update);
+    await this.applyUpdateAndNotify(session, update, eventName);
   }
 
   async onLTDepositedEvent(
     session: ClientSession,
-    [user, value, hodlRewards]: any[]
+    [user, value, hodlRewards]: any[],
+    eventName?: string
   ): Promise<void> {
     // user balances updated by IncreasedFullyChargedBalance
   }
 
   async onStakingCampaignCreatedEvent(
     session: ClientSession,
-    [startDate, duration, rewards]: any[]
+    [startDate, duration, rewards]: any[],
+    eventName?: string
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
@@ -447,30 +525,41 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         */
     };
 
-    await this.applyUpdateAndNotify(session, update);
+    await this.applyUpdateAndNotify(session, update, eventName);
   }
 
   async onWithdrawalFeesUpdatedEvent(
     session: ClientSession,
-    [value]: any[]
+    [value]: any[],
+    eventName?: string
   ): Promise<void> {
-    await this.applyUpdateAndNotify(session, {
-      withdrawFeesPerThousandForLT: value.toString(),
-    });
+    await this.applyUpdateAndNotify(
+      session,
+      {
+        withdrawFeesPerThousandForLT: value.toString(),
+      },
+      eventName
+    );
   }
 
   async onRatioFeesToRewardHodlersUpdatedEvent(
     session: ClientSession,
-    [value]: any[]
+    [value]: any[],
+    eventName?: string
   ): Promise<void> {
-    await this.applyUpdateAndNotify(session, {
-      ratioFeesToRewardHodlersPerThousand: value.toString(),
-    });
+    await this.applyUpdateAndNotify(
+      session,
+      {
+        ratioFeesToRewardHodlersPerThousand: value.toString(),
+      },
+      eventName
+    );
   }
 
   async onDecreasedPartiallyChargedBalanceEvent(
     session: ClientSession,
-    [user, value]: any[]
+    [user, value]: any[],
+    eventName?: string
   ): Promise<void> {
     const oldBalance = await this.getBalance(session, this.address, user);
 
@@ -481,15 +570,22 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         .sub(BigNumber.from(value))
         .toString();
 
-      await this.updateBalanceAndNotify(session, this.address, user, {
-        partiallyChargedBalance,
-      });
+      await this.updateBalanceAndNotify(
+        session,
+        this.address,
+        user,
+        {
+          partiallyChargedBalance,
+        },
+        eventName
+      );
     }
   }
 
   async onUpdatedDateOfPartiallyChargedAndDecreasedStakedLTEvent(
     session: ClientSession,
-    [blockTime, value]: any[]
+    [blockTime, value]: any[],
+    eventName?: string
   ): Promise<void> {
     // dateOfPartiallyCharged updated by TokensDischargedEvent
     const jsonModel = await this.getJsonModel(session);
@@ -500,12 +596,13 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         .toString(),
     };
 
-    await this.applyUpdateAndNotify(session, update);
+    await this.applyUpdateAndNotify(session, update, eventName);
   }
 
   async onTokensDischargedEvent(
     session: ClientSession,
-    [user, partiallyChargedBalance]: any[]
+    [user, partiallyChargedBalance]: any[],
+    eventName?: string
   ): Promise<void> {
     const oldBalance = await this.getBalance(session, this.address, user);
 
@@ -514,11 +611,17 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         user
       );
 
-      await this.updateBalanceAndNotify(session, this.address, user, {
-        fullyChargedBalance: "0",
-        partiallyChargedBalance,
-        dateOfPartiallyCharged: dateOfPartiallyCharged.toString(),
-      });
+      await this.updateBalanceAndNotify(
+        session,
+        this.address,
+        user,
+        {
+          fullyChargedBalance: "0",
+          partiallyChargedBalance: partiallyChargedBalance.toString(),
+          dateOfPartiallyCharged: dateOfPartiallyCharged.toString(),
+        },
+        eventName
+      );
     }
   }
 }

@@ -201,14 +201,20 @@ export class Directory extends AbstractLoader<IDirectory> {
 
   async onUserFunctionsAreDisabledEvent(
     session: ClientSession,
-    [areUserFunctionsDisabled]: any[]
+    [areUserFunctionsDisabled]: any[],
+    eventName?: string
   ): Promise<void> {
-    await this.applyUpdateAndNotify(session, { areUserFunctionsDisabled });
+    await this.applyUpdateAndNotify(
+      session,
+      { areUserFunctionsDisabled },
+      eventName
+    );
   }
 
   async onProjectOwnerWhitelistedEvent(
     session: ClientSession,
-    [projectOwner, project]: any[]
+    [projectOwner, project]: any[],
+    eventName?: string
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
@@ -221,12 +227,13 @@ export class Directory extends AbstractLoader<IDirectory> {
       whitelist: { ...jsonModel.whitelist, [projectOwner]: project },
     };
 
-    await this.applyUpdateAndNotify(session, updates);
+    await this.applyUpdateAndNotify(session, updates, eventName);
   }
 
   async onAddedLTContractEvent(
     session: ClientSession,
-    [contract]: any[]
+    [contract]: any[],
+    eventName?: string
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
@@ -248,12 +255,13 @@ export class Directory extends AbstractLoader<IDirectory> {
     await this.ct[contract].init(session, this.actualBlock);
     this.ct[contract].subscribeToEvents();
 
-    await this.applyUpdateAndNotify(session, updates);
+    await this.applyUpdateAndNotify(session, updates, eventName);
   }
 
   async onRemovedLTContractEvent(
     session: ClientSession,
-    [contract]: any[]
+    [contract]: any[],
+    eventName?: string
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
@@ -324,12 +332,13 @@ export class Directory extends AbstractLoader<IDirectory> {
       { session }
     );
 
-    await this.applyUpdateAndNotify(session, update);
+    await this.applyUpdateAndNotify(session, update, eventName);
   }
 
   async onRemovedProjectByAdminEvent(
     session: ClientSession,
-    [projectOwner]: any[]
+    [projectOwner]: any[],
+    eventName?: string
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
@@ -352,12 +361,13 @@ export class Directory extends AbstractLoader<IDirectory> {
       }
     });
 
-    await this.applyUpdateAndNotify(session, update);
+    await this.applyUpdateAndNotify(session, update, eventName);
   }
 
   async onChangedProjectOwnerAccountEvent(
     session: ClientSession,
-    [projectOwnerOld, projectOwnerNew]: any[]
+    [projectOwnerOld, projectOwnerNew]: any[],
+    eventName?: string
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
@@ -367,12 +377,13 @@ export class Directory extends AbstractLoader<IDirectory> {
       ),
     };
 
-    await this.applyUpdateAndNotify(session, update);
+    await this.applyUpdateAndNotify(session, update, eventName);
   }
 
   async onChangedProjectNameEvent(
     session: ClientSession,
-    [oldProjectName, newProjectName]: any[]
+    [oldProjectName, newProjectName]: any[],
+    eventName?: string
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
@@ -382,12 +393,13 @@ export class Directory extends AbstractLoader<IDirectory> {
       ),
     };
 
-    await this.applyUpdateAndNotify(session, update);
+    await this.applyUpdateAndNotify(session, update, eventName);
   }
 
   async onAllocatedLTToProjectEvent(
     session: ClientSession,
-    [contract, project]: any[]
+    [contract, project]: any[],
+    eventName?: string
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
@@ -399,12 +411,13 @@ export class Directory extends AbstractLoader<IDirectory> {
       directory: [...jsonModel.directory, contract],
     };
 
-    await this.applyUpdateAndNotify(session, update);
+    await this.applyUpdateAndNotify(session, update, eventName);
   }
 
   async onAllocatedProjectOwnerToProjectEvent(
     session: ClientSession,
-    [projectOwner, project]: any[]
+    [projectOwner, project]: any[],
+    eventName?: string
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
@@ -416,6 +429,6 @@ export class Directory extends AbstractLoader<IDirectory> {
       projects: [...jsonModel.projects, project],
     };
 
-    await this.applyUpdateAndNotify(session, update);
+    await this.applyUpdateAndNotify(session, update, eventName);
   }
 }

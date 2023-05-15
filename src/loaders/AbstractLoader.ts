@@ -161,8 +161,17 @@ export abstract class AbstractLoader<T extends IOwnable> {
     session: ClientSession,
     address: string,
     user: string,
-    balanceUpdates: Partial<IUserBalance>
+    balanceUpdates: Partial<IUserBalance>,
+    eventName?: string
   ): Promise<void> {
+    this.log.info({
+      msg: "applying update to balance",
+      address,
+      user,
+      balanceUpdates,
+      eventName,
+    });
+
     await UserBalanceModel.updateOne({ address, user }, balanceUpdates, {
       session,
     });
@@ -309,8 +318,15 @@ export abstract class AbstractLoader<T extends IOwnable> {
 
   protected async applyUpdateAndNotify(
     session: ClientSession,
-    data: Partial<T>
+    data: Partial<T>,
+    eventName?: string
   ) {
+    this.log.info({
+      msg: "applying update to contract",
+      eventName,
+      data,
+    });
+
     await this.saveOrUpdate(session, data);
 
     this.log.debug({
@@ -387,6 +403,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
       await (this[eventHandlerName] as IEventHandler).apply(this, [
         session,
         args,
+        `${this.constructor.name}.${String(eventHandlerName)}`,
       ]);
     } catch (err) {
       const msg = `Error running Event handler for event ${
@@ -399,7 +416,8 @@ export abstract class AbstractLoader<T extends IOwnable> {
 
   async onOwnershipTransferredEvent(
     session: ClientSession,
-    [owner]: any[]
+    [owner]: any[],
+    eventName?: string
   ): Promise<void> {
     // common handler for all ownable contracts
     // we do nothing since it happens only when a ChargedToken is added, which will be read in the same session
