@@ -65,7 +65,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
       symbol: await ins.symbol(),
       decimals: (await ins.decimals()).toString(),
       balances: {},
-      totalSupply: await ins.totalSupply(),
+      totalSupply: (await ins.totalSupply()).toString(),
       // other
       validatedInterfaceProjectToken,
       isListOfInterfaceProjectTokenComplete:

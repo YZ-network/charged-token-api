@@ -142,8 +142,8 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     await this.applyUpdateAndNotify(
       session,
       {
-        dateLaunch,
-        dateEndCliff,
+        dateLaunch: dateLaunch.toString(),
+        dateEndCliff: dateEndCliff.toString(),
       },
       eventName
     );

@@ -74,7 +74,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       symbol: await ins.symbol(),
       decimals: (await ins.decimals()).toString(),
       balances: {},
-      totalSupply: await ins.totalSupply(),
+      totalSupply: (await ins.totalSupply()).toString(),
       // constants
       fractionInitialUnlockPerThousand: (
         await ins.fractionInitialUnlockPerThousand()
@@ -147,14 +147,17 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
           : "0",
       fullyChargedBalance,
       partiallyChargedBalance,
-      dateOfPartiallyCharged:
-        await this.instance.getUserDateOfPartiallyChargedToken(user),
+      dateOfPartiallyCharged: (
+        await this.instance.getUserDateOfPartiallyChargedToken(user)
+      ).toString(),
       claimedRewardPerShare1e18: (
         await this.instance.claimedRewardPerShare1e18(user)
       ).toString(),
       valueProjectTokenToFullRecharge:
         this.interface !== undefined
-          ? await this.interface.loadValueProjectTokenToFullRecharge(user)
+          ? (
+              await this.interface.loadValueProjectTokenToFullRecharge(user)
+            ).toString()
           : "0",
     };
   }
@@ -466,7 +469,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       session,
       {
         currentRewardPerShare1e18: rewardPerShare1e18.toString(),
-        stakingDateLastCheckpoint: blockTime,
+        stakingDateLastCheckpoint: blockTime.toString(),
       },
       eventName
     );
@@ -508,9 +511,9 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     const bnRewards = BigNumber.from(rewards);
 
     const update = {
-      stakingStartDate: startDate,
-      stakingDateLastCheckpoint: startDate,
-      stakingDuration: duration,
+      stakingStartDate: startDate.toString(),
+      stakingDateLastCheckpoint: startDate.toString(),
+      stakingDuration: duration.toString(),
       campaignStakingRewards: rewards.toString(),
       totalStakingRewards: BigNumber.from(jsonModel.totalStakingRewards)
         .add(bnRewards)
