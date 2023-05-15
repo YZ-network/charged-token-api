@@ -24,13 +24,6 @@ const schema = createSchema({
     totalSupply: String!
   }
 
-  type IUserLiquiToken {
-    owner: String!
-    fullyChargedBalance: String!
-    partiallyChargedBalance: String!
-    dateOfPartiallyCharged: String!
-  }
-  
   type IDirectory implements IOwnable {
     chainId: Int!
     address: String!
@@ -72,9 +65,6 @@ const schema = createSchema({
     areUserFunctionsDisabled: Boolean!
     isInterfaceProjectTokenLocked: Boolean!
     areAllocationsTerminated: Boolean!
-
-    claimedRewardPerShare1e18: [IEntry!]
-    userLiquiToken: [IUserLiquiToken!]
 
     interfaceProjectToken: String!
     ratioFeesToRewardHodlersPerThousand: String!

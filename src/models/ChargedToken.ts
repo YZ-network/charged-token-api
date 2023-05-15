@@ -26,22 +26,10 @@ export interface IChargedTokenToggles {
   areAllocationsTerminated: boolean;
 }
 
-interface IUserLiquiToken {
-  fullyChargedBalance: string;
-  partiallyChargedBalance: string;
-  dateOfPartiallyCharged: string;
-}
-
-export interface IChargedTokenMaps {
-  claimedRewardPerShare1e18: Record<string, string>;
-  userLiquiToken: Record<string, IUserLiquiToken>;
-}
-
 export interface IChargedToken
   extends IChargedTokenConstants,
     IChargedTokenToggles,
     IChargedTokenStaking,
-    IChargedTokenMaps,
     IErc20 {
   interfaceProjectToken: string;
   ratioFeesToRewardHodlersPerThousand: string;
@@ -89,16 +77,6 @@ const chargedTokenSchema = new mongoose.Schema<
   totalLocked: String,
   totalTokenAllocated: String,
   withdrawFeesPerThousandForLT: String,
-  // maps
-  claimedRewardPerShare1e18: { type: Map, of: String },
-  userLiquiToken: {
-    type: Map,
-    of: new mongoose.Schema({
-      fullyChargedBalance: String,
-      partiallyChargedBalance: String,
-      dateOfPartiallyCharged: String,
-    }),
-  },
   // staking
   stakingStartDate: String,
   stakingDuration: String,

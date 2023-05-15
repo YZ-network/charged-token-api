@@ -73,7 +73,6 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       name: await ins.name(),
       symbol: await ins.symbol(),
       decimals: (await ins.decimals()).toString(),
-      balances: {},
       totalSupply: (await ins.totalSupply()).toString(),
       // constants
       fractionInitialUnlockPerThousand: (
@@ -110,9 +109,6 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       withdrawFeesPerThousandForLT: (
         await ins.withdrawFeesPerThousandForLT()
       ).toString(),
-      // maps
-      claimedRewardPerShare1e18: {},
-      userLiquiToken: {},
       // staking
       stakingStartDate: (await ins.stakingStartDate()).toString(),
       stakingDuration: (await ins.stakingDuration()).toString(),
