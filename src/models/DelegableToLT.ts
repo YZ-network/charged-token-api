@@ -20,7 +20,7 @@ const delegableToLTSchema = new mongoose.Schema<
   // erc20
   name: { type: String, required: true },
   symbol: { type: String, required: true },
-  decimals: Number,
+  decimals: { type: String, required: true },
   totalSupply: String,
   // other
   validatedInterfaceProjectToken: [String],
