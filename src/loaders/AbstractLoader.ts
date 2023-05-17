@@ -90,7 +90,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
       const eventsStartBlock =
         actualBlock !== undefined && actualBlock > 0
           ? actualBlock - 100
-          : this.lastUpdateBlock;
+          : this.lastUpdateBlock + 1;
 
       await this.loadAndSyncEvents(eventsStartBlock, session);
     } else {
@@ -258,13 +258,13 @@ export abstract class AbstractLoader<T extends IOwnable> {
       const filteredEvents: ethers.Event[] = [];
       for (const event of missedEvents) {
         if (
-          !(await EventModel.exists({
+          (await EventModel.exists({
             chainId: this.chainId,
             address: this.address,
             blockNumber: event.blockNumber,
             txIndex: event.transactionIndex,
             logIndex: event.logIndex,
-          }))
+          })) === null
         ) {
           filteredEvents.push(event);
         }
@@ -274,7 +274,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
           msg: `Skipped ${
             missedEvents.length - filteredEvents.length
           } events already played`,
-          skipped: missedEvents.filter((log) => !filteredEvents.includes(log)),
+          // skipped: missedEvents.filter((log) => !filteredEvents.includes(log)),
         });
       }
 
@@ -283,7 +283,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
       if (missedEvents.length > 0) {
         this.log.info({
           msg: `Found ${missedEvents.length} really missed events`,
-          missedEvents,
+          // missedEvents,
         });
       }
     } catch (err) {

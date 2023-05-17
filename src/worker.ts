@@ -117,8 +117,6 @@ export class ChainWorker {
         this.name = network.name;
         this.providerStatus = ProviderStatus.CONNECTED;
 
-        this.subscribeToNewBlocks();
-
         return network;
       })
       .catch((err) => {
@@ -211,13 +209,19 @@ export class ChainWorker {
       const session = await mongoose.startSession();
       await session.withTransaction(
         async () =>
-          await this.directory!.init(session, this.blockNumberBeforeDisconnect)
+          await this.directory!.init(
+            session,
+            this.blockNumberBeforeDisconnect !== 0
+              ? this.blockNumberBeforeDisconnect
+              : undefined
+          )
       );
       await session.endSession();
       log.info(
         `Initialization complete for ${this.name} ${this.chainId}subscribing to updates`
       );
       this.directory.subscribeToEvents();
+      this.subscribeToNewBlocks();
       await subscribeToUserBalancesLoading(this.directory);
     } catch (err) {
       log.error({

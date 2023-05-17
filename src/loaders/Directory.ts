@@ -57,7 +57,7 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     await Promise.all(
       Object.values(this.ct).map((ct: ChargedToken) =>
-        ct.init(session, this.actualBlock)
+        ct.init(session, actualBlock)
       )
     );
   }
