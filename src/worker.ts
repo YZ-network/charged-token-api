@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { WebSocket } from "ws";
 import { Config } from "./config";
 import { Directory } from "./loaders/Directory";
+import { EventListener } from "./loaders/EventListener";
 import { EventHandlerStatus, EventModel } from "./models/Event";
 import { subscribeToUserBalancesLoading } from "./subscriptions";
 import { AutoWebSocketProvider, rootLogger } from "./util";
@@ -41,6 +42,7 @@ export class ChainWorker {
   readonly index: number;
   readonly rpc: string;
   readonly directoryAddress: string;
+  eventListener: EventListener | undefined;
   chainId: number | undefined;
   name: string | undefined;
   restartCount: number = 0;
@@ -199,7 +201,9 @@ export class ChainWorker {
     log.info(`Starting worker on chain ${this.name} chainId=${this.chainId}`);
 
     try {
+      this.eventListener = new EventListener();
       this.directory = new Directory(
+        this.eventListener!,
         this.chainId!,
         this.provider!,
         this.directoryAddress
@@ -225,23 +229,31 @@ export class ChainWorker {
   }
 
   private async stop() {
+    this.eventListener?.destroy();
+    this.eventListener = undefined;
+
     this.directory?.destroy();
     this.provider?.removeAllListeners();
     this.worker = undefined;
+
     await this.provider?.destroy();
     this.provider = undefined;
+
     if (this.wsWatch !== undefined) {
       clearInterval(this.wsWatch);
       this.wsWatch = undefined;
     }
+
     if (this.pingInterval !== undefined) {
       clearInterval(this.pingInterval);
       this.pingInterval = undefined;
     }
+
     if (this.pongTimeout !== undefined) {
       clearTimeout(this.pongTimeout);
       this.pongTimeout = undefined;
     }
+
     const pendingEvents = await EventModel.find({
       chainId: this.chainId,
       status: EventHandlerStatus.QUEUED,
@@ -265,6 +277,7 @@ export class ChainWorker {
       chainId: this.chainId,
       status: { $in: [EventHandlerStatus.QUEUED, EventHandlerStatus.FAILURE] },
     });
+
     this.providerStatus = ProviderStatus.DEAD;
     this.workerStatus = WorkerStatus.DEAD;
     this.restartCount++;

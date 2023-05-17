@@ -33,7 +33,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
   protected actualBlock: number = 0;
   protected lastState: FlattenMaps<T> | undefined;
 
-  protected readonly eventsListener: EventListener;
+  readonly eventsListener: EventListener;
 
   /**
    * @param provider ether provider.
@@ -42,12 +42,14 @@ export abstract class AbstractLoader<T extends IOwnable> {
    * @param model mongoose model for this contract.
    */
   protected constructor(
+    eventListener: EventListener,
     chainId: number,
     provider: ethers.providers.JsonRpcProvider,
     address: string,
     contract: any,
     model: IModel<T>
   ) {
+    this.eventsListener = eventListener;
     this.chainId = chainId;
     this.provider = provider;
     this.address = address;
@@ -60,7 +62,6 @@ export abstract class AbstractLoader<T extends IOwnable> {
     this.log = rootLogger.child({
       name: `(${chainId}) ${this.constructor.name}@${address}`,
     });
-    this.eventsListener = new EventListener(this);
   }
 
   async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
@@ -360,7 +361,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
 
       const eventName = Main.topicsMap[this.constructor.name][log.topics[0]];
       this.eventsListener
-        .queueLog(eventName, log)
+        .queueLog(eventName, log, this)
         .then(() => this.log.info(`queued event ${eventName}`))
         .catch((err) =>
           this.log.error({
@@ -378,9 +379,6 @@ export abstract class AbstractLoader<T extends IOwnable> {
 
   async destroy() {
     this.instance.removeAllListeners();
-    if (this.eventsListener) {
-      this.eventsListener.destroy();
-    }
   }
 
   async onEvent(

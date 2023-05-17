@@ -14,16 +14,19 @@ import {
 import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
+import { EventListener } from "./EventListener";
 
 export class Directory extends AbstractLoader<IDirectory> {
   readonly ct: Record<string, ChargedToken> = {};
 
   constructor(
+    eventListener: EventListener,
     chainId: number,
     provider: ethers.providers.JsonRpcProvider,
     address: string
   ) {
     super(
+      eventListener,
       chainId,
       provider,
       address,

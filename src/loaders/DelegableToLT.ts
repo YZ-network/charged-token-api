@@ -19,6 +19,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     ct: ChargedToken
   ) {
     super(
+      ct.eventsListener,
       chainId,
       provider,
       address,

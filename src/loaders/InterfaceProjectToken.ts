@@ -23,6 +23,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     ct: ChargedToken
   ) {
     super(
+      ct.eventsListener,
       chainId,
       provider,
       address,

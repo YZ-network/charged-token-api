@@ -19,6 +19,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     directory: Directory
   ) {
     super(
+      directory.eventsListener,
       chainId,
       provider,
       address,
