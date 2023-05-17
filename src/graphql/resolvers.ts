@@ -1,4 +1,5 @@
 import { Repeater } from "graphql-yoga";
+import mongoose from "mongoose";
 import { Main } from "../main";
 import {
   ChargedTokenModel,
@@ -104,6 +105,13 @@ const UserBalanceSubscriptionResolver = {
       });
 
       try {
+        const lastValue = await UserBalanceModel.find({ chainId });
+        if (lastValue !== null) {
+          await push(
+            lastValue.map((value) => UserBalanceModel.toGraphQL(value))
+          );
+        }
+
         for await (const value of sub) {
           log.debug({ msg: "sending balances to subscription", data: value });
           await push(JSON.parse(value));
@@ -141,7 +149,7 @@ class ResolverFactory {
     };
   }
 
-  static subscribeByName(modelName: string) {
+  static subscribeByName<T>(modelName: string) {
     return {
       subscribe: async (_: any, { chainId }: { chainId: number }) => {
         const channelName = `${modelName}.${chainId}`;
@@ -159,6 +167,12 @@ class ResolverFactory {
           });
 
           try {
+            const model = mongoose.model(modelName) as IModel<T>;
+            const lastValue = await model.findOne({ chainId });
+            if (lastValue !== null) {
+              await push(model.toGraphQL(lastValue));
+            }
+
             for await (const value of sub) {
               await push(value);
             }
@@ -176,7 +190,7 @@ class ResolverFactory {
     };
   }
 
-  static subscribeByNameAndAddress(modelName: string) {
+  static subscribeByNameAndAddress<T>(modelName: string) {
     return {
       subscribe: async (
         _: any,
@@ -198,6 +212,12 @@ class ResolverFactory {
           });
 
           try {
+            const model = mongoose.model(modelName) as IModel<T>;
+            const lastValue = await model.findOne({ chainId, address });
+            if (lastValue !== null) {
+              await push(model.toGraphQL(lastValue));
+            }
+
             for await (const value of sub) {
               await push(value);
             }

@@ -89,7 +89,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
 
       const eventsStartBlock =
         actualBlock !== undefined && actualBlock > 0
-          ? actualBlock - 100
+          ? Math.max(actualBlock - 100, this.lastUpdateBlock + 1)
           : this.lastUpdateBlock + 1;
 
       await this.loadAndSyncEvents(eventsStartBlock, session);
