@@ -105,7 +105,7 @@ const UserBalanceSubscriptionResolver = {
       });
 
       try {
-        const lastValue = await UserBalanceModel.find({ chainId });
+        const lastValue = await UserBalanceModel.find({ chainId, user });
         if (lastValue !== null) {
           await push(
             lastValue.map((value) => UserBalanceModel.toGraphQL(value))
