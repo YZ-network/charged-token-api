@@ -42,8 +42,9 @@ export class ChainWorker {
   readonly index: number;
   readonly rpc: string;
   readonly directoryAddress: string;
+  readonly chainId: number;
+
   eventListener: EventListener | undefined;
-  chainId: number | undefined;
   name: string | undefined;
   restartCount: number = 0;
   blockNumberBeforeDisconnect: number = 0;
@@ -60,10 +61,16 @@ export class ChainWorker {
   pongTimeout: NodeJS.Timeout | undefined;
   workerStatus: WorkerStatus = WorkerStatus.WAITING;
 
-  constructor(index: number, rpc: string, directoryAddress: string) {
+  constructor(
+    index: number,
+    rpc: string,
+    directoryAddress: string,
+    chainId: number
+  ) {
     this.index = index;
     this.rpc = rpc;
     this.directoryAddress = directoryAddress;
+    this.chainId = chainId;
 
     this.start();
   }
@@ -89,11 +96,11 @@ export class ChainWorker {
 
   private createProvider() {
     this.provider = new AutoWebSocketProvider(this.rpc, {
-      maxParallelRequests: Config.rpcMaxParallelRequests,
-      maxRetryCount: Config.rpcMaxRetryCount,
-      pingDelayMs: Config.rpcPingDelayMs,
-      pongMaxWaitMs: Config.rpcPongMaxWaitMs,
-      retryDelayMs: Config.rpcRetryDelayMs,
+      maxParallelRequests: Config.delays.rpcMaxParallelRequests,
+      maxRetryCount: Config.delays.rpcMaxRetryCount,
+      pingDelayMs: Config.delays.rpcPingDelayMs,
+      pongMaxWaitMs: Config.delays.rpcPongMaxWaitMs,
+      retryDelayMs: Config.delays.rpcRetryDelayMs,
     });
     this.wsStatus = WsStatus[this.provider!.websocket.readyState];
 
@@ -113,7 +120,14 @@ export class ChainWorker {
       .then((network) => {
         log.info({ msg: "Connected to network", network });
 
-        this.chainId = network.chainId;
+        if (this.chainId !== network.chainId) {
+          throw new Error(
+            `RPC Node returned wrong chain ${JSON.stringify(
+              network
+            )}, expected chainId ${this.chainId}`
+          );
+        }
+
         this.name = network.name;
         this.providerStatus = ProviderStatus.CONNECTED;
 

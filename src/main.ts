@@ -13,8 +13,7 @@ export class Main {
   private static readonly log = rootLogger.child({ name: "Main" });
   private static readonly yogaLog = Main.log.child({ name: "yoga" });
 
-  private static rpcs = Config.rpcUrl;
-  private static directories = Config.directoryAddress;
+  private static networks = Config.networks;
 
   private static keepAlive: NodeJS.Timer | undefined;
 
@@ -25,13 +24,13 @@ export class Main {
 
   private static readonly yoga = createYoga({
     schema,
-    graphiql: Config.enableGraphiQL
+    graphiql: Config.api.enableGraphiql
       ? {
           subscriptionsProtocol: "WS",
         }
       : false,
     cors: {
-      origin: Config.corsOrigins,
+      origin: Config.api.corsOrigins,
       methods: ["POST", "OPTIONS"],
     },
     logging: {
@@ -63,8 +62,8 @@ export class Main {
     path: Main.yoga.graphqlEndpoint,
   });
 
-  private static readonly bindAddress = Config.bindAddress;
-  private static readonly bindPort = Config.bindPort;
+  private static readonly bindAddress = Config.api.bindAddress;
+  private static readonly bindPort = Config.api.bindPort;
 
   static init() {
     useServer(
@@ -108,13 +107,19 @@ export class Main {
   }
 
   static start() {
+    Main.log.info(`Connecting to MongoDB at ${Config.db.uri}`);
     return Main.connectDB()
       .then(() => {
         Main.log.info("MongoDB connected !");
 
-        for (let i = 0; i < Main.rpcs.length; i++) {
-          Main.connectChain(i, Main.rpcs[i], Main.directories[i]);
-        }
+        Main.networks.forEach((network, index) =>
+          Main.connectChain(
+            index,
+            network.uri,
+            network.directory,
+            network.chainId
+          )
+        );
 
         this.keepAlive = setInterval(() => {
           for (const worker of Main.workers) {
@@ -125,7 +130,7 @@ export class Main {
               worker.start();
             }
           }
-        }, Config.workerRestartDelayMs);
+        }, Config.delays.workerRestartDelayMs);
 
         Main.httpServer.listen(Main.bindPort, Main.bindAddress, () =>
           Main.log.info(
@@ -148,16 +153,19 @@ export class Main {
 
   private static connectDB() {
     mongoose.set("strictQuery", true);
-    return mongoose.connect(
-      `mongodb://${Config.mongodbHost}:27017/test?replicaSet=rs0`
-    );
+    return mongoose.connect(Config.db.uri);
   }
 
-  private static connectChain(index: number, rpc: string, directory: string) {
+  private static connectChain(
+    index: number,
+    rpc: string,
+    directory: string,
+    chainId: number
+  ) {
     Main.log.info(
-      `Creating provider and starting worker for network : ${rpc} and directory ${directory}`
+      `Creating provider and starting worker for network ${chainId} : ${rpc} and directory ${directory}`
     );
 
-    Main.workers.push(new ChainWorker(index, rpc, directory));
+    Main.workers.push(new ChainWorker(index, rpc, directory, chainId));
   }
 }
