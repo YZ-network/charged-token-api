@@ -12,12 +12,8 @@ task_definition:
         - container_name: db
           condition: HEALTHY
       secrets:
-        - value_from: JSON_RPC_URL
-          name: JSON_RPC_URL
-        - value_from: DIRECTORY_ADDRESS
-          name: DIRECTORY_ADDRESS
-        - value_from: LOG_LEVEL
-          name: LOG_LEVEL
+        - value_from: CONFIG
+          name: CONFIG
 
     dbsetup:
       essential: false
