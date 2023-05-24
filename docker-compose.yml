@@ -5,11 +5,6 @@ services:
     entrypoint: ["bash", "-c", "sleep 6 && node lib/index.js"]
     ports:
       - "80:80"
-    environment:
-      - MONGODB_HOST=localhost
-      - BIND_ADDRESS=0.0.0.0
-      - BIND_PORT=80
-      - CORS_ORIGINS=https://test.yz-network.com
     healthcheck:
       test: curl -f http://localhost/health
       interval: 60s
