@@ -29,10 +29,11 @@ export class Main {
           subscriptionsProtocol: "WS",
         }
       : false,
-    cors: {
+    cors: false,
+    /*{
       origin: Config.api.corsOrigins,
       methods: ["POST", "OPTIONS"],
-    },
+    }*/
     logging: {
       debug(...args) {
         Main.yogaLog.trace({ yogaLevel: "debug", args });
