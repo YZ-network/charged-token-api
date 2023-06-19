@@ -29,7 +29,13 @@ export class Main {
           subscriptionsProtocol: "WS",
         }
       : false,
-    cors: false,
+    cors: (request) => {
+      const requestOrigin = request.headers.get("origin") as string;
+      return {
+        origin: requestOrigin,
+        methods: ["POST", "OPTIONS"],
+      };
+    },
     /*{
       origin: Config.api.corsOrigins,
       methods: ["POST", "OPTIONS"],
