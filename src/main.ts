@@ -139,7 +139,7 @@ export class Main {
         );
       })
       .catch((err) => {
-        Main.log.error({ msg: "Error connecting to database :", err });
+        Main.log.error({ msg: "Error during application startup !", err });
         if (this.keepAlive !== undefined) {
           clearInterval(this.keepAlive);
           this.keepAlive = undefined;
