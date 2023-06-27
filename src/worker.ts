@@ -5,7 +5,7 @@ import { Directory } from "./loaders/Directory";
 import { EventListener } from "./loaders/EventListener";
 import { EventHandlerStatus, EventModel } from "./models/Event";
 import { subscribeToUserBalancesLoading } from "./subscriptions";
-import { AutoWebSocketProvider, rootLogger } from "./util";
+import { AutoWebSocketProvider, Metrics, rootLogger } from "./util";
 
 const log = rootLogger.child({ name: "worker" });
 
@@ -105,6 +105,9 @@ export class ChainWorker {
     this.wsStatus = WsStatus[this.provider!.websocket.readyState];
 
     this.provider.on("error", (...args) => {
+      if (this.wsStatus === WsStatus[0]) {
+        Metrics.connectionFailed(this.chainId);
+      }
       log.warn({
         msg: `Websocket connection lost to rpc ${this.rpc}`,
         args,
@@ -183,6 +186,8 @@ export class ChainWorker {
     this.worker = this.provider!.ready.then(() => {
       this.workerStatus = WorkerStatus.STARTED;
 
+      Metrics.workerStarted(this.chainId);
+
       return this.run()
         .then(() => {
           log.info(
@@ -247,6 +252,8 @@ export class ChainWorker {
   }
 
   private async stop() {
+    Metrics.workerStopped(this.chainId);
+
     this.eventListener?.destroy();
     this.eventListener = undefined;
 

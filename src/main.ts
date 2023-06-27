@@ -6,6 +6,7 @@ import { WebSocketServer } from "ws";
 import { Config } from "./config";
 import { encodeEvents } from "./encodeevents";
 import { schema } from "./graphql";
+import { usePrometheus } from "./prometheus";
 import { rootLogger } from "./util";
 import { ChainHealth, ChainWorker, WorkerStatus } from "./worker";
 
@@ -60,6 +61,7 @@ export class Main {
           Main.yogaLog.trace({ eventName, args });
         },
       }),
+      usePrometheus(),
     ],
   });
 
