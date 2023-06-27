@@ -2,6 +2,7 @@ FROM node:18
 
 ADD . .
 
-RUN npm i && npm run build
+RUN npm ci
+RUN npm run build
 
 CMD node lib/index.js
