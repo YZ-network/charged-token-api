@@ -172,11 +172,9 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         .add(BigNumber.from(valueIncreased))
         .toString();
 
-      const {
-        fullyChargedBalance,
-        partiallyChargedBalance,
-        dateOfPartiallyCharged,
-      } = await this.ct.instance.userLiquiToken(user);
+      const { dateOfPartiallyCharged } = await this.ct.instance.userLiquiToken(
+        user
+      );
 
       await this.updateBalanceAndNotify(
         session,
@@ -184,8 +182,6 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         user,
         {
           valueProjectTokenToFullRecharge,
-          fullyChargedBalance: fullyChargedBalance.toString(),
-          partiallyChargedBalance: partiallyChargedBalance.toString(),
           dateOfPartiallyCharged: dateOfPartiallyCharged.toString(),
         },
         eventName
