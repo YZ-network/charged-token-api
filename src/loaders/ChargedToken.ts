@@ -604,24 +604,6 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     [user, partiallyChargedBalance]: any[],
     eventName?: string
   ): Promise<void> {
-    const oldBalance = await this.getBalance(session, this.address, user);
-
-    if (oldBalance !== null) {
-      const { dateOfPartiallyCharged } = await this.instance.userLiquiToken(
-        user
-      );
-
-      await this.updateBalanceAndNotify(
-        session,
-        this.address,
-        user,
-        {
-          fullyChargedBalance: "0",
-          partiallyChargedBalance: partiallyChargedBalance.toString(),
-          dateOfPartiallyCharged: dateOfPartiallyCharged.toString(),
-        },
-        eventName
-      );
-    }
+    // user balances updated by InterfaceProjectToken.IncreasedValueProjectTokenToFullRecharge
   }
 }

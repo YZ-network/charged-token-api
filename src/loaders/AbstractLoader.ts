@@ -26,7 +26,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
     name: string;
   }>;
 
-  protected readonly instance: ethers.Contract;
+  readonly instance: ethers.Contract;
   readonly iface: ethers.utils.Interface;
   initBlock: number = 0;
   lastUpdateBlock: number = 0;
