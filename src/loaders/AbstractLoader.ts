@@ -83,6 +83,14 @@ export abstract class AbstractLoader<T extends IOwnable> {
     const existing = await this.get(session);
 
     if (existing != null) {
+      this.log.info({
+        msg: "Found existing data for contract",
+        contract: this.constructor.name,
+        chainId: this.chainId,
+        address: this.address,
+        lastUpdateBlock: existing.lastUpdateBlock,
+      });
+
       this.initBlock = existing.initBlock;
       this.lastUpdateBlock = existing.lastUpdateBlock;
       this.lastState = this.model.toGraphQL(existing);

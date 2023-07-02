@@ -247,15 +247,21 @@ export class ChainWorker {
         this.provider!,
         this.directoryAddress
       );
+      const actualBlock =
+        this.blockNumberBeforeDisconnect !== 0
+          ? this.blockNumberBeforeDisconnect
+          : undefined;
+
+      log.info({
+        msg: "Initializing directory",
+        chainId: this.chainId,
+        actualBlock,
+        blockNumberBeforeDisconnect: this.blockNumberBeforeDisconnect,
+      });
+
       const session = await mongoose.startSession();
       await session.withTransaction(
-        async () =>
-          await this.directory!.init(
-            session,
-            this.blockNumberBeforeDisconnect !== 0
-              ? this.blockNumberBeforeDisconnect
-              : undefined
-          )
+        async () => await this.directory!.init(session, actualBlock)
       );
       await session.endSession();
       log.info({
