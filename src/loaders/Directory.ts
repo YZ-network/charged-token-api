@@ -71,7 +71,12 @@ export class Directory extends AbstractLoader<IDirectory> {
   }
 
   async load(): Promise<IDirectory> {
-    this.log.info("Reading entire directory");
+    this.log.info({
+      msg: "Reading entire directory",
+      chainId: this.chainId,
+      contract: this.contract.name,
+      address: this.address,
+    });
 
     const ins = this.instance;
 
@@ -121,7 +126,12 @@ export class Directory extends AbstractLoader<IDirectory> {
     user: string,
     address?: string
   ): Promise<IUserBalance[]> {
-    this.log.info(`Loading user balances for ${user}@${address}`);
+    this.log.info({
+      msg: `Loading user balances for ${user}@${address}`,
+      chainId: this.chainId,
+      contract: this.contract.name,
+      address: this.address,
+    });
 
     const startDate = new Date().getTime();
 
@@ -136,16 +146,24 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     for (const entry of results) {
       if (await this.existUserBalances(user, entry.address)) {
-        this.log.info(`updating balance for ${user} on ${entry.address}`);
+        this.log.info({
+          msg: `updating balance for ${user}`,
+          chainId: this.chainId,
+          contract: this.contract.name,
+          address: this.address,
+        });
         await UserBalanceModel.updateOne(
           { chainId: this.chainId, user, address: entry.address },
           entry,
           { session }
         );
       } else {
-        this.log.info(
-          `first time saving balance for ${user} on ${entry.address}`
-        );
+        this.log.info({
+          msg: `first time saving balance for ${user}`,
+          chainId: this.chainId,
+          contract: this.contract.name,
+          address: this.address,
+        });
         await UserBalanceModel.toModel(entry).save({ session });
       }
     }
@@ -160,7 +178,12 @@ export class Directory extends AbstractLoader<IDirectory> {
     ).exec();
 
     if (saved !== null) {
-      this.log.info(`Publishing updated user balances for ${user}`);
+      this.log.info({
+        msg: `Publishing updated user balances for ${user}`,
+        chainId: this.chainId,
+        contract: this.contract.name,
+        address: this.address,
+      });
 
       pubSub.publish(
         `UserBalance.${this.chainId}.${user}`,
@@ -169,15 +192,21 @@ export class Directory extends AbstractLoader<IDirectory> {
         )
       );
     } else {
-      this.log.warn(
-        `Error while reloading balances after save for user ${user}`
-      );
+      this.log.warn({
+        msg: `Error while reloading balances after save for user ${user}`,
+        chainId: this.chainId,
+        contract: this.contract.name,
+        address: this.address,
+      });
     }
     const stopDate = new Date().getTime();
 
-    this.log.debug(
-      `User balances loaded in ${(stopDate - startDate) / 1000} seconds`
-    );
+    this.log.debug({
+      msg: `User balances loaded in ${(stopDate - startDate) / 1000} seconds`,
+      chainId: this.chainId,
+      contract: this.contract.name,
+      address: this.address,
+    });
 
     return results;
   }

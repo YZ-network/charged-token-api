@@ -55,7 +55,12 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   }
 
   async load() {
-    this.log.info("Reading entire charged token");
+    this.log.info({
+      msg: "Reading entire charged token",
+      chainId: this.chainId,
+      contract: this.contract.name,
+      address: this.address,
+    });
 
     const ins = this.instance;
 
@@ -122,7 +127,12 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   }
 
   async loadUserBalances(user: string): Promise<IUserBalance> {
-    this.log.debug(`Loading CT balance for ${user}`);
+    this.log.debug({
+      msg: `Loading CT balance for ${user}`,
+      chainId: this.chainId,
+      contract: this.contract.name,
+      address: this.address,
+    });
 
     const balance = (await this.instance.balanceOf(user)).toString();
     const fullyChargedBalance = (
@@ -177,7 +187,12 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     eventName?: string
   ): Promise<void> {
     if ((value as BigNumber).isZero()) {
-      this.log.warn("Skipping transfer event processing since value is zero");
+      this.log.warn({
+        msg: "Skipping transfer event processing since value is zero",
+        chainId: this.chainId,
+        contract: this.contract.name,
+        address: this.address,
+      });
       return;
     }
 
@@ -204,9 +219,12 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
             eventName
           );
         } else {
-          this.log.info(
-            "Skipping from balance update since it was not found in db"
-          );
+          this.log.info({
+            msg: "Skipping from balance update since it was not found in db",
+            chainId: this.chainId,
+            contract: this.contract.name,
+            address: this.address,
+          });
         }
       }
     }
@@ -235,9 +253,12 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
             eventName
           );
         } else {
-          this.log.info(
-            "Skipping to balance update since it was not found in db"
-          );
+          this.log.info({
+            msg: "Skipping to balance update since it was not found in db",
+            chainId: this.chainId,
+            contract: this.contract.name,
+            address: this.address,
+          });
         }
       }
     }

@@ -133,9 +133,10 @@ export class Main {
         this.keepAlive = setInterval(() => {
           for (const worker of Main.workers) {
             if (worker.workerStatus === WorkerStatus.DEAD) {
-              Main.log.info(
-                `Restarting worker on rpc ${worker.rpc} and chain ${worker.name} ${worker.chainId}`
-              );
+              Main.log.info({
+                msg: `Restarting worker on rpc ${worker.rpc} and chain ${worker.name} ${worker.chainId}`,
+                chainId: worker.chainId,
+              });
               worker.start();
             }
           }
@@ -171,9 +172,10 @@ export class Main {
     directory: string,
     chainId: number
   ) {
-    Main.log.info(
-      `Creating provider and starting worker for network ${chainId} : ${rpc} and directory ${directory}`
-    );
+    Main.log.info({
+      msg: `Creating provider and starting worker for network ${chainId} : ${rpc} and directory ${directory}`,
+      chainId,
+    });
 
     Main.workers.push(new ChainWorker(index, rpc, directory, chainId));
   }

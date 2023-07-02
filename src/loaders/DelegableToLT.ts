@@ -36,7 +36,12 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   }
 
   async load() {
-    this.log.info("Reading entire project token");
+    this.log.info({
+      msg: "Reading entire project token",
+      chainId: this.chainId,
+      contract: this.contract.name,
+      address: this.address,
+    });
 
     const ins = this.instance;
 
@@ -74,7 +79,12 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   }
 
   async loadUserBalance(user: string) {
-    this.log.debug(`Loading PT balance for ${user}`);
+    this.log.debug({
+      msg: `Loading PT balance for ${user}`,
+      chainId: this.chainId,
+      contract: this.contract.name,
+      address: this.address,
+    });
 
     return (await this.instance.balanceOf(user)).toString();
   }
@@ -85,7 +95,12 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     eventName?: string
   ): Promise<void> {
     if ((value as BigNumber).isZero()) {
-      this.log.warn("Skipping transfer event processing since value is zero");
+      this.log.warn({
+        msg: "Skipping transfer event processing since value is zero",
+        chainId: this.chainId,
+        contract: this.contract.name,
+        address: this.address,
+      });
       return;
     }
 

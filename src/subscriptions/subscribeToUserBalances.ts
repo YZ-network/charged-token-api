@@ -11,10 +11,16 @@ export async function subscribeToUserBalancesLoading(
   const channelName = `UserBalance.${directory.chainId}/load`;
 
   const sub = pubSub.subscribe(`UserBalance.${directory.chainId}/load`);
-  log.info(`listening to notifications from channel ${channelName}`);
+  log.info({
+    msg: `listening to notifications from channel ${channelName}`,
+    chainId: directory.chainId,
+  });
 
   for await (const user of sub) {
-    log.info(`Got user balances reload message for ${user}`);
+    log.info({
+      msg: `Got user balances reload message for ${user}`,
+      chainId: directory.chainId,
+    });
     try {
       const session = await mongoose.startSession();
       await session.withTransaction(async () => {
@@ -22,7 +28,11 @@ export async function subscribeToUserBalancesLoading(
       });
       await session.endSession();
     } catch (err) {
-      log.error({ msg: "Error occured within transaction", err });
+      log.error({
+        msg: "Error occured within transaction",
+        err,
+        chainId: directory.chainId,
+      });
     }
   }
 }

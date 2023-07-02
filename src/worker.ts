@@ -96,6 +96,7 @@ export class ChainWorker {
 
   private createProvider() {
     this.provider = new AutoWebSocketProvider(this.rpc, {
+      chainId: this.chainId,
       maxParallelRequests: Config.delays.rpcMaxParallelRequests,
       maxRetryCount: Config.delays.rpcMaxRetryCount,
       pingDelayMs: Config.delays.rpcPingDelayMs,
@@ -111,17 +112,22 @@ export class ChainWorker {
       log.warn({
         msg: `Websocket connection lost to rpc ${this.rpc}`,
         args,
+        chainId: this.chainId,
       });
       this.providerStatus = ProviderStatus.DISCONNECTED;
       this.stop();
     });
     this.provider.on("debug", (...args) => {
-      log.debug({ args });
+      log.debug({ args, chainId: this.chainId });
     });
 
     this.provider.ready
       .then((network) => {
-        log.info({ msg: "Connected to network", network });
+        log.info({
+          msg: "Connected to network",
+          network,
+          chainId: this.chainId,
+        });
 
         if (this.chainId !== network.chainId) {
           throw new Error(
@@ -140,6 +146,7 @@ export class ChainWorker {
         log.error({
           msg: `Error connecting to network ${this.rpc}`,
           err,
+          chainId: this.chainId,
         });
         this.providerStatus = ProviderStatus.DISCONNECTED;
         this.wsStatus = WsStatus[WebSocket.CLOSED];
@@ -155,21 +162,30 @@ export class ChainWorker {
         this.providerStatus !== ProviderStatus.DISCONNECTED &&
         ["CLOSING", "CLOSED"].includes(this.wsStatus)
       ) {
-        log.warn(`Websocket crashed : ${this.name} ${this.chainId}`);
+        log.warn({
+          msg: `Websocket crashed : ${this.name}`,
+          chainId: this.chainId,
+        });
       }
 
       if (
         this.providerStatus !== ProviderStatus.CONNECTING &&
         this.wsStatus === "CONNECTING"
       ) {
-        log.info(`Websocket connecting : ${this.name} ${this.chainId}`);
+        log.info({
+          msg: `Websocket connecting : ${this.name}`,
+          chainId: this.chainId,
+        });
       }
 
       if (
         this.providerStatus !== ProviderStatus.CONNECTED &&
         this.wsStatus === "OPEN"
       ) {
-        log.info(`Websocket connected : ${this.name} ${this.chainId}`);
+        log.info({
+          msg: `Websocket connected : ${this.name}`,
+          chainId: this.chainId,
+        });
       }
     }, 1000);
   }
@@ -190,16 +206,18 @@ export class ChainWorker {
 
       return this.run()
         .then(() => {
-          log.info(
-            `Worker stopped itself on network ${this.name} ${this.chainId}`
-          );
+          log.info({
+            msg: `Worker stopped itself on network ${this.name}`,
+            chainId: this.chainId,
+          });
           this.workerStatus = WorkerStatus.CRASHED;
           this.stop();
         })
         .catch((err: any) => {
           log.error({
-            msg: `Worker crashed on : ${this.rpc}, ${this.name} ${this.chainId}`,
+            msg: `Worker crashed on : ${this.rpc}, ${this.name}`,
             err,
+            chainId: this.chainId,
           });
           this.workerStatus = WorkerStatus.CRASHED;
           this.stop();
@@ -208,6 +226,7 @@ export class ChainWorker {
       log.error({
         msg: `Websocket crashed on ${this.rpc}`,
         err,
+        chainId: this.chainId,
       });
       this.providerStatus = ProviderStatus.DISCONNECTED;
       this.stop();
@@ -215,7 +234,10 @@ export class ChainWorker {
   }
 
   private async run() {
-    log.info(`Starting worker on chain ${this.name} chainId=${this.chainId}`);
+    log.info({
+      msg: `Starting worker on chain ${this.name}`,
+      chainId: this.chainId,
+    });
 
     try {
       this.eventListener = new EventListener();
@@ -236,19 +258,24 @@ export class ChainWorker {
           )
       );
       await session.endSession();
-      log.info(
-        `Initialization complete for ${this.name} ${this.chainId}subscribing to updates`
-      );
+      log.info({
+        msg: `Initialization complete for ${this.name} subscribing to updates`,
+        chainId: this.chainId,
+      });
       this.directory.subscribeToEvents();
       this.subscribeToNewBlocks();
       await subscribeToUserBalancesLoading(this.directory);
     } catch (err) {
       log.error({
-        msg: `Error happened running worker on network ${this.name} chainId=${this.chainId}`,
+        msg: `Error happened running worker on network ${this.name}`,
         err,
+        chainId: this.chainId,
       });
     }
-    log.info(`Worker stopped on chain ${this.name} ${this.chainId}`);
+    log.info({
+      msg: `Worker stopped on chain ${this.name}`,
+      chainId: this.chainId,
+    });
   }
 
   private async stop() {
@@ -288,14 +315,16 @@ export class ChainWorker {
       status: EventHandlerStatus.FAILURE,
     });
     if (pendingEvents.length > 0) {
-      log.warn(
-        `Found ${pendingEvents.length} pending events ! maybe remove them`
-      );
+      log.warn({
+        msg: `Found ${pendingEvents.length} pending events ! will remove them`,
+        chainId: this.chainId,
+      });
     }
     if (failedEvents.length > 0) {
       log.warn({
-        msg: `Found ${failedEvents.length} failed events ! maybe remove them`,
+        msg: `Found ${failedEvents.length} failed events ! will remove them`,
         events: failedEvents.map((event) => event.toJSON()),
+        chainId: this.chainId,
       });
     }
     await EventModel.deleteMany({

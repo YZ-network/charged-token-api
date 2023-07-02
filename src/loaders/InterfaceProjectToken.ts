@@ -58,7 +58,12 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   }
 
   async load() {
-    this.log.info("Reading entire interface project token");
+    this.log.info({
+      msg: "Reading entire interface project token",
+      chainId: this.chainId,
+      contract: this.contract.name,
+      address: this.address,
+    });
 
     const ins = this.instance;
 
@@ -85,7 +90,12 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   }
 
   async loadUserBalancePT(user: string): Promise<string> {
-    this.log.debug(`Loading user PT balance from interface for ${user}`);
+    this.log.debug({
+      msg: `Loading user PT balance from interface for ${user}`,
+      chainId: this.chainId,
+      contract: this.contract.name,
+      address: this.address,
+    });
 
     return this.projectToken === undefined
       ? "0"
@@ -96,33 +106,6 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     return (
       await this.instance.valueProjectTokenToFullRecharge(user)
     ).toString();
-  }
-
-  private getValueProjectTokenPerVestingSchedule(
-    fractionInitialUnlockPerThousand: BigNumber,
-    balance: BigNumber,
-    timestamp: number,
-    dateStart: number,
-    addInitialUnlock: boolean,
-    durationLinearVesting: number
-  ): BigNumber {
-    let valueProjectToken = BigNumber.from(0);
-
-    if (addInitialUnlock)
-      valueProjectToken = balance
-        .mul(fractionInitialUnlockPerThousand)
-        .div(1000);
-
-    if (timestamp > dateStart) {
-      valueProjectToken = valueProjectToken.add(
-        balance
-          .mul(BigNumber.from(1000).sub(fractionInitialUnlockPerThousand))
-          .mul(BigNumber.from(timestamp - dateStart))
-          .div(BigNumber.from(1000).mul(BigNumber.from(durationLinearVesting)))
-      );
-    }
-
-    return valueProjectToken;
   }
 
   subscribeToEvents(): void {

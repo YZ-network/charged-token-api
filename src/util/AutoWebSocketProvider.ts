@@ -70,6 +70,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
 
   _retryCount: number;
 
+  readonly chainId: number;
   readonly options: AutoWebSocketProviderOptions;
 
   _wsReady: boolean;
@@ -79,7 +80,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
 
   constructor(
     url: string | WebSocketLike,
-    options: Partial<AutoWebSocketProviderOptions> = {},
+    options: Partial<AutoWebSocketProviderOptions> & { chainId: number },
     network?: Networkish
   ) {
     // This will be added in the future; please open an issue to expedite
@@ -94,6 +95,8 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     } else {
       super("_websocket", network);
     }
+
+    this.chainId = options.chainId;
 
     this.options = {
       ...DEFAULTS,
@@ -151,13 +154,14 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
           Metrics.requestFailed(network.chainId)
         );
 
-        logger.debug({
+        logger.warn({
           action: "error",
           msg: "Unknown error handling message",
           messageEvent,
+          chainId: this.chainId,
         });
 
-        console.warn("this should not happen");
+        logger.warn({ msg: "this should not happen", chainId: this.chainId });
       }
     };
 
@@ -184,6 +188,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
         action: "response",
         request: JSON.parse(request.payload),
         response: result.result,
+        chainId: this.chainId,
       });
 
       request.callback(null as unknown as Error, result.result);
@@ -205,6 +210,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
         action: "response",
         error: error,
         request: JSON.parse(request.payload),
+        chainId: this.chainId,
       });
 
       request.callback(error, undefined);
@@ -218,6 +224,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     logger.debug({
       action: "subscribe",
       result,
+      chainId: this.chainId,
     });
 
     this._detectNetwork.then((network) =>
@@ -233,9 +240,10 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
   }
 
   _onRateLimitingError() {
-    logger.warn(
-      "Rate limiting error caught, programming retry of last request"
-    );
+    logger.warn({
+      msg: "Rate limiting error caught, programming retry of last request",
+      chainId: this.chainId,
+    });
     this._detectNetwork.then((network) =>
       Metrics.requestFailed(network.chainId)
     );
@@ -284,6 +292,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
       id,
       method,
       params,
+      chainId: this.chainId,
     });
 
     return new Promise((resolve, reject) => {
@@ -304,6 +313,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
       logger.debug({
         action: "queue-request",
         request: JSON.parse(payload),
+        chainId: this.chainId,
       });
 
       this._requests.push({ id, callback, payload });
@@ -494,14 +504,10 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     this._retryCount++;
 
     if (this._retryCount > this.options.maxRetryCount) {
-      logger.warn(
-        "found exceeded retries for request",
-        request,
-        ":",
-        this._retryCount,
-        ">",
-        this.options.maxRetryCount
-      );
+      logger.warn({
+        msg: `found exceeded retries for request ${request} : ${this._retryCount} > ${this.options.maxRetryCount}`,
+        chainId: this.chainId,
+      });
       throw new Error("Too many retries failed, crashing");
     }
 
@@ -510,6 +516,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
       action: "send-request",
       payload: JSON.parse(request.payload),
       request,
+      chainId: this.chainId,
     });
 
     this._detectNetwork.then((network) => Metrics.requestSent(network.chainId));
@@ -522,6 +529,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
         this.pongTimeout = setTimeout(() => {
           logger.warn({
             msg: "Websocket crashed",
+            chainId: this.chainId,
           });
           this._detectNetwork.then((network) =>
             Metrics.disconnected(network.chainId)

@@ -61,7 +61,7 @@ const UserBalanceQueryResolver = async (
     address,
   }: { chainId: number; user: string; address?: string }
 ) => {
-  log.debug(`checking existing balances for ${chainId} ${user} on ${address}`);
+  log.debug({ msg: "checking existing balances", chainId, user, address });
 
   if (address !== undefined) {
     if ((await UserBalanceModel.exists({ chainId, user, address })) !== null) {
@@ -84,7 +84,12 @@ const UserBalanceQueryResolver = async (
     }
   }
 
-  log.info(`Notifying worker to load balances for ${user}`);
+  log.info({
+    msg: "Notifying worker to load balances",
+    user,
+    chainId,
+    address,
+  });
   pubSub.publish(`UserBalance.${chainId}/load`, user);
 
   return [];
@@ -95,13 +100,18 @@ const UserBalanceSubscriptionResolver = {
     _: any,
     { chainId, user }: { chainId: number; user: string }
   ) => {
-    log.debug(`client subscribing to balances for : ${user}`);
+    log.debug({ msg: "client subscribing to balances", user, chainId });
     const sub = pubSub.subscribe(`UserBalance.${chainId}.${user}`);
 
     return new Repeater(async (push, stop) => {
       stop.then((err) => {
         sub.return();
-        log.debug(`client user balances subscription stopped by ${err}`);
+        log.debug({
+          msg: "client user balances subscription stopped by",
+          err,
+          user,
+          chainId,
+        });
       });
 
       try {
@@ -113,14 +123,25 @@ const UserBalanceSubscriptionResolver = {
         }
 
         for await (const value of sub) {
-          log.debug({ msg: "sending balances to subscription", data: value });
+          log.debug({
+            msg: "sending balances to subscription",
+            data: value,
+            user,
+            chainId,
+          });
           await push(JSON.parse(value));
         }
-        log.debug("client user balances subscription ended");
+        log.debug({
+          msg: "client user balances subscription ended",
+          user,
+          chainId,
+        });
       } catch (err) {
         log.debug({
           msg: "client user balances subscription stopped with error",
           err,
+          user,
+          chainId,
         });
         stop("sub closed");
       }
@@ -154,7 +175,7 @@ class ResolverFactory {
       subscribe: async (_: any, { chainId }: { chainId: number }) => {
         const channelName = `${modelName}.${chainId}`;
 
-        log.debug(`client subscribing to ${channelName}`);
+        log.debug({ msg: `client subscribing to ${channelName}`, chainId });
         const sub = pubSub.subscribe(channelName);
 
         return new Repeater(async (push, stop) => {
@@ -163,6 +184,7 @@ class ResolverFactory {
             log.debug({
               msg: `client subscription to ${channelName} stopped by error`,
               err,
+              chainId,
             });
           });
 
@@ -176,11 +198,15 @@ class ResolverFactory {
             for await (const value of sub) {
               await push(value);
             }
-            log.debug(`client subscription to ${channelName} ended`);
+            log.debug({
+              msg: `client subscription to ${channelName} ended`,
+              chainId,
+            });
           } catch (err) {
             log.debug({
               msg: `client subscription to ${channelName} stopped with error`,
               err,
+              chainId,
             });
             stop("sub closed");
           }
@@ -198,7 +224,7 @@ class ResolverFactory {
       ) => {
         const channelName = `${modelName}.${chainId}.${address}`;
 
-        log.debug(`client subscribing to ${channelName}`);
+        log.debug({ msg: `client subscribing to ${channelName}`, chainId });
 
         const sub = pubSub.subscribe(channelName);
 
@@ -208,6 +234,7 @@ class ResolverFactory {
             log.debug({
               msg: `client subscription to ${channelName} stopped with error`,
               err,
+              chainId,
             });
           });
 
@@ -221,11 +248,15 @@ class ResolverFactory {
             for await (const value of sub) {
               await push(value);
             }
-            log.debug(`client subscription to ${channelName} ended`);
+            log.debug({
+              msg: `client subscription to ${channelName} ended`,
+              chainId,
+            });
           } catch (err) {
             log.debug({
               msg: `client subscription to ${channelName} stopped with error`,
               err,
+              chainId,
             });
             stop("sub closed");
           }

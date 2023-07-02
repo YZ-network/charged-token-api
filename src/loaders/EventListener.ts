@@ -83,9 +83,12 @@ export class EventListener {
           const [{ eventName, log, loader }] = this.queue;
 
           if (lastBlockNumber > 0 && lastBlockNumber !== log.blockNumber) {
-            loader.log.info(
-              "Got events spanned on different blocks, stopping now"
-            );
+            loader.log.info({
+              msg: "Got events spanned on different blocks, stopping now",
+              chainId: loader.chainId,
+              blockNumber: log.blockNumber,
+              lastBlockNumber,
+            });
             break;
           } else {
             lastBlockNumber = log.blockNumber;
@@ -109,6 +112,8 @@ export class EventListener {
               err,
               eventName,
               args,
+              chainId: loader.chainId,
+              blockNumber: log.blockNumber,
             });
             await this.updateEventStatus(
               session,

@@ -94,7 +94,12 @@ export abstract class AbstractLoader<T extends IOwnable> {
 
       await this.loadAndSyncEvents(eventsStartBlock, session);
     } else {
-      this.log.info("First time loading");
+      this.log.info({
+        msg: "First time loading",
+        contract: this.constructor.name,
+        address: this.address,
+        chainId: this.chainId,
+      });
       await this.saveOrUpdate(session, await this.load());
       this.initBlock = this.actualBlock;
 
@@ -171,6 +176,8 @@ export abstract class AbstractLoader<T extends IOwnable> {
       user,
       balanceUpdates,
       eventName,
+      contract: this.constructor.name,
+      chainId: this.chainId,
     });
 
     await UserBalanceModel.updateOne({ address, user }, balanceUpdates, {
@@ -186,6 +193,9 @@ export abstract class AbstractLoader<T extends IOwnable> {
     this.log.trace({
       msg: "sending balance update :",
       data: newBalance.toJSON(),
+      contract: this.constructor.name,
+      address: this.address,
+      chainId: this.chainId,
     });
 
     pubSub.publish(
@@ -221,7 +231,13 @@ export abstract class AbstractLoader<T extends IOwnable> {
   }
 
   notifyUpdate(): void {
-    this.log.trace({ msg: "sending contract update", data: this.lastState });
+    this.log.trace({
+      msg: "sending contract update",
+      data: this.lastState,
+      contract: this.constructor.name,
+      address: this.address,
+      chainId: this.chainId,
+    });
 
     pubSub.publish(
       `${this.constructor.name}.${this.chainId}.${this.address}`,
@@ -238,22 +254,38 @@ export abstract class AbstractLoader<T extends IOwnable> {
         address: this.address,
       };
 
-      this.log.info(
-        `Querying missed events from block ${fromBlock} and address ${this.address}`
-      );
+      this.log.info({
+        msg: `Querying missed events from block ${fromBlock}`,
+        contract: this.constructor.name,
+        address: this.address,
+        chainId: this.chainId,
+      });
       missedEvents = await this.instance.queryFilter(eventFilter, fromBlock);
       if (missedEvents === null) {
-        this.log.warn(
-          `Events querying returned null for ${this.constructor.name}@${this.address} since block ${fromBlock}`
-        );
+        this.log.warn({
+          msg: `Events querying returned null since block ${fromBlock}`,
+          contract: this.constructor.name,
+          address: this.address,
+          chainId: this.chainId,
+        });
         return;
       }
       if (missedEvents.length === 0) {
-        this.log.info("No events missed");
+        this.log.info({
+          msg: "No events missed",
+          contract: this.constructor.name,
+          address: this.address,
+          chainId: this.chainId,
+        });
         return;
       }
 
-      this.log.info(`Found ${missedEvents.length} potentially missed events`);
+      this.log.info({
+        msg: `Found ${missedEvents.length} potentially missed events`,
+        contract: this.constructor.name,
+        address: this.address,
+        chainId: this.chainId,
+      });
 
       const filteredEvents: ethers.Event[] = [];
       for (const event of missedEvents) {
@@ -275,6 +307,9 @@ export abstract class AbstractLoader<T extends IOwnable> {
             missedEvents.length - filteredEvents.length
           } events already played`,
           // skipped: missedEvents.filter((log) => !filteredEvents.includes(log)),
+          contract: this.constructor.name,
+          address: this.address,
+          chainId: this.chainId,
         });
       }
 
@@ -284,12 +319,18 @@ export abstract class AbstractLoader<T extends IOwnable> {
         this.log.info({
           msg: `Found ${missedEvents.length} really missed events`,
           // missedEvents,
+          contract: this.constructor.name,
+          address: this.address,
+          chainId: this.chainId,
         });
       }
     } catch (err) {
       this.log.error({
         msg: `Error retrieving events from block ${fromBlock}`,
         err,
+        contract: this.constructor.name,
+        address: this.address,
+        chainId: this.chainId,
       });
     }
 
@@ -303,9 +344,17 @@ export abstract class AbstractLoader<T extends IOwnable> {
         this.log.warn({
           msg: "found unnamed event :",
           event,
+          contract: this.constructor.name,
+          address: this.address,
+          chainId: this.chainId,
         });
       } else {
-        this.log.info("delegating event processing");
+        this.log.info({
+          msg: "delegating event processing",
+          contract: this.constructor.name,
+          address: this.address,
+          chainId: this.chainId,
+        });
         await this.onEvent(session, name, args, event.blockNumber);
       }
     }
@@ -326,6 +375,9 @@ export abstract class AbstractLoader<T extends IOwnable> {
       msg: "applying update to contract",
       eventName,
       data,
+      contract: this.constructor.name,
+      address: this.address,
+      chainId: this.chainId,
     });
 
     await this.saveOrUpdate(session, data);
@@ -336,6 +388,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
       loader: this.constructor.name,
       chainId: this.chainId,
       address: this.address,
+      contract: this.constructor.name,
     });
 
     pubSub.publish(
@@ -355,6 +408,9 @@ export abstract class AbstractLoader<T extends IOwnable> {
         this.log.warn({
           msg: "Skipping event from init block",
           event: log,
+          contract: this.constructor.name,
+          address: this.address,
+          chainId: this.chainId,
         });
         return;
       }
@@ -368,13 +424,19 @@ export abstract class AbstractLoader<T extends IOwnable> {
             msg: `error queuing event ${eventName}`,
             err,
             log,
+            contract: this.constructor.name,
+            address: this.address,
+            chainId: this.chainId,
           })
         );
     });
 
-    this.log.info(
-      `Subscribed to all events on ${this.constructor.name}@${this.address}`
-    );
+    this.log.info({
+      msg: `Subscribed to all events`,
+      contract: this.constructor.name,
+      address: this.address,
+      chainId: this.chainId,
+    });
   }
 
   async destroy() {
@@ -393,10 +455,14 @@ export abstract class AbstractLoader<T extends IOwnable> {
 
     try {
       this.log.info({
-        msg: `Running event handler for ${name} on ${this.constructor.name}@${this.address}`,
+        msg: `Running event handler for ${name}`,
         args: args.map((arg) =>
           arg instanceof BigNumber ? arg.toString() : arg
         ),
+        contract: this.constructor.name,
+        address: this.address,
+        chainId: this.chainId,
+        blockNumber,
       });
       await (this[eventHandlerName] as IEventHandler).apply(this, [
         session,
@@ -406,8 +472,15 @@ export abstract class AbstractLoader<T extends IOwnable> {
     } catch (err) {
       const msg = `Error running Event handler for event ${
         eventHandlerName as string
-      } on ${this.constructor.name} ${this.chainId} ${this.address}`;
-      this.log.error({ msg, err });
+      }`;
+      this.log.error({
+        msg,
+        err,
+        contract: this.constructor.name,
+        address: this.address,
+        chainId: this.chainId,
+        blockNumber,
+      });
       throw new Error(msg);
     }
   }
