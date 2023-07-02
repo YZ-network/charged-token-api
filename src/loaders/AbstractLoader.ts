@@ -60,7 +60,9 @@ export abstract class AbstractLoader<T extends IOwnable> {
     this.iface = new ethers.utils.Interface(contract.abi);
 
     this.log = rootLogger.child({
-      name: `(${chainId}) ${this.constructor.name}@${address}`,
+      chainId,
+      address,
+      contract: this.constructor.name,
     });
   }
 

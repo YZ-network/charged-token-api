@@ -8,6 +8,7 @@ import {
   InterfaceProjectTokenModel,
   UserBalanceModel,
 } from "../models";
+import { EventModel } from "../models/Event";
 import { IModel } from "../types";
 import { rootLogger } from "../util";
 import pubSub from "./pubsub";
@@ -150,6 +151,25 @@ const UserBalanceSubscriptionResolver = {
   resolve: (payload: any) => payload,
 };
 
+const EventsQueryResolver = async (
+  _: any,
+  {
+    chainId,
+    offset,
+    count,
+  }: { chainId: number; offset?: number; count?: number }
+) => {
+  if (offset === undefined) offset = 0;
+  if (count === undefined) count = 20;
+
+  const events = await EventModel.find({ chainId })
+    .limit(count)
+    .skip(offset)
+    .sort({ blockNumber: "desc", txIndex: "desc", logIndex: "desc" });
+
+  return events.map((event) => EventModel.toGraphQL(event));
+};
+
 class ResolverFactory {
   static findAll<T>(model: IModel<T>) {
     return async (_: any, { chainId }: { chainId: number }) => {
@@ -282,6 +302,7 @@ const resolvers = {
     DelegableToLT: ResolverFactory.findByAddress(DelegableToLTModel),
     UserBalance: UserBalanceQueryResolver,
     userBalances: UserBalanceQueryResolver,
+    events: EventsQueryResolver,
     health: HealthQueryResolver,
   },
   Subscription: {

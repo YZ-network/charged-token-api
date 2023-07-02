@@ -43,6 +43,9 @@ export class EventListener {
       loader,
     });
 
+    const decodedLog = loader.iface.parseLog(log);
+    const args = [...decodedLog.args.values()];
+
     await EventModel.create({
       status: EventHandlerStatus.QUEUED,
       chainId: loader.chainId,
@@ -52,7 +55,9 @@ export class EventListener {
       txIndex: log.transactionIndex,
       logIndex: log.logIndex,
       name: eventName,
+      contract: loader.constructor.name,
       topics: log.topics,
+      args: args.map((arg) => arg.toString()),
     });
 
     /*

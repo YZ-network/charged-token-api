@@ -16,7 +16,9 @@ export interface IEvent {
   txIndex: number;
   logIndex: number;
   name: string;
+  contract: string;
   topics: string[];
+  args: string[];
 }
 
 const { Schema } = mongoose;
@@ -30,8 +32,15 @@ const eventSchema = new Schema<IEvent, IModel<IEvent>>({
   txIndex: { type: Number, required: true },
   logIndex: { type: Number, required: true },
   name: { type: String, required: true },
+  contract: { type: String, required: true },
   topics: { type: [String], required: true },
+  args: { type: [String], required: true },
 });
+
+eventSchema.index(
+  { chainId: 1, address: 1, blockNumber: 1, txIndex: 1, logIndex: 1 },
+  { unique: true }
+);
 
 eventSchema.static(
   "toModel",

@@ -126,6 +126,20 @@ const schema = createSchema({
     restartCount: Int!
   }
 
+  type IEvent {
+    status: String!
+    chainId: Int!
+    address: String!
+    blockNumber: Int!
+    txHash: String!
+    txIndex: Int!
+    logIndex: Int!
+    name: String!
+    contract: String!
+    topics: [String!]!
+    args: [String!]!
+  }
+
   type Query {
     Directory(chainId: Int!): IDirectory
     allChargedTokens(chainId: Int!): [IChargedToken!]!
@@ -136,6 +150,7 @@ const schema = createSchema({
     DelegableToLT(chainId: Int!, address: String!): IDelegableToLT!
     UserBalance(chainId: Int!, user: String!, address: String!): IUserBalancesEntry
     userBalances(chainId: Int!, user: String!): [IUserBalancesEntry!]!
+    events(chainId: Int!, offset: Int, count: Int): [IEvent!]!
     health: [IWorkerHealth!]!
   }
 
