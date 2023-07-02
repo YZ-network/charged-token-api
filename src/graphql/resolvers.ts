@@ -165,9 +165,16 @@ const EventsQueryResolver = async (
   const events = await EventModel.find({ chainId })
     .limit(count)
     .skip(offset)
-    .sort({ blockNumber: "desc", txIndex: "desc", logIndex: "desc" });
+    .sort({ blockNumber: "asc", txIndex: "asc", logIndex: "asc" });
 
   return events.map((event) => EventModel.toGraphQL(event));
+};
+
+const EventsCountQueryResolver = async (
+  _: any,
+  { chainId }: { chainId: number }
+) => {
+  return await EventModel.count({ chainId });
 };
 
 class ResolverFactory {
@@ -303,6 +310,7 @@ const resolvers = {
     UserBalance: UserBalanceQueryResolver,
     userBalances: UserBalanceQueryResolver,
     events: EventsQueryResolver,
+    countEvents: EventsCountQueryResolver,
     health: HealthQueryResolver,
   },
   Subscription: {

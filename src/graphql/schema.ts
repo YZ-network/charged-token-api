@@ -151,6 +151,7 @@ const schema = createSchema({
     UserBalance(chainId: Int!, user: String!, address: String!): IUserBalancesEntry
     userBalances(chainId: Int!, user: String!): [IUserBalancesEntry!]!
     events(chainId: Int!, offset: Int, count: Int): [IEvent!]!
+    countEvents(chainId: Int!): Int!
     health: [IWorkerHealth!]!
   }
 
