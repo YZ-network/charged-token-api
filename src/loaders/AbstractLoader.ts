@@ -173,6 +173,60 @@ export abstract class AbstractLoader<T extends IOwnable> {
     );
   }
 
+  protected detectNegativeAmount(
+    name: string,
+    data: Record<string, string>,
+    fieldsToCheck: string[],
+    logData: Record<string, any> = {}
+  ) {
+    const faultyFields: Record<string, string> = {};
+    fieldsToCheck.forEach((field) => {
+      if (
+        data[field] !== undefined &&
+        (data[field] as string).startsWith("-")
+      ) {
+        faultyFields[field] = data[field] as string;
+      }
+    });
+
+    if (Object.keys(faultyFields).length > 0) {
+      this.log.error({
+        ...logData,
+        msg: `Invalid update detected : negative amounts in ${name}`,
+        faultyFields,
+        chainId: this.chainId,
+      });
+      throw new Error(`Invalid update detected : negative amounts in ${name}`);
+    }
+  }
+
+  protected checkBalanceUpdateAmounts(
+    data: Partial<IUserBalance>,
+    address: string,
+    user: string
+  ) {
+    const fieldsToCheck: (keyof IUserBalance)[] = [
+      "balance",
+      "balancePT",
+      "fullyChargedBalance",
+      "partiallyChargedBalance",
+      "claimedRewardPerShare1e18",
+      "valueProjectTokenToFullRecharge",
+    ];
+
+    this.detectNegativeAmount(
+      "user balance",
+      data as Record<string, string>,
+      fieldsToCheck,
+      {
+        address,
+        user,
+      }
+    );
+  }
+
+  protected checkUpdateAmounts(data: Partial<T> | T) {}
+
   async updateBalanceAndNotify(
     session: ClientSession,
     address: string,
@@ -180,6 +234,8 @@ export abstract class AbstractLoader<T extends IOwnable> {
     balanceUpdates: Partial<IUserBalance>,
     eventName?: string
   ): Promise<void> {
+    this.checkBalanceUpdateAmounts(balanceUpdates, address, user);
+
     this.log.info({
       msg: "applying update to balance",
       address,
@@ -219,6 +275,8 @@ export abstract class AbstractLoader<T extends IOwnable> {
     session: ClientSession,
     data: Partial<T> | T
   ): Promise<HydratedDocument<T>> {
+    this.checkUpdateAmounts(data);
+
     if (await this.exists()) {
       await this.model.updateOne(
         { chainId: this.chainId, address: this.address },

@@ -35,6 +35,18 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     return (DelegableToLTModel as any).toModel(data);
   }
 
+  protected checkUpdateAmounts(data: Partial<ChargedToken> | ChargedToken) {
+    super.checkUpdateAmounts(data);
+
+    const fieldsToCheck: string[] = ["totalSupply"];
+
+    this.detectNegativeAmount(
+      this.constructor.name,
+      data as Record<string, string>,
+      fieldsToCheck
+    );
+  }
+
   async load() {
     this.log.info({
       msg: "Reading entire project token",

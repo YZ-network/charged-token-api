@@ -54,6 +54,28 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     return (ChargedTokenModel as any).toModel(data);
   }
 
+  protected checkUpdateAmounts(data: Partial<ChargedToken> | ChargedToken) {
+    super.checkUpdateAmounts(data);
+
+    const fieldsToCheck: string[] = [
+      "totalSupply",
+      "maxInitialTokenAllocation",
+      "maxStakingTokenAmount",
+      "currentRewardPerShare1e18",
+      "stakedLT",
+      "totalLocked",
+      "totalTokenAllocated",
+      "campaignStakingRewards",
+      "totalStakingRewards",
+    ];
+
+    this.detectNegativeAmount(
+      this.constructor.name,
+      data as Record<string, string>,
+      fieldsToCheck
+    );
+  }
+
   async load() {
     this.log.info({
       msg: "Reading entire charged token",
