@@ -99,8 +99,8 @@ export abstract class AbstractLoader<T extends IOwnable> {
 
       const eventsStartBlock =
         actualBlock !== undefined && actualBlock > 0
-          ? Math.max(actualBlock - 100, this.lastUpdateBlock + 1)
-          : this.lastUpdateBlock + 1;
+          ? Math.max(actualBlock - 100, this.lastUpdateBlock)
+          : this.lastUpdateBlock;
 
       await this.loadAndSyncEvents(eventsStartBlock, session);
     } else {
@@ -428,7 +428,19 @@ export abstract class AbstractLoader<T extends IOwnable> {
       const eventName = Main.topicsMap[this.constructor.name][log.topics[0]];
       this.eventsListener
         .queueLog(eventName, log, this)
-        .then(() => this.log.info(`queued event ${eventName}`))
+        .then(() =>
+          this.log.info({
+            msg: `queued event ${eventName}`,
+            contract: this.constructor.name,
+            address: this.address,
+            chainId: this.chainId,
+            blockNumber: log.blockNumber,
+            txIndex: log.transactionIndex,
+            txHash: log.transactionHash,
+            logIndex: log.logIndex,
+            args: [...this.iface.parseLog(log).args.values()],
+          })
+        )
         .catch((err) =>
           this.log.error({
             msg: `error queuing event ${eventName}`,
