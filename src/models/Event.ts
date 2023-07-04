@@ -12,6 +12,7 @@ export interface IEvent {
   chainId: number;
   address: string;
   blockNumber: number;
+  blockDate: string;
   txHash: string;
   txIndex: number;
   logIndex: number;
@@ -28,6 +29,7 @@ const eventSchema = new Schema<IEvent, IModel<IEvent>>({
   chainId: { type: Number, required: true },
   address: { type: String, required: true },
   blockNumber: { type: Number, required: true },
+  blockDate: { type: String, required: true },
   txHash: { type: String, required: true },
   txIndex: { type: Number, required: true },
   logIndex: { type: Number, required: true },

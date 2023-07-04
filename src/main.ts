@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import { WebSocketServer } from "ws";
 import { Config } from "./config";
 import { encodeEvents } from "./encodeevents";
+import { useEventsExporter } from "./exporter";
 import { schema } from "./graphql";
 import { usePrometheus } from "./prometheus";
 import { rootLogger } from "./util";
@@ -62,6 +63,7 @@ export class Main {
         },
       }),
       usePrometheus(),
+      useEventsExporter(),
     ],
   });
 

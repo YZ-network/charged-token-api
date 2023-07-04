@@ -18,6 +18,7 @@ export class EventListener {
   private readonly timer: NodeJS.Timer;
   private running = false;
   private eventsAdded = false;
+  private readonly blockDates: Record<number, string> = {};
 
   constructor() {
     this.timer = setInterval(() => {
@@ -27,6 +28,18 @@ export class EventListener {
         this.eventsAdded = false;
       }
     }, 1000);
+  }
+
+  private async getBlockDate(
+    blockNumber: number,
+    provider: ethers.providers.JsonRpcProvider
+  ): Promise<string> {
+    if (!this.blockDates[blockNumber]) {
+      const block = await provider.getBlock(blockNumber);
+      const blockDate = new Date(block.timestamp * 1000).toISOString();
+      this.blockDates[blockNumber] = blockDate;
+    }
+    return this.blockDates[blockNumber];
   }
 
   async queueLog(
@@ -51,6 +64,7 @@ export class EventListener {
       chainId: loader.chainId,
       address: log.address,
       blockNumber: log.blockNumber,
+      blockDate: await this.getBlockDate(log.blockNumber, loader.provider),
       txHash: log.transactionHash,
       txIndex: log.transactionIndex,
       logIndex: log.logIndex,

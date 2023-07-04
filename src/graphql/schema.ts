@@ -131,6 +131,7 @@ const schema = createSchema({
     chainId: Int!
     address: String!
     blockNumber: Int!
+    blockDate: String!
     txHash: String!
     txIndex: Int!
     logIndex: Int!

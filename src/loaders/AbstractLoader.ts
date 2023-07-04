@@ -18,7 +18,7 @@ import { EventListener } from "./EventListener";
  */
 export abstract class AbstractLoader<T extends IOwnable> {
   readonly chainId: number;
-  protected readonly provider: ethers.providers.JsonRpcProvider;
+  readonly provider: ethers.providers.JsonRpcProvider;
   readonly address: string;
   protected readonly contract: any;
   protected readonly model: IModel<T>;
@@ -97,10 +97,11 @@ export abstract class AbstractLoader<T extends IOwnable> {
       this.lastUpdateBlock = existing.lastUpdateBlock;
       this.lastState = this.model.toGraphQL(existing);
 
-      const eventsStartBlock =
-        actualBlock !== undefined && actualBlock > 0
-          ? Math.max(actualBlock - 100, this.lastUpdateBlock)
-          : this.lastUpdateBlock;
+      const eventsStartBlock = Math.max(
+        this.lastUpdateBlock, // last update block should be included in case of partial events handling
+        this.initBlock + 1, // init block must be skipped because it was a full loading
+        this.actualBlock - 100 // otherwise, limit the number of past blocks to query
+      );
 
       await this.loadAndSyncEvents(eventsStartBlock, session);
     } else {
