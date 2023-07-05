@@ -31,7 +31,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
   initBlock: number = 0;
   lastUpdateBlock: number = 0;
   protected actualBlock: number = 0;
-  protected lastState: FlattenMaps<T> | undefined;
+  lastState: FlattenMaps<T> | undefined;
 
   readonly eventsListener: EventListener;
 
@@ -574,6 +574,10 @@ export abstract class AbstractLoader<T extends IOwnable> {
     // common handler for all ownable contracts
     // we do nothing since it happens only when a ChargedToken is added, which will be read in the same session
     // await this.applyUpdateAndNotify(session, { owner } as Partial<T>);
+  }
+
+  getProjectName(): string {
+    return "";
   }
 
   private filterArgs(inputArgs: Record<string, any> | undefined): any[] {

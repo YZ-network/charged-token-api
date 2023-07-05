@@ -68,6 +68,7 @@ export class EventListener {
       txHash: log.transactionHash,
       txIndex: log.transactionIndex,
       logIndex: log.logIndex,
+      project: loader.getProjectName(),
       name: eventName,
       contract: loader.constructor.name,
       topics: log.topics,
