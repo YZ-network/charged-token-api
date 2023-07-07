@@ -22,7 +22,6 @@ export function useEventsExporter(): Plugin {
             "status",
             "contract",
             "address",
-            "project",
             "name",
             "args",
             "txHash",

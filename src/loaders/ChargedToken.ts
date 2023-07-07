@@ -662,8 +662,4 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       );
     }
   }
-
-  getProjectName(): string {
-    return this.directory.lastState!.projectRelatedToLT[this.address];
-  }
 }

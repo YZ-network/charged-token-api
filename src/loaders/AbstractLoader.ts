@@ -576,10 +576,6 @@ export abstract class AbstractLoader<T extends IOwnable> {
     // await this.applyUpdateAndNotify(session, { owner } as Partial<T>);
   }
 
-  getProjectName(): string {
-    return "";
-  }
-
   private filterArgs(inputArgs: Record<string, any> | undefined): any[] {
     if (inputArgs === undefined) return [];
 

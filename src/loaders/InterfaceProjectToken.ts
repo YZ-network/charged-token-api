@@ -211,8 +211,4 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       eventName
     );
   }
-
-  getProjectName(): string {
-    return this.directory.lastState!.projectRelatedToLT[this.ct.address];
-  }
 }

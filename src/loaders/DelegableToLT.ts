@@ -229,8 +229,4 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
 
     await this.applyUpdateAndNotify(session, update, eventName);
   }
-
-  getProjectName(): string {
-    return this.directory.lastState!.projectRelatedToLT[this.ct.address];
-  }
 }

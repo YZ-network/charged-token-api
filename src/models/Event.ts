@@ -16,7 +16,6 @@ export interface IEvent {
   txHash: string;
   txIndex: number;
   logIndex: number;
-  project: string;
   name: string;
   contract: string;
   topics: string[];
@@ -34,7 +33,6 @@ const eventSchema = new Schema<IEvent, IModel<IEvent>>({
   txHash: { type: String, required: true },
   txIndex: { type: Number, required: true },
   logIndex: { type: Number, required: true },
-  project: { type: String, required: true },
   name: { type: String, required: true },
   contract: { type: String, required: true },
   topics: { type: [String], required: true },
