@@ -16,6 +16,7 @@ export interface IUserBalance extends IChargedTokenBalance {
   lastUpdateBlock: number;
   user: string;
   address: string;
+  ptAddress: string;
 }
 
 const userBalanceSchema = new mongoose.Schema<
@@ -26,6 +27,7 @@ const userBalanceSchema = new mongoose.Schema<
   lastUpdateBlock: { type: Number, required: true },
   user: String,
   address: String,
+  ptAddress: String,
   balance: { type: String, default: "0" },
   balancePT: { type: String, default: "0" },
   fullyChargedBalance: { type: String, default: "0" },

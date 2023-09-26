@@ -174,6 +174,21 @@ export abstract class AbstractLoader<T extends IOwnable> {
     );
   }
 
+  async getBalancesByProjectToken(
+    session: ClientSession,
+    ptAddress: string,
+    user: string
+  ): Promise<HydratedDocument<IUserBalance>[] | null> {
+    return await UserBalanceModel.find(
+      {
+        ptAddress,
+        user,
+      },
+      undefined,
+      { session }
+    );
+  }
+
   protected detectNegativeAmount(
     name: string,
     data: Record<string, string>,
@@ -233,6 +248,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
     address: string,
     user: string,
     balanceUpdates: Partial<IUserBalance>,
+    ptAddress?: string,
     eventName?: string
   ): Promise<void> {
     this.checkBalanceUpdateAmounts(balanceUpdates, address, user);
@@ -251,23 +267,94 @@ export abstract class AbstractLoader<T extends IOwnable> {
       session,
     });
 
-    const newBalance = (await this.getBalance(
-      session,
-      address,
-      user
-    )) as HydratedDocument<IUserBalance>;
+    if (balanceUpdates.balancePT !== undefined && ptAddress !== undefined) {
+      this.log.info({
+        msg: "propagating project token balance",
+        ptAddress,
+        user,
+        eventName,
+        contract: this.constructor.name,
+        chainId: this.chainId,
+      });
 
-    this.log.trace({
-      msg: "sending balance update :",
-      data: newBalance.toJSON(),
+      await UserBalanceModel.updateMany(
+        { user, ptAddress, address: { $ne: address } },
+        { balancePT: balanceUpdates.balancePT },
+        {
+          session,
+        }
+      );
+    }
+
+    if (ptAddress === undefined) {
+      const newBalance = (await this.getBalance(
+        session,
+        address,
+        user
+      )) as HydratedDocument<IUserBalance>;
+
+      this.log.trace({
+        msg: "sending balance update :",
+        data: newBalance.toJSON(),
+        contract: this.constructor.name,
+        address: this.address,
+        chainId: this.chainId,
+      });
+
+      pubSub.publish(
+        `UserBalance.${this.chainId}.${user}`,
+        JSON.stringify([UserBalanceModel.toGraphQL(newBalance)])
+      );
+    } else {
+      const updatedBalances = (await this.getBalancesByProjectToken(
+        session,
+        ptAddress,
+        user
+      )) as HydratedDocument<IUserBalance>[];
+
+      try {
+        this.log.trace({
+          msg: "sending multiple balance updates :",
+          data: updatedBalances.map((b) => b.toJSON()),
+          contract: this.constructor.name,
+          ptAddress,
+          chainId: this.chainId,
+        });
+
+        for (const b of updatedBalances) {
+          pubSub.publish(
+            `UserBalance.${this.chainId}.${user}`,
+            JSON.stringify([UserBalanceModel.toGraphQL(b)])
+          );
+        }
+      } catch (err) {
+        this.log.error(
+          err,
+          "Error loading updated balances after pt balance changed"
+        );
+      }
+    }
+  }
+
+  async setProjectTokenAddressOnBalances(
+    session: ClientSession,
+    address: string,
+    ptAddress: string
+  ): Promise<void> {
+    this.log.info({
+      msg: "applying update to balance",
+      address,
+      ptAddress,
       contract: this.constructor.name,
-      address: this.address,
       chainId: this.chainId,
     });
 
-    pubSub.publish(
-      `UserBalance.${this.chainId}.${user}`,
-      JSON.stringify([UserBalanceModel.toGraphQL(newBalance)])
+    await UserBalanceModel.updateMany(
+      { address },
+      { ptAddress },
+      {
+        session,
+      }
     );
   }
 

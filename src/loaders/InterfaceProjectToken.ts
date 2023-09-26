@@ -12,6 +12,10 @@ import { Directory } from "./Directory";
 
 export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken> {
   projectToken: DelegableToLT | undefined;
+  static readonly subscribedProjects: string[] = [];
+  static readonly projectInstances: Record<string, DelegableToLT> = {};
+  static readonly projectUsageCount: Record<string, number> = {};
+  skipProjectUpdates: boolean = true;
   readonly directory: Directory;
   readonly ct: ChargedToken;
 
@@ -36,21 +40,39 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
 
   async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
     await super.applyFunc(fn);
-    await this.projectToken?.applyFunc(fn);
+    if (this.skipProjectUpdates) {
+      await this.projectToken?.applyFunc(fn);
+    }
   }
 
   async init(session: ClientSession, actualBlock?: number) {
     await super.init(session, actualBlock);
 
-    this.projectToken = new DelegableToLT(
-      this.chainId,
-      this.provider,
-      this.lastState!.projectToken,
-      this.directory,
-      this.ct
-    );
+    if (
+      !InterfaceProjectToken.subscribedProjects.includes(
+        this.lastState!.projectToken
+      )
+    ) {
+      this.projectToken = new DelegableToLT(
+        this.chainId,
+        this.provider,
+        this.lastState!.projectToken,
+        this.directory,
+        this.ct
+      );
+      this.skipProjectUpdates = false;
 
-    await this.projectToken.init(session, actualBlock);
+      InterfaceProjectToken.projectInstances[this.projectToken.address] =
+        this.projectToken;
+      InterfaceProjectToken.subscribedProjects.push(this.projectToken.address);
+      InterfaceProjectToken.projectUsageCount[this.projectToken.address] = 0;
+
+      await this.projectToken.init(session, actualBlock);
+    } else {
+      this.projectToken =
+        InterfaceProjectToken.projectInstances[this.lastState!.projectToken];
+      InterfaceProjectToken.projectUsageCount[this.projectToken.address]++;
+    }
   }
 
   toModel(data: IInterfaceProjectToken) {
@@ -110,11 +132,21 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
 
   subscribeToEvents(): void {
     super.subscribeToEvents();
-    this.projectToken!.subscribeToEvents();
+    if (!this.skipProjectUpdates) {
+      this.projectToken!.subscribeToEvents();
+    }
   }
 
   async destroy() {
-    if (this.projectToken !== undefined) await this.projectToken.destroy();
+    if (this.projectToken !== undefined) {
+      if (
+        InterfaceProjectToken.projectUsageCount[this.projectToken.address] === 0
+      ) {
+        await this.projectToken.destroy();
+      } else {
+        InterfaceProjectToken.projectUsageCount[this.projectToken.address]--;
+      }
+    }
     await super.destroy();
   }
 
@@ -167,6 +199,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
           valueProjectTokenToFullRecharge,
           dateOfPartiallyCharged: dateOfPartiallyCharged.toString(),
         },
+        undefined,
         eventName
       );
     }
@@ -193,6 +226,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         {
           valueProjectTokenToFullRecharge,
         },
+        undefined,
         eventName
       );
     }

@@ -158,11 +158,18 @@ export class Directory extends AbstractLoader<IDirectory> {
           { session }
         );
       } else {
+        const iface = this.ct[entry.address].interface;
+        const ptAddress =
+          iface !== undefined && iface.projectToken !== undefined
+            ? iface.projectToken.address
+            : "";
+
         this.log.info({
           msg: `first time saving balance for ${user}`,
           chainId: this.chainId,
           contract: this.contract.name,
           address: this.address,
+          ptAddress,
         });
         await UserBalanceModel.toModel(entry).save({ session });
       }

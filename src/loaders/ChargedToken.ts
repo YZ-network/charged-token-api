@@ -168,6 +168,11 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       chainId: this.chainId,
       user,
       address: this.address,
+      ptAddress:
+        this.interface !== undefined &&
+        this.interface.projectToken !== undefined
+          ? this.interface.projectToken.address
+          : "",
       lastUpdateBlock: this.actualBlock,
       balance,
       balancePT:
@@ -238,6 +243,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
             {
               balance,
             },
+            undefined,
             eventName
           );
         } else {
@@ -272,6 +278,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
             {
               balance,
             },
+            undefined,
             eventName
           );
         } else {
@@ -336,6 +343,12 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       { interfaceProjectToken },
       eventName
     );
+
+    await this.setProjectTokenAddressOnBalances(
+      session,
+      this.address,
+      this.interface.projectToken!.address
+    );
   }
 
   async onInterfaceProjectTokenIsLockedEvent(
@@ -371,6 +384,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         {
           fullyChargedBalance,
         },
+        undefined,
         eventName
       );
     } else {
@@ -455,6 +469,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         {
           fullyChargedBalance,
         },
+        undefined,
         eventName
       );
     }
@@ -495,6 +510,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         {
           claimedRewardPerShare1e18: value.toString(),
         },
+        undefined,
         eventName
       );
     }
@@ -620,6 +636,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         {
           partiallyChargedBalance,
         },
+        undefined,
         eventName
       );
     }
@@ -658,6 +675,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
           fullyChargedBalance: "0",
           partiallyChargedBalance: partiallyChargedBalance.toString(),
         },
+        undefined,
         eventName
       );
     }

@@ -132,6 +132,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
           {
             balancePT,
           },
+          this.address,
           eventName
         );
       }
@@ -152,6 +153,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
           {
             balancePT,
           },
+          this.address,
           eventName
         );
       }
