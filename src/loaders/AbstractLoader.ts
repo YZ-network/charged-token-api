@@ -277,6 +277,15 @@ export abstract class AbstractLoader<T extends IOwnable> {
         chainId: this.chainId,
       });
 
+      if (balanceUpdates.balancePT === "0") {
+        this.log.warn({
+          msg: "setting user PT balance to 0",
+          chainId: this.chainId,
+          user,
+          ptAddress,
+        });
+      }
+
       await UserBalanceModel.updateMany(
         { user, ptAddress, address: { $ne: address } },
         { balancePT: balanceUpdates.balancePT },
@@ -328,34 +337,14 @@ export abstract class AbstractLoader<T extends IOwnable> {
           );
         }
       } catch (err) {
-        this.log.error(
+        this.log.error({
+          msg: "Error loading updated balances after pt balance changed",
           err,
-          "Error loading updated balances after pt balance changed"
-        );
+          chainId: this.chainId,
+          ptAddress,
+        });
       }
     }
-  }
-
-  async setProjectTokenAddressOnBalances(
-    session: ClientSession,
-    address: string,
-    ptAddress: string
-  ): Promise<void> {
-    this.log.info({
-      msg: "applying update to balance",
-      address,
-      ptAddress,
-      contract: this.constructor.name,
-      chainId: this.chainId,
-    });
-
-    await UserBalanceModel.updateMany(
-      { address },
-      { ptAddress },
-      {
-        session,
-      }
-    );
   }
 
   /** Saves or updates the document in database with the given data. */

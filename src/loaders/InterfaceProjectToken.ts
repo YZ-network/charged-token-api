@@ -1,6 +1,7 @@
 import { BigNumber, ethers } from "ethers";
 import { ClientSession } from "mongoose";
 import { contracts } from "../contracts";
+import { UserBalanceModel } from "../models";
 import {
   IInterfaceProjectToken,
   InterfaceProjectTokenModel,
@@ -130,6 +131,38 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     ).toString();
   }
 
+  async setProjectTokenAddressOnBalances(
+    session: ClientSession,
+    address: string,
+    ptAddress: string
+  ): Promise<void> {
+    this.log.info({
+      msg: "applying update to balance",
+      address,
+      ptAddress,
+      contract: this.constructor.name,
+      chainId: this.chainId,
+    });
+
+    const balancesToUpdate = await UserBalanceModel.find({ address }, null, {
+      session,
+    });
+    const userPTBalances: Record<string, string> = {};
+
+    for (const balance of balancesToUpdate) {
+      if (userPTBalances[balance.user] === undefined) {
+        userPTBalances[balance.user] = await this.loadUserBalancePT(
+          balance.user
+        );
+      }
+
+      this.updateBalanceAndNotify(session, address, balance.user, {
+        ptAddress,
+        balancePT: userPTBalances[balance.user],
+      });
+    }
+  }
+
   subscribeToEvents(): void {
     super.subscribeToEvents();
     if (!this.skipProjectUpdates) {
@@ -142,8 +175,20 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       if (
         InterfaceProjectToken.projectUsageCount[this.projectToken.address] === 0
       ) {
+        this.log.warn({
+          msg: "Removing project token since this is the last reference",
+          usageCount:
+            InterfaceProjectToken.projectUsageCount[this.projectToken.address],
+          chainId: this.chainId,
+        });
         await this.projectToken.destroy();
       } else {
+        this.log.info({
+          msg: "Removing only interface, project token still in use",
+          usageCount:
+            InterfaceProjectToken.projectUsageCount[this.projectToken.address],
+          chainId: this.chainId,
+        });
         InterfaceProjectToken.projectUsageCount[this.projectToken.address]--;
       }
     }

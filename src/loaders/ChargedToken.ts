@@ -338,16 +338,16 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     await this.interface.init(session);
     this.interface.subscribeToEvents();
 
+    await this.interface.setProjectTokenAddressOnBalances(
+      session,
+      this.address,
+      this.interface.projectToken!.address
+    );
+
     await this.applyUpdateAndNotify(
       session,
       { interfaceProjectToken },
       eventName
-    );
-
-    await this.setProjectTokenAddressOnBalances(
-      session,
-      this.address,
-      this.interface.projectToken!.address
     );
   }
 

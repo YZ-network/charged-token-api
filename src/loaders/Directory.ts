@@ -15,6 +15,7 @@ import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
 import { EventListener } from "./EventListener";
+import { InterfaceProjectToken } from "./InterfaceProjectToken";
 
 export class Directory extends AbstractLoader<IDirectory> {
   readonly ct: Record<string, ChargedToken> = {};
@@ -316,6 +317,12 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     const balanceAddressList: string[] = [];
 
+    this.log.info({
+      msg: "Removing charged token from directory and database",
+      chainId: this.chainId,
+      address: contract,
+    });
+
     await this.ct[contract].destroy();
 
     delete this.ct[contract];
@@ -337,6 +344,12 @@ export class Directory extends AbstractLoader<IDirectory> {
       { session }
     );
     if (iface !== null) {
+      this.log.info({
+        msg: "Removing interface from database",
+        chainId: this.chainId,
+        address: iface.address,
+      });
+
       balanceAddressList.push(iface.address);
       await InterfaceProjectTokenModel.deleteOne(
         {
@@ -347,11 +360,20 @@ export class Directory extends AbstractLoader<IDirectory> {
       );
       if (
         iface.projectToken !== EMPTY_ADDRESS &&
+        InterfaceProjectToken.projectUsageCount[iface.projectToken] === 0 &&
         (await DelegableToLTModel.count({
           chainId: this.chainId,
           address: iface.projectToken,
         })) === 1
       ) {
+        this.log.info({
+          msg: "Removing project token from database",
+          chainId: this.chainId,
+          address: iface.projectToken,
+          usageCount:
+            InterfaceProjectToken.projectUsageCount[iface.projectToken],
+        });
+
         await DelegableToLTModel.deleteOne(
           {
             chainId: this.chainId,
@@ -362,6 +384,12 @@ export class Directory extends AbstractLoader<IDirectory> {
         balanceAddressList.push(iface.projectToken);
       }
     }
+
+    this.log.info({
+      msg: "Removing linked balances for charged token",
+      chainId: this.chainId,
+      balanceAddressList,
+    });
 
     await UserBalanceModel.deleteMany(
       {
