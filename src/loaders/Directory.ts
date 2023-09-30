@@ -145,6 +145,8 @@ export class Directory extends AbstractLoader<IDirectory> {
           )
         : [await this.ct[address].loadUserBalances(user)];
 
+    // TODO fix logs to show address of CT updated balance instead of directory
+    // TODO limit reloading to added charged token
     for (const entry of results) {
       if (await this.existUserBalances(user, entry.address)) {
         this.log.info({
