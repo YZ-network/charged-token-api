@@ -137,7 +137,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     ptAddress: string
   ): Promise<void> {
     this.log.info({
-      msg: "applying update to balance",
+      msg: "will update PT address on balances for all users one by one",
       address,
       ptAddress,
       contract: this.constructor.name,
@@ -147,6 +147,12 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     const balancesToUpdate = await UserBalanceModel.find({ address }, null, {
       session,
     });
+    this.log.info({
+      msg: "user balances to update !",
+      count: balancesToUpdate.length,
+      users: balancesToUpdate.map((balance) => balance.user),
+    });
+
     const userPTBalances: Record<string, string> = {};
 
     for (const balance of balancesToUpdate) {
@@ -154,6 +160,11 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         userPTBalances[balance.user] = await this.loadUserBalancePT(
           balance.user
         );
+        this.log.info({
+          msg: "loaded user PT balance",
+          user: balance.user,
+          balance: balance.balancePT,
+        });
       }
 
       this.updateBalanceAndNotify(session, address, balance.user, {
