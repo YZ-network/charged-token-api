@@ -91,7 +91,10 @@ const UserBalanceQueryResolver = async (
     chainId,
     address,
   });
-  pubSub.publish(`UserBalance.${chainId}/load`, user);
+  pubSub.publish(
+    `UserBalance.${chainId}/load`,
+    JSON.stringify({ user, address })
+  );
 
   return [];
 };

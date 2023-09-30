@@ -16,15 +16,16 @@ export async function subscribeToUserBalancesLoading(
     chainId: directory.chainId,
   });
 
-  for await (const user of sub) {
+  for await (const info of sub) {
+    const { user, address } = JSON.parse(info);
     log.info({
-      msg: `Got user balances reload message for ${user}`,
+      msg: `Got user balances reload message for ${user}@${address}`,
       chainId: directory.chainId,
     });
     try {
       const session = await mongoose.startSession();
       await session.withTransaction(async () => {
-        await directory.loadAllUserBalances(session, user);
+        await directory.loadAllUserBalances(session, user, address);
       });
       await session.endSession();
     } catch (err) {

@@ -145,15 +145,12 @@ export class Directory extends AbstractLoader<IDirectory> {
           )
         : [await this.ct[address].loadUserBalances(user)];
 
-    // TODO fix logs to show address of CT updated balance instead of directory
-    // TODO limit reloading to added charged token
     for (const entry of results) {
       if (await this.existUserBalances(user, entry.address)) {
         this.log.info({
-          msg: `updating balance for ${user}`,
+          msg: `updating CT balance for ${user}`,
           chainId: this.chainId,
-          contract: this.contract.name,
-          address: this.address,
+          address: entry.address,
         });
         await UserBalanceModel.updateOne(
           { chainId: this.chainId, user, address: entry.address },
@@ -171,7 +168,7 @@ export class Directory extends AbstractLoader<IDirectory> {
           msg: `first time saving balance for ${user}`,
           chainId: this.chainId,
           contract: this.contract.name,
-          address: this.address,
+          address: entry.address,
           ptAddress,
         });
         await UserBalanceModel.toModel(entry).save({ session });
