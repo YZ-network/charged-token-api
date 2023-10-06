@@ -178,6 +178,13 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     super.subscribeToEvents();
     if (!this.skipProjectUpdates) {
       this.projectToken!.subscribeToEvents();
+    } else {
+      this.log.info({
+        msg: "Skipping contract event subscriptions to avoid duplicates",
+        chainId: this.chainId,
+        contract: "DelegableToLT",
+        address: this.projectToken,
+      });
     }
   }
 
