@@ -178,6 +178,14 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     }
   }
 
+  async onApprovalEvent(
+    session: ClientSession,
+    [owner, spender, value]: any[],
+    eventName?: string
+  ): Promise<void> {
+    // ignore it
+  }
+
   async onAddedAllTimeValidatedInterfaceProjectTokenEvent(
     session: ClientSession,
     [interfaceProjectToken]: any[],

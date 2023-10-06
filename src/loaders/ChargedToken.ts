@@ -311,6 +311,14 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     }
   }
 
+  async onApprovalEvent(
+    session: ClientSession,
+    [owner, spender, value]: any[],
+    eventName?: string
+  ): Promise<void> {
+    // ignore it
+  }
+
   async onUserFunctionsAreDisabledEvent(
     session: ClientSession,
     [areUserFunctionsDisabled]: any[],
