@@ -137,7 +137,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     const startDate = new Date().getTime();
 
     const results =
-      address === undefined
+      address === undefined || this.ct[address] === undefined
         ? await Promise.all(
             Object.values(this.ct).map((ct: ChargedToken) =>
               ct.loadUserBalances(user)

@@ -649,7 +649,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
   ): Promise<void> {
     // common handler for all ownable contracts
     // we do nothing since it happens only when a ChargedToken is added, which will be read in the same session
-    // await this.applyUpdateAndNotify(session, { owner } as Partial<T>);
+    await this.applyUpdateAndNotify(session, { owner } as Partial<T>);
   }
 
   private filterArgs(inputArgs: Record<string, any> | undefined): any[] {
