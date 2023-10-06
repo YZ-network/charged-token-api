@@ -122,6 +122,8 @@ export abstract class AbstractLoader<T extends IOwnable> {
         `${this.constructor.name}.${this.chainId}`,
         this.lastState
       );
+
+      await session.commitTransaction();
     }
   }
 
