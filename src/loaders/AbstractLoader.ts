@@ -105,6 +105,8 @@ export abstract class AbstractLoader<T extends IOwnable> {
 
       await this.loadAndSyncEvents(eventsStartBlock, session);
     } else {
+      await session.startTransaction();
+
       this.log.info({
         msg: "First time loading",
         contract: this.constructor.name,
