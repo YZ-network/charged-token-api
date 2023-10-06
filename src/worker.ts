@@ -260,9 +260,7 @@ export class ChainWorker {
       });
 
       const session = await mongoose.startSession();
-      await session.withTransaction(
-        async () => await this.directory!.init(session, actualBlock)
-      );
+      await this.directory!.init(session, actualBlock);
       await session.endSession();
       log.info({
         msg: `Initialization complete for ${this.name} subscribing to updates`,
