@@ -68,11 +68,31 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       InterfaceProjectToken.subscribedProjects.push(this.projectToken.address);
       InterfaceProjectToken.projectUsageCount[this.projectToken.address] = 0;
 
+      this.log.info({
+        chainId: this.chainId,
+        contract: "InterfaceProjectToken",
+        address: this.address,
+        msg: `Added Project Token ${
+          this.lastState!.projectToken
+        } to instances list`,
+      });
+
       await this.projectToken.init(session, actualBlock);
     } else {
       this.projectToken =
         InterfaceProjectToken.projectInstances[this.lastState!.projectToken];
       InterfaceProjectToken.projectUsageCount[this.projectToken.address]++;
+
+      this.log.info({
+        chainId: this.chainId,
+        contract: "InterfaceProjectToken",
+        address: this.address,
+        usageCount:
+          InterfaceProjectToken.projectUsageCount[this.projectToken.address],
+        msg: `Retrieved existing Project Token instance ${
+          this.lastState!.projectToken
+        }`,
+      });
     }
   }
 
