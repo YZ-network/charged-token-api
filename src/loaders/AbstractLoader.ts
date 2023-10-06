@@ -77,8 +77,6 @@ export abstract class AbstractLoader<T extends IOwnable> {
    * After initialization, the contract is up to date and the loader is subscribed to events.
    */
   async init(session: ClientSession, actualBlock?: number): Promise<void> {
-    await session.startTransaction();
-
     this.actualBlock =
       actualBlock !== undefined
         ? actualBlock
@@ -125,8 +123,6 @@ export abstract class AbstractLoader<T extends IOwnable> {
         this.lastState
       );
     }
-
-    await session.commitTransaction();
   }
 
   /**
