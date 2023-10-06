@@ -183,7 +183,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         msg: "Skipping contract event subscriptions to avoid duplicates",
         chainId: this.chainId,
         contract: "DelegableToLT",
-        address: this.projectToken,
+        address: this.projectToken?.address,
       });
     }
   }
