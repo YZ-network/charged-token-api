@@ -13,12 +13,14 @@ import { Directory } from "./Directory";
 
 export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken> {
   projectToken: DelegableToLT | undefined;
+  skipProjectUpdates: boolean = true;
+
+  readonly directory: Directory;
+  readonly ct: ChargedToken;
+
   static readonly subscribedProjects: string[] = [];
   static readonly projectInstances: Record<string, DelegableToLT> = {};
   static readonly projectUsageCount: Record<string, number> = {};
-  skipProjectUpdates: boolean = true;
-  readonly directory: Directory;
-  readonly ct: ChargedToken;
 
   constructor(
     chainId: number,
@@ -72,6 +74,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         chainId: this.chainId,
         contract: "InterfaceProjectToken",
         address: this.address,
+        skipProjectUpdates: this.skipProjectUpdates,
         msg: `Added Project Token ${
           this.lastState!.projectToken
         } to instances list`,
@@ -204,6 +207,8 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         chainId: this.chainId,
         contract: "DelegableToLT",
         address: this.projectToken?.address,
+        interface: this.address,
+        skipProjectUpdates: this.skipProjectUpdates,
       });
     }
   }
