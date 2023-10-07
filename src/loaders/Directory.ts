@@ -36,8 +36,12 @@ export class Directory extends AbstractLoader<IDirectory> {
     );
   }
 
-  async init(session: ClientSession, actualBlock?: number) {
-    await super.init(session, actualBlock);
+  async init(
+    session: ClientSession,
+    actualBlock?: number,
+    createTransaction?: boolean
+  ) {
+    await super.init(session, actualBlock, createTransaction);
 
     this.lastState!.directory.forEach(
       (address) =>
@@ -50,7 +54,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     );
 
     for (const ct of Object.values(this.ct)) {
-      await ct.init(session, actualBlock);
+      await ct.init(session, actualBlock, createTransaction);
     }
   }
 
@@ -282,7 +286,7 @@ export class Directory extends AbstractLoader<IDirectory> {
       this
     );
 
-    await this.ct[contract].init(session, this.actualBlock);
+    await this.ct[contract].init(session, this.actualBlock, false);
     this.ct[contract].subscribeToEvents();
 
     await this.applyUpdateAndNotify(session, updates, eventName);

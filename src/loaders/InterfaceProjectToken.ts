@@ -41,8 +41,12 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     this.ct = ct;
   }
 
-  async init(session: ClientSession, actualBlock?: number) {
-    await super.init(session, actualBlock);
+  async init(
+    session: ClientSession,
+    actualBlock?: number,
+    createTransaction?: boolean
+  ) {
+    await super.init(session, actualBlock, createTransaction);
 
     if (
       !InterfaceProjectToken.subscribedProjects.includes(
@@ -73,7 +77,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         } to instances list`,
       });
 
-      await this.projectToken.init(session, actualBlock);
+      await this.projectToken.init(session, actualBlock, createTransaction);
     } else {
       this.projectToken =
         InterfaceProjectToken.projectInstances[this.lastState!.projectToken];

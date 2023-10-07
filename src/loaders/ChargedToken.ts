@@ -29,8 +29,12 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     this.directory = directory;
   }
 
-  async init(session: ClientSession, actualBlock?: number) {
-    await super.init(session, actualBlock);
+  async init(
+    session: ClientSession,
+    actualBlock?: number,
+    createTransaction?: boolean
+  ) {
+    await super.init(session, actualBlock, createTransaction);
 
     if (this.lastState!.interfaceProjectToken !== EMPTY_ADDRESS) {
       this.interface = new InterfaceProjectToken(
@@ -41,7 +45,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         this
       );
 
-      await this.interface.init(session, actualBlock);
+      await this.interface.init(session, actualBlock, createTransaction);
     }
   }
 
@@ -338,7 +342,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       this.directory,
       this
     );
-    await this.interface.init(session);
+    await this.interface.init(session, undefined, false);
     this.interface.subscribeToEvents();
 
     await this.interface.setProjectTokenAddressOnBalances(

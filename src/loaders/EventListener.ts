@@ -123,9 +123,9 @@ export class EventListener {
         const decodedLog = loader.iface.parseLog(log);
         const args = [...decodedLog.args.values()];
 
-        session.startTransaction();
-
         try {
+          session.startTransaction();
+
           await loader.onEvent(session, eventName, args, log.blockNumber);
           await this.updateEventStatus(
             session,
@@ -134,7 +134,11 @@ export class EventListener {
             EventHandlerStatus.SUCCESS
           );
           this.queue.splice(0, 1);
+
+          await session.commitTransaction();
         } catch (err) {
+          await session.abortTransaction();
+
           loader.log.error({
             msg: `Error running event handler on chain ${loader.chainId}`,
             err,
@@ -150,8 +154,6 @@ export class EventListener {
             EventHandlerStatus.FAILURE
           );
         }
-
-        await session.commitTransaction();
       }
     } catch (err) {
       this.log.error({ msg: "Event handlers execution failed !", err });
