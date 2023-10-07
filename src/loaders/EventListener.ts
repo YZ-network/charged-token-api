@@ -96,7 +96,6 @@ export class EventListener {
 
     try {
       const session = await mongoose.startSession();
-      session.startTransaction();
 
       let lastBlockNumber = 0;
       while (this.queue.length > 0) {
@@ -116,6 +115,8 @@ export class EventListener {
 
         const decodedLog = loader.iface.parseLog(log);
         const args = [...decodedLog.args.values()];
+
+        session.startTransaction();
 
         try {
           await loader.onEvent(session, eventName, args, log.blockNumber);
@@ -142,9 +143,10 @@ export class EventListener {
             EventHandlerStatus.FAILURE
           );
         }
+
+        await session.commitTransaction();
       }
 
-      await session.commitTransaction();
       await session.endSession();
     } catch (err) {
       this.log.error({ msg: "Event handlers execution failed !", err });
