@@ -36,13 +36,6 @@ export class Directory extends AbstractLoader<IDirectory> {
     );
   }
 
-  async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
-    await super.applyFunc(fn);
-    await Promise.all(
-      Object.values(this.ct).map((loader) => loader.applyFunc(fn))
-    );
-  }
-
   async init(session: ClientSession, actualBlock?: number) {
     await super.init(session, actualBlock);
 
@@ -56,11 +49,9 @@ export class Directory extends AbstractLoader<IDirectory> {
         ))
     );
 
-    await Promise.all(
-      Object.values(this.ct).map((ct: ChargedToken) =>
-        ct.init(session, actualBlock)
-      )
-    );
+    for (const ct of Object.values(this.ct)) {
+      await ct.init(session, actualBlock);
+    }
   }
 
   toModel(data: IDirectory) {

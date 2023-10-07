@@ -66,10 +66,6 @@ export abstract class AbstractLoader<T extends IOwnable> {
     });
   }
 
-  async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
-    await fn(this);
-  }
-
   /**
    * Call this method after creating a new instance in order to fetch the initial
    * contract state from the blockchain or existing one from database.
@@ -83,6 +79,8 @@ export abstract class AbstractLoader<T extends IOwnable> {
         : await this.provider.getBlockNumber();
 
     const existing = await this.get(session);
+
+    session.startTransaction();
 
     if (existing != null) {
       this.log.info({
@@ -112,6 +110,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
         chainId: this.chainId,
       });
       await this.saveOrUpdate(session, await this.load());
+
       this.initBlock = this.actualBlock;
 
       pubSub.publish(
@@ -123,6 +122,8 @@ export abstract class AbstractLoader<T extends IOwnable> {
         this.lastState
       );
     }
+
+    await session.commitTransaction();
   }
 
   /**

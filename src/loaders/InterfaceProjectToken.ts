@@ -41,13 +41,6 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     this.ct = ct;
   }
 
-  async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
-    await super.applyFunc(fn);
-    if (this.skipProjectUpdates) {
-      await this.projectToken?.applyFunc(fn);
-    }
-  }
-
   async init(session: ClientSession, actualBlock?: number) {
     await super.init(session, actualBlock);
 

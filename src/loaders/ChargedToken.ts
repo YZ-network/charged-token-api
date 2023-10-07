@@ -29,11 +29,6 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     this.directory = directory;
   }
 
-  async applyFunc(fn: (loader: any) => Promise<void>): Promise<void> {
-    await super.applyFunc(fn);
-    await this.interface?.applyFunc(fn);
-  }
-
   async init(session: ClientSession, actualBlock?: number) {
     await super.init(session, actualBlock);
 

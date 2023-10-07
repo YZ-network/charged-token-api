@@ -96,53 +96,55 @@ export class EventListener {
 
     try {
       const session = await mongoose.startSession();
-      await session.withTransaction(async () => {
-        let lastBlockNumber = 0;
-        while (this.queue.length > 0) {
-          const [{ eventName, log, loader }] = this.queue;
+      session.startTransaction();
 
-          if (lastBlockNumber > 0 && lastBlockNumber !== log.blockNumber) {
-            loader.log.info({
-              msg: "Got events spanned on different blocks, stopping now",
-              chainId: loader.chainId,
-              blockNumber: log.blockNumber,
-              lastBlockNumber,
-            });
-            break;
-          } else {
-            lastBlockNumber = log.blockNumber;
-          }
+      let lastBlockNumber = 0;
+      while (this.queue.length > 0) {
+        const [{ eventName, log, loader }] = this.queue;
 
-          const decodedLog = loader.iface.parseLog(log);
-          const args = [...decodedLog.args.values()];
-
-          try {
-            await loader.onEvent(session, eventName, args, log.blockNumber);
-            await this.updateEventStatus(
-              session,
-              log,
-              loader.chainId,
-              EventHandlerStatus.SUCCESS
-            );
-            this.queue.splice(0, 1);
-          } catch (err) {
-            loader.log.error({
-              msg: `Error running event handler on chain ${loader.chainId}`,
-              err,
-              eventName,
-              args,
-              chainId: loader.chainId,
-              blockNumber: log.blockNumber,
-            });
-            await this.updateEventStatus(
-              session,
-              log,
-              loader.chainId,
-              EventHandlerStatus.FAILURE
-            );
-          }
+        if (lastBlockNumber > 0 && lastBlockNumber !== log.blockNumber) {
+          loader.log.info({
+            msg: "Got events spanned on different blocks, stopping now",
+            chainId: loader.chainId,
+            blockNumber: log.blockNumber,
+            lastBlockNumber,
+          });
+          break;
+        } else {
+          lastBlockNumber = log.blockNumber;
         }
-      });
+
+        const decodedLog = loader.iface.parseLog(log);
+        const args = [...decodedLog.args.values()];
+
+        try {
+          await loader.onEvent(session, eventName, args, log.blockNumber);
+          await this.updateEventStatus(
+            session,
+            log,
+            loader.chainId,
+            EventHandlerStatus.SUCCESS
+          );
+          this.queue.splice(0, 1);
+        } catch (err) {
+          loader.log.error({
+            msg: `Error running event handler on chain ${loader.chainId}`,
+            err,
+            eventName,
+            args,
+            chainId: loader.chainId,
+            blockNumber: log.blockNumber,
+          });
+          await this.updateEventStatus(
+            session,
+            log,
+            loader.chainId,
+            EventHandlerStatus.FAILURE
+          );
+        }
+      }
+
+      await session.commitTransaction();
       await session.endSession();
     } catch (err) {
       this.log.error({ msg: "Event handlers execution failed !", err });
