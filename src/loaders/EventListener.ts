@@ -21,11 +21,18 @@ export class EventListener {
   private readonly blockDates: Record<number, string> = {};
 
   constructor() {
+    let executingEventHandlers = false;
+
     this.timer = setInterval(() => {
-      if (this.queue.length > 0 && !this.eventsAdded) {
-        this.executePendingLogs();
-      } else {
-        this.eventsAdded = false;
+      if (!executingEventHandlers) {
+        if (this.queue.length > 0 && !this.eventsAdded) {
+          executingEventHandlers = true;
+          this.executePendingLogs()
+            .then(() => (executingEventHandlers = false))
+            .catch(() => (executingEventHandlers = false));
+        } else {
+          this.eventsAdded = false;
+        }
       }
     }, 1000);
   }
@@ -94,9 +101,9 @@ export class EventListener {
 
     this.running = true;
 
-    try {
-      const session = await mongoose.startSession();
+    const session = await mongoose.startSession();
 
+    try {
       let lastBlockNumber = 0;
       while (this.queue.length > 0) {
         const [{ eventName, log, loader }] = this.queue;
@@ -146,14 +153,14 @@ export class EventListener {
 
         await session.commitTransaction();
       }
-
-      await session.endSession();
     } catch (err) {
       this.log.error({ msg: "Event handlers execution failed !", err });
       throw err;
     } finally {
       this.running = false;
     }
+
+    await session.endSession();
   }
 
   destroy() {
