@@ -152,7 +152,7 @@ export class Directory extends AbstractLoader<IDirectory> {
           entry,
           { session }
         );
-      } else {
+      } else if (this.ct[entry.address] !== undefined) {
         const iface = this.ct[entry.address].interface;
         const ptAddress =
           iface !== undefined && iface.projectToken !== undefined
