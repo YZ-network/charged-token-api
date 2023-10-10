@@ -54,6 +54,20 @@ export class EventListener {
     log: ethers.providers.Log,
     loader: AbstractLoader<any>
   ) {
+    if (
+      (await EventModel.exists({
+        chainId: loader.chainId,
+        address: loader.address,
+        blockNumber: log.blockNumber,
+        txIndex: log.transactionIndex,
+        logIndex: log.logIndex,
+      })) !== null
+    ) {
+      throw new Error(
+        `Tried to queue same event twice ! event=${eventName} chainId=${loader.chainId} address=${loader.address} blockNumber=${log.blockNumber} txIndex=${log.transactionIndex} logIndex=${log.logIndex}`
+      );
+    }
+
     this.queue.push({
       eventName,
       log,
