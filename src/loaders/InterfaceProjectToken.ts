@@ -217,14 +217,28 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       ) {
         this.log.warn({
           msg: "Removing project token since this is the last reference",
+          projectToken: this.projectToken.address,
           usageCount:
             InterfaceProjectToken.projectUsageCount[this.projectToken.address],
           chainId: this.chainId,
         });
         await this.projectToken.destroy();
+        delete InterfaceProjectToken.projectInstances[
+          this.projectToken.address
+        ];
+        delete InterfaceProjectToken.projectUsageCount[
+          this.projectToken.address
+        ];
+        InterfaceProjectToken.subscribedProjects.splice(
+          InterfaceProjectToken.subscribedProjects.indexOf(
+            this.projectToken.address
+          ),
+          1
+        );
       } else {
         this.log.info({
           msg: "Removing only interface, project token still in use",
+          projectToken: this.projectToken.address,
           usageCount:
             InterfaceProjectToken.projectUsageCount[this.projectToken.address],
           chainId: this.chainId,
