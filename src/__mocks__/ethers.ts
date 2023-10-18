@@ -2,6 +2,7 @@ export { BigNumber } from "ethers";
 
 const Contract = jest.fn().mockImplementation(() => {
   return {
+    queryFilter: jest.fn(),
     owner: jest.fn(),
     countWhitelistedProjectOwners: jest.fn(),
     countLTContracts: jest.fn(),

@@ -22,11 +22,7 @@ const config: Config = {
   collectCoverage: true,
 
   // An array of glob patterns indicating a set of files for which coverage information should be collected
-  collectCoverageFrom: [
-    "**/src/**/*.ts",
-    "**/src/**/*.js",
-    "!**/src/**/index.ts",
-  ],
+  collectCoverageFrom: ["**/*.ts", "**/*.js", "!**/index.ts"],
 
   // The directory where Jest should output its coverage files
   coverageDirectory: "coverage",
@@ -50,9 +46,9 @@ const config: Config = {
   // An object that configures minimum threshold enforcement for coverage results
   coverageThreshold: {
     global: {
-      branches: 61,
-      functions: 27,
-      lines: 13,
+      branches: 65,
+      functions: 31,
+      lines: 17,
       statements: -6050,
     },
   },
@@ -134,7 +130,7 @@ const config: Config = {
   // restoreMocks: false,
 
   // The root directory that Jest should scan for tests and modules within
-  // rootDir: "src",
+  rootDir: "src",
 
   // A list of paths to directories that Jest should use to search for files in
   // roots: [

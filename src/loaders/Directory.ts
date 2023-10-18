@@ -358,7 +358,8 @@ export class Directory extends AbstractLoader<IDirectory> {
       );
       if (
         iface.projectToken !== EMPTY_ADDRESS &&
-        InterfaceProjectToken.projectUsageCount[iface.projectToken] === 0 &&
+        InterfaceProjectToken.projectUsageCount[iface.projectToken] ===
+          undefined &&
         (await DelegableToLTModel.count({
           chainId: this.chainId,
           address: iface.projectToken,

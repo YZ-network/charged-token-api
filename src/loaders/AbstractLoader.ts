@@ -33,7 +33,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
   readonly iface: ethers.utils.Interface;
   initBlock: number = 0;
   lastUpdateBlock: number = 0;
-  protected actualBlock: number = 0;
+  actualBlock: number = 0;
   lastState: FlattenMaps<T> | undefined;
 
   readonly eventsListener: EventListener;
