@@ -1,11 +1,11 @@
-import { BigNumber, ethers } from "ethers";
-import { ClientSession } from "mongoose";
+import { BigNumber, type ethers } from "ethers";
+import { type ClientSession } from "mongoose";
 import { contracts } from "../contracts";
-import { ChargedTokenModel, IChargedToken } from "../models";
-import { IUserBalance } from "../models/UserBalances";
+import { ChargedTokenModel, type IChargedToken } from "../models";
+import { type IUserBalance } from "../models/UserBalances";
 import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
-import { Directory } from "./Directory";
+import { type Directory } from "./Directory";
 import { InterfaceProjectToken } from "./InterfaceProjectToken";
 
 export class ChargedToken extends AbstractLoader<IChargedToken> {
@@ -168,8 +168,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       user,
       address: this.address,
       ptAddress:
-        this.interface !== undefined &&
-        this.interface.projectToken !== undefined
+        this.interface?.projectToken !== undefined
           ? this.interface.projectToken.address
           : "",
       lastUpdateBlock: this.actualBlock,
@@ -360,7 +359,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
 
   async onInterfaceProjectTokenIsLockedEvent(
     session: ClientSession,
-    []: never[],
+    _: never[],
     eventName?: string
   ): Promise<void> {
     await this.applyUpdateAndNotify(
@@ -445,7 +444,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
 
   async onAllocationsAreTerminatedEvent(
     session: ClientSession,
-    []: any[],
+    _: any[],
     eventName?: string
   ): Promise<void> {
     await this.applyUpdateAndNotify(

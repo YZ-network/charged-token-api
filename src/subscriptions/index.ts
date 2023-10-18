@@ -1,1 +1,1 @@
-export * from "./subscribeToUserBalances";
+export * from './subscribeToUserBalances';

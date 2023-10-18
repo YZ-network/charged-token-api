@@ -54,6 +54,7 @@ const configDefaults: JsonConfig = {
   },
 };
 
-export const Config: JsonConfig = process.env.CONFIG
-  ? { ...configDefaults, ...JSON.parse(process.env.CONFIG) }
-  : configDefaults;
+export const Config: JsonConfig =
+  process.env.CONFIG !== undefined
+    ? { ...configDefaults, ...JSON.parse(process.env.CONFIG) }
+    : configDefaults;

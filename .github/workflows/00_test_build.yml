@@ -1,0 +1,38 @@
+name: Test and Build
+
+on:
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - "src/**"
+      - "package*.json"
+      - tsconfig.json
+      - jest.config.ts
+      - .babelrc
+      - .eslintrc
+
+concurrency: ${{ github.ref }}
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Node setup
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Checkout project
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit testing & coverage
+        run: npm test
+
+      - name: Build test
+        run: |
+          npm run build

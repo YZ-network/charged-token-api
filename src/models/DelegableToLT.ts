@@ -1,14 +1,14 @@
-import mongoose, { HydratedDocument } from "mongoose";
-import { IErc20, IModel } from "../types";
+import mongoose, { type HydratedDocument } from 'mongoose';
+import { type IErc20, type IModel } from '../types';
 
 export interface IDelegableToLT extends IErc20 {
-  validatedInterfaceProjectToken: string[];
-  isListOfInterfaceProjectTokenComplete: boolean;
+  validatedInterfaceProjectToken: string[]
+  isListOfInterfaceProjectTokenComplete: boolean
 }
 
 const delegableToLTSchema = new mongoose.Schema<
-  IDelegableToLT,
-  IModel<IDelegableToLT>
+IDelegableToLT,
+IModel<IDelegableToLT>
 >({
   // contract
   chainId: { type: Number, required: true },
@@ -24,26 +24,26 @@ const delegableToLTSchema = new mongoose.Schema<
   totalSupply: String,
   // other
   validatedInterfaceProjectToken: [String],
-  isListOfInterfaceProjectTokenComplete: Boolean,
+  isListOfInterfaceProjectTokenComplete: Boolean
 });
 
 delegableToLTSchema.static(
-  "toModel",
+  'toModel',
   function (data: IDelegableToLT): HydratedDocument<IDelegableToLT> {
-    const model = new this();
-    Object.assign(model, data);
-    return model;
-  }
-);
+    const model = new this()
+    Object.assign(model, data)
+    return model
+  },
+)
 
 delegableToLTSchema.static(
-  "toGraphQL",
+  'toGraphQL',
   function (doc: HydratedDocument<IDelegableToLT>): any {
-    return doc.toJSON();
-  }
-);
+    return doc.toJSON()
+  },
+)
 
 export const DelegableToLTModel = mongoose.model<
-  IDelegableToLT,
-  IModel<IDelegableToLT>
->("DelegableToLT", delegableToLTSchema);
+IDelegableToLT,
+IModel<IDelegableToLT>
+>('DelegableToLT', delegableToLTSchema)

@@ -1,15 +1,21 @@
+/* eslint-disable @typescript-eslint/no-this-alias */
+/* eslint-disable @typescript-eslint/no-misused-promises */
+/* eslint-disable accessor-pairs */
+/* eslint-disable @typescript-eslint/adjacent-overload-signatures */
+/* eslint-disable @typescript-eslint/class-literal-property-style */
+/* eslint-disable @typescript-eslint/strict-boolean-expressions */
 "use strict";
 
 import { BigNumber } from "@ethersproject/bignumber";
-import { Network, Networkish } from "@ethersproject/networks";
+import { type Network, type Networkish } from "@ethersproject/networks";
 import { defineReadOnly } from "@ethersproject/properties";
 
 import { JsonRpcProvider } from "@ethersproject/providers";
-import { Event } from "@ethersproject/providers/lib/base-provider";
+import { type Event } from "@ethersproject/providers/lib/base-provider";
 import {
-  InflightRequest,
-  Subscription,
-  WebSocketLike,
+  type InflightRequest,
+  type Subscription,
+  type WebSocketLike,
 } from "@ethersproject/providers/lib/websocket-provider";
 import { WebSocket } from "ws";
 import { Metrics } from "./metrics";
@@ -63,10 +69,10 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
   readonly _detectNetwork: Promise<Network>;
 
   // Maps event tag to subscription ID (we dedupe identical events)
-  readonly _subIds: { [tag: string]: Promise<string> };
+  readonly _subIds: Record<string, Promise<string>>;
 
   // Maps Subscription ID to Subscription
-  readonly _subs: { [name: string]: Subscription };
+  readonly _subs: Record<string, Subscription>;
 
   _retryCount: number;
 
@@ -75,7 +81,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
 
   _wsReady: boolean;
 
-  private pingInterval: NodeJS.Timer | undefined;
+  private pingInterval: NodeJS.Timeout | undefined;
   private pongTimeout: NodeJS.Timeout | undefined;
 
   constructor(
@@ -134,7 +140,9 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     this.websocket.onopen = () => {
       this._wsReady = true;
       this._setupPings();
-      this._detectNetwork.then((network) => Metrics.connected(network.chainId));
+      this._detectNetwork.then((network) => {
+        Metrics.connected(network.chainId);
+      });
       if (this._requests.length > 0) {
         this._sendLastRequest();
       }
@@ -150,9 +158,9 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
       } else if (result.error && result.error.code === 429) {
         this._onRateLimitingError();
       } else {
-        this._detectNetwork.then((network) =>
-          Metrics.requestFailed(network.chainId)
-        );
+        this._detectNetwork.then((network) => {
+          Metrics.requestFailed(network.chainId);
+        });
 
         logger.warn({
           action: "error",
@@ -180,9 +188,9 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     const request = this._requests.shift()!;
 
     if (result.result !== undefined) {
-      this._detectNetwork.then((network) =>
-        Metrics.requestReplied(network.chainId)
-      );
+      this._detectNetwork.then((network) => {
+        Metrics.requestReplied(network.chainId);
+      });
 
       logger.debug({
         action: "response",
@@ -193,22 +201,22 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
 
       request.callback(null as unknown as Error, result.result);
     } else {
-      this._detectNetwork.then((network) =>
-        Metrics.requestFailed(network.chainId)
-      );
+      this._detectNetwork.then((network) => {
+        Metrics.requestFailed(network.chainId);
+      });
 
       let error: Error | null = null;
       if (result.error) {
         error = new Error(result.error.message || "unknown error");
-        defineReadOnly(<any>error, "code", result.error.code || null);
-        defineReadOnly(<any>error, "response", data);
+        defineReadOnly(error as any, "code", result.error.code || null);
+        defineReadOnly(error as any, "response", data);
       } else {
         error = new Error("unknown error");
       }
 
       logger.debug({
         action: "response",
-        error: error,
+        error,
         request: JSON.parse(request.payload),
         chainId: this.chainId,
       });
@@ -227,14 +235,14 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
       chainId: this.chainId,
     });
 
-    this._detectNetwork.then((network) =>
-      Metrics.eventReceived(network.chainId)
-    );
+    this._detectNetwork.then((network) => {
+      Metrics.eventReceived(network.chainId);
+    });
 
     // Subscription...
     const sub = this._subs[result.params.subscription];
     if (sub) {
-      //this.emit.apply(this,                  );
+      // this.emit.apply(this,                  );
       sub.processFunc(result.params.result);
     }
   }
@@ -244,10 +252,12 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
       msg: "Rate limiting error caught, programming retry of last request",
       chainId: this.chainId,
     });
-    this._detectNetwork.then((network) =>
-      Metrics.requestFailed(network.chainId)
-    );
-    setTimeout(() => this._sendLastRequest(), this.options.retryDelayMs);
+    this._detectNetwork.then((network) => {
+      Metrics.requestFailed(network.chainId);
+    });
+    setTimeout(() => {
+      this._sendLastRequest();
+    }, this.options.retryDelayMs);
   }
 
   // Cannot narrow the type of _websocket, as that is not backwards compatible
@@ -256,8 +266,8 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     return this._websocket;
   }
 
-  detectNetwork(): Promise<Network> {
-    return this._detectNetwork;
+  async detectNetwork(): Promise<Network> {
+    return await this._detectNetwork;
   }
 
   get pollingInterval(): number {
@@ -272,9 +282,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     throw new Error("cannot set polling interval on AutoWebSocketProvider");
   }
 
-  async poll(): Promise<void> {
-    return;
-  }
+  async poll(): Promise<void> {}
 
   set polling(value: boolean) {
     if (!value) {
@@ -284,7 +292,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     throw new Error("cannot set polling on AutoWebSocketProvider");
   }
 
-  send(method: string, params?: Array<any>): Promise<any> {
+  async send(method: string, params?: any[]): Promise<any> {
     const id = NextId++;
 
     logger.debug({
@@ -295,17 +303,18 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
       chainId: this.chainId,
     });
 
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       function callback(error: Error, result: any) {
         if (error) {
-          return reject(error);
+          reject(error);
+          return;
         }
-        return resolve(result);
+        resolve(result);
       }
 
       const payload = JSON.stringify({
-        method: method,
-        params: params,
+        method,
+        params,
         id,
         jsonrpc: "2.0",
       });
@@ -330,24 +339,24 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
 
   async _subscribe(
     tag: string,
-    param: Array<any>,
+    param: any[],
     processFunc: (result: any) => void
   ): Promise<void> {
     let subIdPromise = this._subIds[tag];
     if (subIdPromise == null) {
-      subIdPromise = Promise.all(param).then((param) => {
-        return this.send("eth_subscribe", param);
+      subIdPromise = Promise.all(param).then(async (param) => {
+        return await this.send("eth_subscribe", param);
       });
       this._subIds[tag] = subIdPromise;
     }
     const subId = await subIdPromise;
     this._subs[subId] = { tag, processFunc };
-    this._detectNetwork.then((network) =>
+    this._detectNetwork.then((network) => {
       Metrics.setSubscriptionCount(
         network.chainId,
         Object.keys(this._subIds).length
-      )
-    );
+      );
+    });
   }
 
   _startEvent(event: Event): void {
@@ -426,7 +435,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
 
     if (event.type === "tx") {
       // There are remaining transaction event listeners
-      if (this._events.filter((e) => e.type === "tx").length) {
+      if (this._events.filter((e) => e.type === "tx").length > 0) {
         return;
       }
       tag = "tx";
@@ -446,12 +455,12 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
         return;
       }
       delete this._subs[subId];
-      this._detectNetwork.then((network) =>
+      this._detectNetwork.then((network) => {
         Metrics.setSubscriptionCount(
           network.chainId,
           Object.keys(this._subIds).length
-        )
-      );
+        );
+      });
       this.send("eth_unsubscribe", [subId]);
     });
   }
@@ -472,17 +481,17 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
         const self = this;
 
         this.websocket.onopen = function () {
-          self._detectNetwork.then((network) =>
-            Metrics.connected(network.chainId)
-          );
+          self._detectNetwork.then((network) => {
+            Metrics.connected(network.chainId);
+          });
 
           resolve(true);
         };
 
         this.websocket.onerror = function () {
-          self._detectNetwork.then((network) =>
-            Metrics.disconnected(network.chainId)
-          );
+          self._detectNetwork.then((network) => {
+            Metrics.disconnected(network.chainId);
+          });
 
           resolve(false);
         };
@@ -491,9 +500,9 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
 
     // Hangup
     // See: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent#Status_codes
-    this._detectNetwork.then((network) =>
-      Metrics.disconnected(network.chainId)
-    );
+    this._detectNetwork.then((network) => {
+      Metrics.disconnected(network.chainId);
+    });
     this.websocket.close(1000);
   }
 
@@ -505,7 +514,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
 
     if (this._retryCount > this.options.maxRetryCount) {
       logger.warn({
-        msg: `found exceeded retries for request ${request} : ${this._retryCount} > ${this.options.maxRetryCount}`,
+        msg: `found exceeded retries for request ${request.payload} : ${this._retryCount} > ${this.options.maxRetryCount}`,
         chainId: this.chainId,
       });
       throw new Error("Too many retries failed, crashing");
@@ -519,7 +528,9 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
       chainId: this.chainId,
     });
 
-    this._detectNetwork.then((network) => Metrics.requestSent(network.chainId));
+    this._detectNetwork.then((network) => {
+      Metrics.requestSent(network.chainId);
+    });
   }
 
   private _setupPings() {
@@ -531,9 +542,9 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
             msg: "Websocket crashed",
             chainId: this.chainId,
           });
-          this._detectNetwork.then((network) =>
-            Metrics.disconnected(network.chainId)
-          );
+          this._detectNetwork.then((network) => {
+            Metrics.disconnected(network.chainId);
+          });
           if (this.pingInterval !== undefined) {
             clearInterval(this.pingInterval);
             this.pingInterval = undefined;

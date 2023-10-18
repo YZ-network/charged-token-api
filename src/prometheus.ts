@@ -1,16 +1,16 @@
-import { Plugin } from "graphql-yoga";
-import { Metrics } from "./util";
+import { type Plugin } from 'graphql-yoga';
+import { Metrics } from './util';
 
-export function usePrometheus(): Plugin {
+export function usePrometheus (): Plugin {
   return {
-    async onRequest({ request, endResponse }) {
-      if (request.method === "GET") {
-        const path = request.url.split("/");
-        if (path.length === 4 && path[3] === "metrics") {
-          const response = new Response(Metrics.dumpMetrics());
-          endResponse(response);
+    async onRequest ({ request, endResponse }) {
+      if (request.method === 'GET') {
+        const path = request.url.split('/');
+        if (path.length === 4 && path[3] === 'metrics') {
+          const response = new Response(Metrics.dumpMetrics())
+          endResponse(response)
         }
       }
-    },
+    }
   };
 }

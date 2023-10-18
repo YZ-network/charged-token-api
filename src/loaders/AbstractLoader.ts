@@ -1,13 +1,16 @@
-import { BigNumber, ethers, EventFilter } from "ethers";
-import { ClientSession, FlattenMaps, HydratedDocument } from "mongoose";
-import { Logger } from "pino";
+import { BigNumber, ethers, type EventFilter } from "ethers";
+import {
+  type ClientSession,
+  type FlattenMaps,
+  type HydratedDocument,
+} from "mongoose";
+import { type Logger } from "pino";
 import { pubSub } from "../graphql";
-import { Main } from "../main";
-import { IUserBalance, UserBalanceModel } from "../models";
-import { EventModel } from "../models/Event";
-import { IEventHandler, IModel, IOwnable } from "../types";
+import { EventModel, UserBalanceModel, type IUserBalance } from "../models";
+import topicsMap from "../topics";
+import { type IEventHandler, type IModel, type IOwnable } from "../types";
 import { rootLogger } from "../util";
-import { EventListener } from "./EventListener";
+import { type EventListener } from "./EventListener";
 
 /**
  * Generic contract loader. Used for loading initial contracts state, keeping
@@ -21,7 +24,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
   readonly provider: ethers.providers.JsonRpcProvider;
   readonly address: string;
   protected readonly contract: any;
-  protected readonly model: IModel<T>;
+  readonly model: IModel<T>;
   readonly log: Logger<{
     name: string;
   }>;
@@ -77,14 +80,11 @@ export abstract class AbstractLoader<T extends IOwnable> {
     actualBlock?: number,
     createTransaction?: boolean
   ): Promise<void> {
-    this.actualBlock =
-      actualBlock !== undefined
-        ? actualBlock
-        : await this.provider.getBlockNumber();
+    this.actualBlock = actualBlock ?? (await this.provider.getBlockNumber());
 
     const existing = await this.get(session);
 
-    if (createTransaction) session.startTransaction();
+    if (createTransaction === true) session.startTransaction();
 
     if (existing != null) {
       this.log.info({
@@ -127,7 +127,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
       );
     }
 
-    if (createTransaction) await session.commitTransaction();
+    if (createTransaction === true) await session.commitTransaction();
   }
 
   /**
@@ -183,7 +183,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
     session: ClientSession,
     ptAddress: string,
     user: string
-  ): Promise<HydratedDocument<IUserBalance>[] | null> {
+  ): Promise<Array<HydratedDocument<IUserBalance>> | null> {
     return await UserBalanceModel.find(
       {
         ptAddress,
@@ -202,11 +202,8 @@ export abstract class AbstractLoader<T extends IOwnable> {
   ) {
     const faultyFields: Record<string, string> = {};
     fieldsToCheck.forEach((field) => {
-      if (
-        data[field] !== undefined &&
-        (data[field] as string).startsWith("-")
-      ) {
-        faultyFields[field] = data[field] as string;
+      if (data[field] !== undefined && data[field].startsWith("-")) {
+        faultyFields[field] = data[field];
       }
     });
 
@@ -226,7 +223,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
     address: string,
     user: string
   ) {
-    const fieldsToCheck: (keyof IUserBalance)[] = [
+    const fieldsToCheck: Array<keyof IUserBalance> = [
       "balance",
       "balancePT",
       "fullyChargedBalance",
@@ -324,7 +321,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
         session,
         ptAddress,
         user
-      )) as HydratedDocument<IUserBalance>[];
+      )) as Array<HydratedDocument<IUserBalance>>;
 
       try {
         this.log.trace({
@@ -565,10 +562,10 @@ export abstract class AbstractLoader<T extends IOwnable> {
         return;
       }
 
-      const eventName = Main.topicsMap[this.constructor.name][log.topics[0]];
+      const eventName = topicsMap[this.constructor.name][log.topics[0]];
       this.eventsListener
         .queueLog(eventName, log, this)
-        .then(() =>
+        .then(() => {
           this.log.info({
             msg: `queued event ${eventName}`,
             contract: this.constructor.name,
@@ -579,9 +576,9 @@ export abstract class AbstractLoader<T extends IOwnable> {
             txHash: log.transactionHash,
             logIndex: log.logIndex,
             args: [...this.iface.parseLog(log).args.values()],
-          })
-        )
-        .catch((err) =>
+          });
+        })
+        .catch((err) => {
           this.log.error({
             msg: `error queuing event ${eventName}`,
             err,
@@ -589,12 +586,12 @@ export abstract class AbstractLoader<T extends IOwnable> {
             contract: this.constructor.name,
             address: this.address,
             chainId: this.chainId,
-          })
-        );
+          });
+        });
     });
 
     this.log.info({
-      msg: `Subscribed to all events`,
+      msg: "Subscribed to all events",
       contract: this.constructor.name,
       address: this.address,
       chainId: this.chainId,
@@ -654,7 +651,9 @@ export abstract class AbstractLoader<T extends IOwnable> {
   ): Promise<void> {
     // common handler for all ownable contracts
     // we do nothing since it happens only when a ChargedToken is added, which will be read in the same session
-    await this.applyUpdateAndNotify(session, { owner } as Partial<T>);
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    const data = { owner } as Partial<T>;
+    await this.applyUpdateAndNotify(session, data);
   }
 
   private filterArgs(inputArgs: Record<string, any> | undefined): any[] {

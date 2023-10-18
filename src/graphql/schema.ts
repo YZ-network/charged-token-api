@@ -1,6 +1,6 @@
-import { createSchema } from "graphql-yoga";
+import { createSchema } from 'graphql-yoga';
 
-import resolvers from "./resolvers";
+import resolvers from './resolvers';
 
 const schema = createSchema({
   typeDefs: `
@@ -165,7 +165,7 @@ const schema = createSchema({
     health(pollingMs: Int!): [IWorkerHealth!]!
   }
 `,
-  resolvers,
+  resolvers
 });
 
-export default schema;
+export default schema

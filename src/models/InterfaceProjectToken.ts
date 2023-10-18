@@ -1,17 +1,17 @@
-import mongoose, { HydratedDocument } from "mongoose";
-import { IModel, IOwnable } from "../types";
+import mongoose, { type HydratedDocument } from 'mongoose';
+import { type IModel, type IOwnable } from '../types';
 
 export interface IInterfaceProjectToken extends IOwnable {
-  liquidityToken: string;
-  projectToken: string;
-  dateLaunch: string;
-  dateEndCliff: string;
-  claimFeesPerThousandForPT: string;
+  liquidityToken: string
+  projectToken: string
+  dateLaunch: string
+  dateEndCliff: string
+  claimFeesPerThousandForPT: string
 }
 
 const interfaceProjectTokenSchema = new mongoose.Schema<
-  IInterfaceProjectToken,
-  IModel<IInterfaceProjectToken>
+IInterfaceProjectToken,
+IModel<IInterfaceProjectToken>
 >({
   // contract
   chainId: { type: Number, required: true },
@@ -25,28 +25,28 @@ const interfaceProjectTokenSchema = new mongoose.Schema<
   projectToken: String,
   dateLaunch: String,
   dateEndCliff: String,
-  claimFeesPerThousandForPT: String,
+  claimFeesPerThousandForPT: String
 });
 
 interfaceProjectTokenSchema.static(
-  "toModel",
+  'toModel',
   function (
     data: IInterfaceProjectToken
   ): HydratedDocument<IInterfaceProjectToken> {
-    const model = new this();
-    Object.assign(model, data);
-    return model;
-  }
-);
+    const model = new this()
+    Object.assign(model, data)
+    return model
+  },
+)
 
 interfaceProjectTokenSchema.static(
-  "toGraphQL",
+  'toGraphQL',
   function (doc: HydratedDocument<IInterfaceProjectToken>): any {
-    return doc.toJSON();
-  }
-);
+    return doc.toJSON()
+  },
+)
 
 export const InterfaceProjectTokenModel = mongoose.model<
-  IInterfaceProjectToken,
-  IModel<IInterfaceProjectToken>
->("InterfaceProjectToken", interfaceProjectTokenSchema);
+IInterfaceProjectToken,
+IModel<IInterfaceProjectToken>
+>('InterfaceProjectToken', interfaceProjectTokenSchema)

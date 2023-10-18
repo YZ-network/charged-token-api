@@ -1,48 +1,48 @@
-import mongoose, { HydratedDocument } from "mongoose";
-import { IErc20, IModel } from "../types";
+import mongoose, { type HydratedDocument } from 'mongoose';
+import { type IErc20, type IModel } from '../types';
 
 export interface IChargedTokenConstants {
-  fractionInitialUnlockPerThousand: string;
-  durationCliff: string;
-  durationLinearVesting: string;
-  maxInitialTokenAllocation: string;
-  maxWithdrawFeesPerThousandForLT: string;
-  maxClaimFeesPerThousandForPT: string;
-  maxStakingAPR: string;
-  maxStakingTokenAmount: string;
+  fractionInitialUnlockPerThousand: string
+  durationCliff: string
+  durationLinearVesting: string
+  maxInitialTokenAllocation: string
+  maxWithdrawFeesPerThousandForLT: string
+  maxClaimFeesPerThousandForPT: string
+  maxStakingAPR: string
+  maxStakingTokenAmount: string
 }
 
 export interface IChargedTokenStaking {
-  stakingStartDate: string;
-  stakingDuration: string;
-  stakingDateLastCheckpoint: string;
-  campaignStakingRewards: string;
-  totalStakingRewards: string;
+  stakingStartDate: string
+  stakingDuration: string
+  stakingDateLastCheckpoint: string
+  campaignStakingRewards: string
+  totalStakingRewards: string
 }
 
 export interface IChargedTokenToggles {
-  areUserFunctionsDisabled: boolean;
-  isInterfaceProjectTokenLocked: boolean;
-  areAllocationsTerminated: boolean;
+  areUserFunctionsDisabled: boolean
+  isInterfaceProjectTokenLocked: boolean
+  areAllocationsTerminated: boolean
 }
 
 export interface IChargedToken
   extends IChargedTokenConstants,
-    IChargedTokenToggles,
-    IChargedTokenStaking,
-    IErc20 {
-  interfaceProjectToken: string;
-  ratioFeesToRewardHodlersPerThousand: string;
-  currentRewardPerShare1e18: string;
-  stakedLT: string;
-  totalLocked: string;
-  totalTokenAllocated: string;
-  withdrawFeesPerThousandForLT: string;
+  IChargedTokenToggles,
+  IChargedTokenStaking,
+  IErc20 {
+  interfaceProjectToken: string
+  ratioFeesToRewardHodlersPerThousand: string
+  currentRewardPerShare1e18: string
+  stakedLT: string
+  totalLocked: string
+  totalTokenAllocated: string
+  withdrawFeesPerThousandForLT: string
 }
 
 const chargedTokenSchema = new mongoose.Schema<
-  IChargedToken,
-  IModel<IChargedToken>
+IChargedToken,
+IModel<IChargedToken>
 >({
   // contract
   chainId: { type: Number, required: true },
@@ -82,26 +82,26 @@ const chargedTokenSchema = new mongoose.Schema<
   stakingDuration: String,
   stakingDateLastCheckpoint: String,
   campaignStakingRewards: String,
-  totalStakingRewards: String,
+  totalStakingRewards: String
 });
 
 chargedTokenSchema.static(
-  "toModel",
+  'toModel',
   function (data: IChargedToken): HydratedDocument<IChargedToken> {
-    const model = new this();
-    Object.assign(model, data);
-    return model;
-  }
-);
+    const model = new this()
+    Object.assign(model, data)
+    return model
+  },
+)
 
 chargedTokenSchema.static(
-  "toGraphQL",
+  'toGraphQL',
   function (doc: HydratedDocument<IChargedToken>): any {
-    return doc.toJSON();
-  }
-);
+    return doc.toJSON()
+  },
+)
 
 export const ChargedTokenModel = mongoose.model<
-  IChargedToken,
-  IModel<IChargedToken>
->("ChargedToken", chargedTokenSchema);
+IChargedToken,
+IModel<IChargedToken>
+>('ChargedToken', chargedTokenSchema)

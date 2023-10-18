@@ -56,8 +56,8 @@ export class ChainWorker {
 
   providerStatus: ProviderStatus = ProviderStatus.STARTING;
   wsStatus: string = "STARTING";
-  wsWatch: NodeJS.Timer | undefined;
-  pingInterval: NodeJS.Timer | undefined;
+  wsWatch: NodeJS.Timeout | undefined;
+  pingInterval: NodeJS.Timeout | undefined;
   pongTimeout: NodeJS.Timeout | undefined;
   workerStatus: WorkerStatus = WorkerStatus.WAITING;
 
@@ -103,7 +103,7 @@ export class ChainWorker {
       pongMaxWaitMs: Config.delays.rpcPongMaxWaitMs,
       retryDelayMs: Config.delays.rpcRetryDelayMs,
     });
-    this.wsStatus = WsStatus[this.provider!.websocket.readyState];
+    this.wsStatus = WsStatus[this.provider.websocket.readyState];
 
     this.provider.on("error", (...args) => {
       if (this.wsStatus === WsStatus[0]) {
@@ -154,9 +154,9 @@ export class ChainWorker {
       });
 
     this.wsWatch = setInterval(() => {
-      if (!this.provider || !this.provider.websocket) return;
+      if (this.provider?.websocket === undefined) return;
 
-      this.wsStatus = WsStatus[this.provider!.websocket.readyState];
+      this.wsStatus = WsStatus[this.provider.websocket.readyState];
 
       if (
         this.providerStatus !== ProviderStatus.DISCONNECTED &&
@@ -191,7 +191,11 @@ export class ChainWorker {
   }
 
   private subscribeToNewBlocks() {
-    this.provider!.on("block", (blockNumber: number) => {
+    if (this.provider === undefined) {
+      throw new Error("No provider to subscribe for new blocks !");
+    }
+
+    this.provider.on("block", (blockNumber: number) => {
       if (this.blockNumberBeforeDisconnect < blockNumber) {
         this.blockNumberBeforeDisconnect = blockNumber;
       }
@@ -199,41 +203,51 @@ export class ChainWorker {
   }
 
   private createWorker() {
-    this.worker = this.provider!.ready.then(() => {
-      this.workerStatus = WorkerStatus.STARTED;
+    if (this.provider === undefined) {
+      throw new Error("No provider to create worker !");
+    }
 
-      Metrics.workerStarted(this.chainId);
+    this.worker = this.provider.ready
+      .then(async () => {
+        this.workerStatus = WorkerStatus.STARTED;
 
-      return this.run()
-        .then(() => {
-          log.info({
-            msg: `Worker stopped itself on network ${this.name}`,
-            chainId: this.chainId,
+        Metrics.workerStarted(this.chainId);
+
+        await this.run()
+          .then(() => {
+            log.info({
+              msg: `Worker stopped itself on network ${this.name}`,
+              chainId: this.chainId,
+            });
+            this.workerStatus = WorkerStatus.CRASHED;
+            this.stop();
+          })
+          .catch((err: any) => {
+            log.error({
+              msg: `Worker crashed on : ${this.rpc}, ${this.name}`,
+              err,
+              chainId: this.chainId,
+            });
+            this.workerStatus = WorkerStatus.CRASHED;
+            this.stop();
           });
-          this.workerStatus = WorkerStatus.CRASHED;
-          this.stop();
-        })
-        .catch((err: any) => {
-          log.error({
-            msg: `Worker crashed on : ${this.rpc}, ${this.name}`,
-            err,
-            chainId: this.chainId,
-          });
-          this.workerStatus = WorkerStatus.CRASHED;
-          this.stop();
+      })
+      .catch((err) => {
+        log.error({
+          msg: `Websocket crashed on ${this.rpc}`,
+          err,
+          chainId: this.chainId,
         });
-    }).catch((err) => {
-      log.error({
-        msg: `Websocket crashed on ${this.rpc}`,
-        err,
-        chainId: this.chainId,
+        this.providerStatus = ProviderStatus.DISCONNECTED;
+        this.stop();
       });
-      this.providerStatus = ProviderStatus.DISCONNECTED;
-      this.stop();
-    });
   }
 
   private async run() {
+    if (this.provider === undefined) {
+      throw new Error("No provider to run worker !");
+    }
+
     log.info({
       msg: `Starting worker on chain ${this.name}`,
       chainId: this.chainId,
@@ -242,9 +256,9 @@ export class ChainWorker {
     try {
       this.eventListener = new EventListener();
       this.directory = new Directory(
-        this.eventListener!,
-        this.chainId!,
-        this.provider!,
+        this.eventListener,
+        this.chainId,
+        this.provider,
         this.directoryAddress
       );
       const actualBlock =
@@ -260,7 +274,7 @@ export class ChainWorker {
       });
 
       const session = await mongoose.startSession();
-      await this.directory!.init(session, actualBlock, true);
+      await this.directory.init(session, actualBlock, true);
       await session.endSession();
       log.info({
         msg: `Initialization complete for ${this.name} subscribing to updates`,

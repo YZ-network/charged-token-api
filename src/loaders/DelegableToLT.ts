@@ -1,11 +1,11 @@
-import { BigNumber, ethers } from "ethers";
-import { ClientSession } from "mongoose";
+import { BigNumber, type ethers } from "ethers";
+import { type ClientSession } from "mongoose";
 import { contracts } from "../contracts";
-import { DelegableToLTModel, IDelegableToLT } from "../models/DelegableToLT";
+import { DelegableToLTModel, type IDelegableToLT } from "../models";
 import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
-import { ChargedToken } from "./ChargedToken";
-import { Directory } from "./Directory";
+import { type ChargedToken } from "./ChargedToken";
+import { type Directory } from "./Directory";
 
 export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   readonly ct: ChargedToken;
@@ -211,7 +211,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
 
   async onListOfValidatedInterfaceProjectTokenIsFinalizedEvent(
     session: ClientSession,
-    []: any[],
+    _: any[],
     eventName?: string
   ): Promise<void> {
     await this.applyUpdateAndNotify(

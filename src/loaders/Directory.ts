@@ -1,20 +1,20 @@
-import { ethers } from "ethers";
-import { ClientSession } from "mongoose";
+import { type ethers } from "ethers";
+import { type ClientSession } from "mongodb";
 import { contracts } from "../contracts";
 import { pubSub } from "../graphql";
 import {
   ChargedTokenModel,
   DelegableToLTModel,
   DirectoryModel,
-  IDirectory,
-  IUserBalance,
   InterfaceProjectTokenModel,
   UserBalanceModel,
+  type IDirectory,
+  type IUserBalance,
 } from "../models";
 import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
-import { EventListener } from "./EventListener";
+import { type EventListener } from "./EventListener";
 import { InterfaceProjectToken } from "./InterfaceProjectToken";
 
 export class Directory extends AbstractLoader<IDirectory> {
@@ -134,8 +134,8 @@ export class Directory extends AbstractLoader<IDirectory> {
     const results =
       address === undefined || this.ct[address] === undefined
         ? await Promise.all(
-            Object.values(this.ct).map((ct: ChargedToken) =>
-              ct.loadUserBalances(user)
+            Object.values(this.ct).map(
+              async (ct: ChargedToken) => await ct.loadUserBalances(user)
             )
           )
         : [await this.ct[address].loadUserBalances(user)];
@@ -155,9 +155,7 @@ export class Directory extends AbstractLoader<IDirectory> {
       } else if (this.ct[entry.address] !== undefined) {
         const iface = this.ct[entry.address].interface;
         const ptAddress =
-          iface !== undefined && iface.projectToken !== undefined
-            ? iface.projectToken.address
-            : "";
+          iface?.projectToken !== undefined ? iface.projectToken.address : "";
 
         this.log.info({
           msg: `first time saving balance for ${user}`,
@@ -224,13 +222,19 @@ export class Directory extends AbstractLoader<IDirectory> {
   }
 
   async destroy() {
-    await Promise.all(Object.values(this.ct).map((ct) => ct.destroy()));
+    await Promise.all(
+      Object.values(this.ct).map(async (ct) => {
+        await ct.destroy();
+      })
+    );
     await super.destroy();
   }
 
   subscribeToEvents(): void {
     super.subscribeToEvents();
-    Object.values(this.ct).forEach((ct) => ct.subscribeToEvents());
+    Object.values(this.ct).forEach((ct) => {
+      ct.subscribeToEvents();
+    });
   }
 
   async onUserFunctionsAreDisabledEvent(

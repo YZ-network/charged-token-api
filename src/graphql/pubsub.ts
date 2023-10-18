@@ -1,5 +1,5 @@
-import { createPubSub } from "graphql-yoga";
+import { createPubSub } from 'graphql-yoga';
 
-const pubSub = createPubSub();
+const pubSub = createPubSub()
 
-export default pubSub;
+export default pubSub

@@ -1,21 +1,22 @@
-import { ethers } from "ethers";
-import mongoose, { ClientSession } from "mongoose";
-import { Logger } from "pino";
-import { EventHandlerStatus, EventModel } from "../models/Event";
+import { type ethers } from "ethers";
+import mongoose, { type ClientSession } from "mongoose";
+import { type Logger } from "pino";
+import { EventHandlerStatus, EventModel } from "../models";
 import { rootLogger } from "../util";
-import { AbstractLoader } from "./AbstractLoader";
+import { type AbstractLoader } from "./AbstractLoader";
 
 export class EventListener {
-  private readonly queue: {
+  private readonly queue: Array<{
     eventName: string;
     block: number;
     tx: number;
     ev: number;
     log: ethers.providers.Log;
     loader: AbstractLoader<any>;
-  }[] = [];
-  private log: Logger = rootLogger.child({ name: "EventListener" });
-  private readonly timer: NodeJS.Timer;
+  }> = [];
+
+  private readonly log: Logger = rootLogger.child({ name: "EventListener" });
+  private readonly timer: NodeJS.Timeout;
   private running = false;
   private eventsAdded = false;
   private readonly blockDates: Record<number, string> = {};
@@ -41,7 +42,7 @@ export class EventListener {
     blockNumber: number,
     provider: ethers.providers.JsonRpcProvider
   ): Promise<string> {
-    if (!this.blockDates[blockNumber]) {
+    if (this.blockDates[blockNumber] === undefined) {
       const block = await provider.getBlock(blockNumber);
       const blockDate = new Date(block.timestamp * 1000).toISOString();
       this.blockDates[blockNumber] = blockDate;

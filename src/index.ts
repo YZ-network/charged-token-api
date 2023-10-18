@@ -1,9 +1,9 @@
-import { Main } from "./main";
-import { rootLogger } from "./util";
+import { Main } from './main';
+import { rootLogger } from './util';
 
-const log = rootLogger.child({ name: "index" });
+const log = rootLogger.child({ name: 'index' })
 
-Main.init();
-Main.start().catch((err) =>
-  log.error({ msg: "GraphQL API stopped with error", err })
-);
+Main.init()
+Main.start().catch((err) => {
+  log.error({ msg: 'GraphQL API stopped with error', err })
+});

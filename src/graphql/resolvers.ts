@@ -9,7 +9,7 @@ import {
   UserBalanceModel,
 } from "../models";
 import { EventModel } from "../models/Event";
-import { IModel } from "../types";
+import { type IModel } from "../types";
 import { rootLogger } from "../util";
 import pubSub from "./pubsub";
 
@@ -180,15 +180,15 @@ const EventsCountQueryResolver = async (
   return await EventModel.count({ chainId });
 };
 
-class ResolverFactory {
-  static findAll<T>(model: IModel<T>) {
+const ResolverFactory = {
+  findAll: <T>(model: IModel<T>) => {
     return async (_: any, { chainId }: { chainId: number }) => {
       const results = await model.find({ chainId });
       return results.map((result) => model.toGraphQL(result));
     };
-  }
+  },
 
-  static findByAddress<T>(model: IModel<T>) {
+  findByAddress: <T>(model: IModel<T>) => {
     return async (
       _: any,
       { chainId, address }: { chainId: number; address: string }
@@ -198,9 +198,9 @@ class ResolverFactory {
         return model.toGraphQL(result);
       }
     };
-  }
+  },
 
-  static subscribeByName<T>(modelName: string) {
+  subscribeByName: <T>(modelName: string) => {
     return {
       subscribe: async (_: any, { chainId }: { chainId: number }) => {
         const channelName = `${modelName}.${chainId}`;
@@ -244,9 +244,9 @@ class ResolverFactory {
       },
       resolve: (payload: any) => payload,
     };
-  }
+  },
 
-  static subscribeByNameAndAddress<T>(modelName: string) {
+  subscribeByNameAndAddress: <T>(modelName: string) => {
     return {
       subscribe: async (
         _: any,
@@ -294,8 +294,8 @@ class ResolverFactory {
       },
       resolve: (payload: any) => payload,
     };
-  }
-}
+  },
+};
 
 const resolvers = {
   Query: {

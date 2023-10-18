@@ -1,15 +1,15 @@
-export class Metrics {
-  static readonly connectionLostCounterPerNetId: Record<number, number> = {};
-  static readonly connectionFailedCounterPerNetId: Record<number, number> = {};
-  static readonly connectionStateGaugePerNetId: Record<number, number> = {};
-  static readonly workerStateGaugePerNetId: Record<number, number> = {};
-  static readonly requestCounterPerNetId: Record<number, number> = {};
-  static readonly requestResponseCounterPerNetId: Record<number, number> = {};
-  static readonly requestErrorCounterPerNetId: Record<number, number> = {};
-  static readonly eventCounterPerNetId: Record<number, number> = {};
-  static readonly subscriptionGaugePerNetId: Record<number, number> = {};
+class MetricsClass {
+  readonly connectionLostCounterPerNetId: Record<number, number> = {};
+  readonly connectionFailedCounterPerNetId: Record<number, number> = {};
+  readonly connectionStateGaugePerNetId: Record<number, number> = {};
+  readonly workerStateGaugePerNetId: Record<number, number> = {};
+  readonly requestCounterPerNetId: Record<number, number> = {};
+  readonly requestResponseCounterPerNetId: Record<number, number> = {};
+  readonly requestErrorCounterPerNetId: Record<number, number> = {};
+  readonly eventCounterPerNetId: Record<number, number> = {};
+  readonly subscriptionGaugePerNetId: Record<number, number> = {};
 
-  static chainInit(chainId: number) {
+  chainInit(chainId: number) {
     if (this.connectionStateGaugePerNetId[chainId] === undefined) {
       this.connectionStateGaugePerNetId[chainId] = 0;
     }
@@ -37,17 +37,17 @@ export class Metrics {
     this.subscriptionGaugePerNetId[chainId] = 0;
   }
 
-  static connected(chainId: number) {
+  connected(chainId: number) {
     this.chainInit(chainId);
     this.connectionStateGaugePerNetId[chainId] = 1;
   }
 
-  static connectionFailed(chainId: number) {
+  connectionFailed(chainId: number) {
     this.chainInit(chainId);
     this.connectionFailedCounterPerNetId[chainId]++;
   }
 
-  static disconnected(chainId: number) {
+  disconnected(chainId: number) {
     if (this.connectionLostCounterPerNetId[chainId] === undefined) {
       this.connectionLostCounterPerNetId[chainId] = 0;
     }
@@ -55,49 +55,49 @@ export class Metrics {
     this.connectionStateGaugePerNetId[chainId] = 0;
   }
 
-  static workerStarted(chainId: number) {
+  workerStarted(chainId: number) {
     this.chainInit(chainId);
     this.workerStateGaugePerNetId[chainId] = 1;
   }
 
-  static workerStopped(chainId: number) {
+  workerStopped(chainId: number) {
     this.chainInit(chainId);
     this.workerStateGaugePerNetId[chainId] = 0;
   }
 
-  static requestSent(chainId: number) {
+  requestSent(chainId: number) {
     if (this.requestCounterPerNetId[chainId] === undefined) {
       this.requestCounterPerNetId[chainId] = 0;
     }
     this.requestCounterPerNetId[chainId]++;
   }
 
-  static requestReplied(chainId: number) {
+  requestReplied(chainId: number) {
     if (this.requestResponseCounterPerNetId[chainId] === undefined) {
       this.requestResponseCounterPerNetId[chainId] = 0;
     }
     this.requestResponseCounterPerNetId[chainId]++;
   }
 
-  static requestFailed(chainId: number) {
+  requestFailed(chainId: number) {
     if (this.requestErrorCounterPerNetId[chainId] === undefined) {
       this.requestErrorCounterPerNetId[chainId] = 0;
     }
     this.requestErrorCounterPerNetId[chainId]++;
   }
 
-  static eventReceived(chainId: number) {
+  eventReceived(chainId: number) {
     if (this.eventCounterPerNetId[chainId] === undefined) {
       this.eventCounterPerNetId[chainId] = 0;
     }
     this.eventCounterPerNetId[chainId]++;
   }
 
-  static setSubscriptionCount(chainId: number, count: number) {
+  setSubscriptionCount(chainId: number, count: number) {
     this.subscriptionGaugePerNetId[chainId] = count;
   }
 
-  static dumpMetrics(): string {
+  dumpMetrics(): string {
     let result = "";
     result += this.formatGauge(
       "connectionState",
@@ -126,15 +126,15 @@ export class Metrics {
     return result;
   }
 
-  static formatGauge(name: string, data: Record<number, number>): string {
+  formatGauge(name: string, data: Record<number, number>): string {
     return this.format(name, data, "gauge");
   }
 
-  static formatCounter(name: string, data: Record<number, number>): string {
+  formatCounter(name: string, data: Record<number, number>): string {
     return this.format(name, data, "counter");
   }
 
-  static format(
+  format(
     name: string,
     data: Record<number, number>,
     kind: "gauge" | "counter"
@@ -149,3 +149,5 @@ export class Metrics {
     return result;
   }
 }
+
+export const Metrics = new MetricsClass();
