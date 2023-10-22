@@ -1,47 +1,68 @@
 import { type ethers } from "ethers";
 import mongoose, { type ClientSession } from "mongoose";
 import { type Logger } from "pino";
-import { EventHandlerStatus, EventModel } from "../models";
+import { EventHandlerStatus } from "../enums";
+import { EventModel } from "../models";
 import { rootLogger } from "../util";
 import { type AbstractLoader } from "./AbstractLoader";
 
+type EventQueue = Array<{
+  eventName: string;
+  block: number;
+  tx: number;
+  ev: number;
+  log: ethers.providers.Log;
+  loader: AbstractLoader<any>;
+}>;
+
 export class EventListener {
-  private readonly queue: Array<{
-    eventName: string;
-    block: number;
-    tx: number;
-    ev: number;
-    log: ethers.providers.Log;
-    loader: AbstractLoader<any>;
-  }> = [];
+  private readonly _queue: EventQueue = [];
 
   private readonly log: Logger = rootLogger.child({ name: "EventListener" });
-  private readonly timer: NodeJS.Timeout;
-  private running = false;
-  private eventsAdded = false;
+  private readonly _timer: NodeJS.Timeout | undefined;
+  private _running = false;
+  private _eventsAdded = false;
   private readonly blockDates: Record<number, string> = {};
+  private _executingEventHandlers = false;
 
-  constructor() {
-    let executingEventHandlers = false;
-
-    this.timer = setInterval(() => {
-      if (!executingEventHandlers) {
-        if (this.queue.length > 0 && !this.eventsAdded) {
-          executingEventHandlers = true;
-          this.executePendingLogs()
-            .then(() => (executingEventHandlers = false))
-            .catch(() => (executingEventHandlers = false));
-        } else {
-          this.eventsAdded = false;
-        }
-      }
-    }, 1000);
+  get queue(): EventQueue {
+    return this._queue;
   }
 
-  private async getBlockDate(
-    blockNumber: number,
-    provider: ethers.providers.JsonRpcProvider
-  ): Promise<string> {
+  get executingEventHandlers(): boolean {
+    return this._executingEventHandlers;
+  }
+
+  get eventsAdded(): boolean {
+    return this._eventsAdded;
+  }
+
+  get running(): boolean {
+    return this._running;
+  }
+
+  get timer(): NodeJS.Timeout | undefined {
+    return this._timer;
+  }
+
+  constructor(startLoop = true) {
+    if (startLoop) {
+      this._timer = setInterval(() => {
+        if (!this._executingEventHandlers) {
+          if (this._queue.length > 0 && !this._eventsAdded) {
+            this._executingEventHandlers = true;
+            this.executePendingLogs()
+              .then(() => (this._executingEventHandlers = false))
+              .catch(() => (this._executingEventHandlers = false));
+          } else {
+            this._eventsAdded = false;
+          }
+        }
+      }, 500);
+    }
+  }
+
+  private async getBlockDate(blockNumber: number, provider: ethers.providers.JsonRpcProvider): Promise<string> {
     if (this.blockDates[blockNumber] === undefined) {
       const block = await provider.getBlock(blockNumber);
       const blockDate = new Date(block.timestamp * 1000).toISOString();
@@ -50,11 +71,7 @@ export class EventListener {
     return this.blockDates[blockNumber];
   }
 
-  async queueLog(
-    eventName: string,
-    log: ethers.providers.Log,
-    loader: AbstractLoader<any>
-  ) {
+  async queueLog(eventName: string, log: ethers.providers.Log, loader: AbstractLoader<any>) {
     if (
       (await EventModel.exists({
         chainId: loader.chainId,
@@ -65,11 +82,11 @@ export class EventListener {
       })) !== null
     ) {
       throw new Error(
-        `Tried to queue same event twice ! event=${eventName} chainId=${loader.chainId} address=${loader.address} blockNumber=${log.blockNumber} txIndex=${log.transactionIndex} logIndex=${log.logIndex}`
+        `Tried to queue same event twice ! event=${eventName} chainId=${loader.chainId} address=${loader.address} blockNumber=${log.blockNumber} txIndex=${log.transactionIndex} logIndex=${log.logIndex}`,
       );
     }
 
-    this.queue.push({
+    this._queue.push({
       eventName,
       log,
       block: log.blockNumber,
@@ -108,20 +125,20 @@ export class EventListener {
     });
     */
 
-    this.eventsAdded = true;
+    this._eventsAdded = true;
   }
 
   async executePendingLogs() {
-    if (this.running) return;
+    if (this._running) return;
 
-    this.running = true;
+    this._running = true;
 
     const session = await mongoose.startSession();
 
     try {
       let lastBlockNumber = 0;
-      while (this.queue.length > 0) {
-        const [{ eventName, log, loader }] = this.queue;
+      while (this._queue.length > 0) {
+        const [{ eventName, log, loader }] = this._queue;
 
         if (lastBlockNumber > 0 && lastBlockNumber !== log.blockNumber) {
           loader.log.info({
@@ -131,9 +148,9 @@ export class EventListener {
             lastBlockNumber,
           });
           break;
-        } else {
-          lastBlockNumber = log.blockNumber;
         }
+
+        lastBlockNumber = log.blockNumber;
 
         const decodedLog = loader.iface.parseLog(log);
         const args = [...decodedLog.args.values()];
@@ -142,13 +159,8 @@ export class EventListener {
           session.startTransaction();
 
           await loader.onEvent(session, eventName, args, log.blockNumber);
-          await this.updateEventStatus(
-            session,
-            log,
-            loader.chainId,
-            EventHandlerStatus.SUCCESS
-          );
-          this.queue.splice(0, 1);
+          await this.updateEventStatus(session, log, loader.chainId, EventHandlerStatus.SUCCESS);
+          this._queue.splice(0, 1);
 
           await session.commitTransaction();
         } catch (err) {
@@ -162,33 +174,28 @@ export class EventListener {
             chainId: loader.chainId,
             blockNumber: log.blockNumber,
           });
-          await this.updateEventStatus(
-            session,
-            log,
-            loader.chainId,
-            EventHandlerStatus.FAILURE
-          );
+          await this.updateEventStatus(session, log, loader.chainId, EventHandlerStatus.FAILURE);
+          break;
         }
       }
+
+      await session.endSession();
+      this._running = false;
     } catch (err) {
       this.log.error({ msg: "Event handlers execution failed !", err });
       throw err;
-    } finally {
-      this.running = false;
     }
-
-    await session.endSession();
   }
 
   destroy() {
-    if (this.timer !== undefined) clearInterval(this.timer);
+    if (this._timer !== undefined) clearInterval(this._timer);
   }
 
   private async updateEventStatus(
     session: ClientSession,
     log: ethers.providers.Log,
     chainId: number,
-    status: EventHandlerStatus
+    status: EventHandlerStatus,
   ) {
     await EventModel.updateOne(
       {
@@ -201,7 +208,7 @@ export class EventListener {
       {
         status,
       },
-      { session }
+      { session },
     );
   }
 }

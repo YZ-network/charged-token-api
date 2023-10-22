@@ -9,6 +9,22 @@ class MetricsClass {
   readonly eventCounterPerNetId: Record<number, number> = {};
   readonly subscriptionGaugePerNetId: Record<number, number> = {};
 
+  reset() {
+    this.clearRecord(this.connectionLostCounterPerNetId);
+    this.clearRecord(this.connectionFailedCounterPerNetId);
+    this.clearRecord(this.connectionStateGaugePerNetId);
+    this.clearRecord(this.workerStateGaugePerNetId);
+    this.clearRecord(this.requestCounterPerNetId);
+    this.clearRecord(this.requestResponseCounterPerNetId);
+    this.clearRecord(this.requestErrorCounterPerNetId);
+    this.clearRecord(this.eventCounterPerNetId);
+    this.clearRecord(this.subscriptionGaugePerNetId);
+  }
+
+  private clearRecord(rec: Record<any, any>) {
+    Object.keys(rec).forEach((key) => delete rec[key]);
+  }
+
   chainInit(chainId: number) {
     if (this.connectionStateGaugePerNetId[chainId] === undefined) {
       this.connectionStateGaugePerNetId[chainId] = 0;
@@ -99,28 +115,13 @@ class MetricsClass {
 
   dumpMetrics(): string {
     let result = "";
-    result += this.formatGauge(
-      "connectionState",
-      this.connectionStateGaugePerNetId
-    );
-    result += this.formatCounter(
-      "connectionLoss",
-      this.connectionLostCounterPerNetId
-    );
-    result += this.formatCounter(
-      "connectionFailed",
-      this.connectionFailedCounterPerNetId
-    );
+    result += this.formatGauge("connectionState", this.connectionStateGaugePerNetId);
+    result += this.formatCounter("connectionLoss", this.connectionLostCounterPerNetId);
+    result += this.formatCounter("connectionFailed", this.connectionFailedCounterPerNetId);
     result += this.formatGauge("workerState", this.workerStateGaugePerNetId);
     result += this.formatCounter("requestSent", this.requestCounterPerNetId);
-    result += this.formatCounter(
-      "requestReplied",
-      this.requestResponseCounterPerNetId
-    );
-    result += this.formatCounter(
-      "requestFailed",
-      this.requestErrorCounterPerNetId
-    );
+    result += this.formatCounter("requestReplied", this.requestResponseCounterPerNetId);
+    result += this.formatCounter("requestFailed", this.requestErrorCounterPerNetId);
     result += this.formatCounter("eventsReceived", this.eventCounterPerNetId);
     result += this.formatGauge("subscriptions", this.subscriptionGaugePerNetId);
     return result;
@@ -134,11 +135,7 @@ class MetricsClass {
     return this.format(name, data, "counter");
   }
 
-  format(
-    name: string,
-    data: Record<number, number>,
-    kind: "gauge" | "counter"
-  ): string {
+  format(name: string, data: Record<number, number>, kind: "gauge" | "counter"): string {
     if (Object.entries(data).length === 0) return "";
 
     let result = `# TYPE ${name} ${kind}\n`;

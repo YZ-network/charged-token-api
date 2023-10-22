@@ -16,16 +16,9 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     provider: ethers.providers.JsonRpcProvider,
     address: string,
     directory: Directory,
-    ct: ChargedToken
+    ct: ChargedToken,
   ) {
-    super(
-      ct.eventsListener,
-      chainId,
-      provider,
-      address,
-      contracts.DelegableToLT,
-      DelegableToLTModel
-    );
+    super(directory.eventsListener, chainId, provider, address, contracts.DelegableToLT, DelegableToLTModel);
 
     this.directory = directory;
     this.ct = ct;
@@ -40,11 +33,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
 
     const fieldsToCheck: string[] = ["totalSupply"];
 
-    this.detectNegativeAmount(
-      this.constructor.name,
-      data as Record<string, string>,
-      fieldsToCheck
-    );
+    this.detectNegativeAmount(this.constructor.name, data as Record<string, string>, fieldsToCheck);
   }
 
   async load() {
@@ -58,22 +47,15 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     const ins = this.instance;
 
     const validatedInterfaceProjectToken: string[] = [];
-    const validatedInterfaceCount = (
-      await ins.countValidatedInterfaceProjectToken()
-    ).toNumber();
+    const validatedInterfaceCount = (await ins.countValidatedInterfaceProjectToken()).toNumber();
     for (let i = 0; i < validatedInterfaceCount; i++) {
-      validatedInterfaceProjectToken.push(
-        await ins.getValidatedInterfaceProjectToken(i)
-      );
+      validatedInterfaceProjectToken.push(await ins.getValidatedInterfaceProjectToken(i));
     }
 
     return {
       // contract
       chainId: this.chainId,
-      initBlock:
-        this.lastState !== undefined
-          ? this.lastState.initBlock
-          : this.actualBlock,
+      initBlock: this.lastState !== undefined ? this.lastState.initBlock : this.actualBlock,
       lastUpdateBlock: this.actualBlock,
       address: this.address,
       // ownable
@@ -85,8 +67,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
       totalSupply: (await ins.totalSupply()).toString(),
       // other
       validatedInterfaceProjectToken,
-      isListOfInterfaceProjectTokenComplete:
-        await ins.isListOfInterfaceProjectTokenComplete(),
+      isListOfInterfaceProjectTokenComplete: await ins.isListOfInterfaceProjectTokenComplete(),
     };
   }
 
@@ -101,11 +82,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     return (await this.instance.balanceOf(user)).toString();
   }
 
-  async onTransferEvent(
-    session: ClientSession,
-    [from, to, value]: any[],
-    eventName?: string
-  ): Promise<void> {
+  async onTransferEvent(session: ClientSession, [from, to, value]: any[], eventName?: string): Promise<void> {
     if ((value as BigNumber).isZero()) {
       this.log.warn({
         msg: "Skipping transfer event processing since value is zero",
@@ -121,9 +98,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
       const oldBalance = await this.getBalance(session, this.ct.address, from);
 
       if (oldBalance !== null) {
-        const balancePT = BigNumber.from(oldBalance.balancePT)
-          .sub(BigNumber.from(value))
-          .toString();
+        const balancePT = BigNumber.from(oldBalance.balancePT).sub(BigNumber.from(value)).toString();
 
         await this.updateBalanceAndNotify(
           session,
@@ -133,7 +108,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
             balancePT,
           },
           this.address,
-          eventName
+          eventName,
         );
       }
     }
@@ -142,9 +117,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
       const oldBalance = await this.getBalance(session, this.ct.address, to);
 
       if (oldBalance !== null) {
-        const balancePT = BigNumber.from(oldBalance.balancePT)
-          .add(BigNumber.from(value))
-          .toString();
+        const balancePT = BigNumber.from(oldBalance.balancePT).add(BigNumber.from(value)).toString();
 
         await this.updateBalanceAndNotify(
           session,
@@ -154,56 +127,45 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
             balancePT,
           },
           this.address,
-          eventName
+          eventName,
         );
       }
     }
     if (from === EMPTY_ADDRESS) {
       const jsonModel = await this.getJsonModel(session);
       const update = {
-        totalSupply: BigNumber.from(jsonModel.totalSupply)
-          .add(BigNumber.from(value))
-          .toString(),
+        totalSupply: BigNumber.from(jsonModel.totalSupply).add(BigNumber.from(value)).toString(),
       };
       await this.applyUpdateAndNotify(session, update, eventName);
     }
     if (to === EMPTY_ADDRESS) {
       const jsonModel = await this.getJsonModel(session);
       const update = {
-        totalSupply: BigNumber.from(jsonModel.totalSupply)
-          .sub(BigNumber.from(value))
-          .toString(),
+        totalSupply: BigNumber.from(jsonModel.totalSupply).sub(BigNumber.from(value)).toString(),
       };
       await this.applyUpdateAndNotify(session, update, eventName);
     }
   }
 
-  async onApprovalEvent(
-    session: ClientSession,
-    [owner, spender, value]: any[],
-    eventName?: string
-  ): Promise<void> {
+  async onApprovalEvent(session: ClientSession, [owner, spender, value]: any[], eventName?: string): Promise<void> {
     // ignore it
   }
 
   async onAddedAllTimeValidatedInterfaceProjectTokenEvent(
     session: ClientSession,
     [interfaceProjectToken]: any[],
-    eventName?: string
+    eventName?: string,
   ): Promise<void> {}
 
   async onAddedInterfaceProjectTokenEvent(
     session: ClientSession,
     [interfaceProjectToken]: any[],
-    eventName?: string
+    eventName?: string,
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
     const update = {
-      validatedInterfaceProjectToken: [
-        ...jsonModel.validatedInterfaceProjectToken,
-        interfaceProjectToken,
-      ],
+      validatedInterfaceProjectToken: [...jsonModel.validatedInterfaceProjectToken, interfaceProjectToken],
     };
 
     await this.applyUpdateAndNotify(session, update, eventName);
@@ -212,29 +174,28 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   async onListOfValidatedInterfaceProjectTokenIsFinalizedEvent(
     session: ClientSession,
     _: any[],
-    eventName?: string
+    eventName?: string,
   ): Promise<void> {
     await this.applyUpdateAndNotify(
       session,
       {
         isListOfInterfaceProjectTokenComplete: true,
       },
-      eventName
+      eventName,
     );
   }
 
   async onInterfaceProjectTokenRemovedEvent(
     session: ClientSession,
     [interfaceProjectToken]: any[],
-    eventName?: string
+    eventName?: string,
   ): Promise<void> {
     const jsonModel = await this.getJsonModel(session);
 
     const update = {
-      validatedInterfaceProjectToken:
-        jsonModel.validatedInterfaceProjectToken.filter(
-          (address) => address !== interfaceProjectToken
-        ),
+      validatedInterfaceProjectToken: jsonModel.validatedInterfaceProjectToken.filter(
+        (address) => address !== interfaceProjectToken,
+      ),
     };
 
     await this.applyUpdateAndNotify(session, update, eventName);

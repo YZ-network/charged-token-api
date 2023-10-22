@@ -1,28 +1,15 @@
 import mongoose from "mongoose";
 import { WebSocket } from "ws";
 import { Config } from "./config";
+import { EventHandlerStatus, ProviderStatus, WorkerStatus } from "./enums";
 import { Directory } from "./loaders/Directory";
 import { EventListener } from "./loaders/EventListener";
-import { EventHandlerStatus, EventModel } from "./models/Event";
+import { EventModel } from "./models";
 import { subscribeToUserBalancesLoading } from "./subscriptions";
-import { AutoWebSocketProvider, Metrics, rootLogger } from "./util";
+import { Metrics, rootLogger } from "./util";
+import { AutoWebSocketProvider } from "./util/AutoWebSocketProvider";
 
 const log = rootLogger.child({ name: "worker" });
-
-export enum ProviderStatus {
-  STARTING = "STARTING",
-  CONNECTING = "CONNECTING",
-  CONNECTED = "CONNECTED",
-  DISCONNECTED = "DISCONNECTED",
-  DEAD = "DEAD",
-}
-
-export enum WorkerStatus {
-  WAITING = "WAITING",
-  STARTED = "STARTED",
-  CRASHED = "CRASHED",
-  DEAD = "DEAD",
-}
 
 const WsStatus = ["CONNECTING", "OPEN", "CLOSING", "CLOSED"];
 
@@ -61,12 +48,7 @@ export class ChainWorker {
   pongTimeout: NodeJS.Timeout | undefined;
   workerStatus: WorkerStatus = WorkerStatus.WAITING;
 
-  constructor(
-    index: number,
-    rpc: string,
-    directoryAddress: string,
-    chainId: number
-  ) {
+  constructor(index: number, rpc: string, directoryAddress: string, chainId: number) {
     this.index = index;
     this.rpc = rpc;
     this.directoryAddress = directoryAddress;
@@ -103,6 +85,7 @@ export class ChainWorker {
       pongMaxWaitMs: Config.delays.rpcPongMaxWaitMs,
       retryDelayMs: Config.delays.rpcRetryDelayMs,
     });
+
     this.wsStatus = WsStatus[this.provider.websocket.readyState];
 
     this.provider.on("error", (...args) => {
@@ -130,11 +113,7 @@ export class ChainWorker {
         });
 
         if (this.chainId !== network.chainId) {
-          throw new Error(
-            `RPC Node returned wrong chain ${JSON.stringify(
-              network
-            )}, expected chainId ${this.chainId}`
-          );
+          throw new Error(`RPC Node returned wrong chain ${JSON.stringify(network)}, expected chainId ${this.chainId}`);
         }
 
         this.name = network.name;
@@ -150,6 +129,7 @@ export class ChainWorker {
         });
         this.providerStatus = ProviderStatus.DISCONNECTED;
         this.wsStatus = WsStatus[WebSocket.CLOSED];
+        Metrics.connectionFailed(this.chainId);
         this.stop();
       });
 
@@ -158,36 +138,27 @@ export class ChainWorker {
 
       this.wsStatus = WsStatus[this.provider.websocket.readyState];
 
-      if (
-        this.providerStatus !== ProviderStatus.DISCONNECTED &&
-        ["CLOSING", "CLOSED"].includes(this.wsStatus)
-      ) {
+      if (this.providerStatus !== ProviderStatus.DISCONNECTED && ["CLOSING", "CLOSED"].includes(this.wsStatus)) {
         log.warn({
           msg: `Websocket crashed : ${this.name}`,
           chainId: this.chainId,
         });
       }
 
-      if (
-        this.providerStatus !== ProviderStatus.CONNECTING &&
-        this.wsStatus === "CONNECTING"
-      ) {
+      if (this.providerStatus !== ProviderStatus.CONNECTING && this.wsStatus === "CONNECTING") {
         log.info({
           msg: `Websocket connecting : ${this.name}`,
           chainId: this.chainId,
         });
       }
 
-      if (
-        this.providerStatus !== ProviderStatus.CONNECTED &&
-        this.wsStatus === "OPEN"
-      ) {
+      if (this.providerStatus !== ProviderStatus.CONNECTED && this.wsStatus === "OPEN") {
         log.info({
           msg: `Websocket connected : ${this.name}`,
           chainId: this.chainId,
         });
       }
-    }, 1000);
+    }, 50);
   }
 
   private subscribeToNewBlocks() {
@@ -232,15 +203,7 @@ export class ChainWorker {
             this.stop();
           });
       })
-      .catch((err) => {
-        log.error({
-          msg: `Websocket crashed on ${this.rpc}`,
-          err,
-          chainId: this.chainId,
-        });
-        this.providerStatus = ProviderStatus.DISCONNECTED;
-        this.stop();
-      });
+      .catch(() => {});
   }
 
   private async run() {
@@ -255,16 +218,8 @@ export class ChainWorker {
 
     try {
       this.eventListener = new EventListener();
-      this.directory = new Directory(
-        this.eventListener,
-        this.chainId,
-        this.provider,
-        this.directoryAddress
-      );
-      const actualBlock =
-        this.blockNumberBeforeDisconnect !== 0
-          ? this.blockNumberBeforeDisconnect
-          : undefined;
+      this.directory = new Directory(this.eventListener, this.chainId, this.provider, this.directoryAddress);
+      const actualBlock = this.blockNumberBeforeDisconnect !== 0 ? this.blockNumberBeforeDisconnect : undefined;
 
       log.info({
         msg: "Initializing directory",
@@ -297,12 +252,15 @@ export class ChainWorker {
   }
 
   private async stop() {
+    if (this.providerStatus === ProviderStatus.DEAD && this.workerStatus === WorkerStatus.DEAD) return;
+
     Metrics.workerStopped(this.chainId);
 
     this.eventListener?.destroy();
     this.eventListener = undefined;
 
     this.directory?.destroy();
+    this.directory = undefined;
     this.provider?.removeAllListeners();
     this.worker = undefined;
 

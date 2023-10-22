@@ -4,11 +4,12 @@ import { createServer } from "http";
 import mongoose from "mongoose";
 import { WebSocketServer } from "ws";
 import { Config } from "./config";
+import { WorkerStatus } from "./enums";
 import { useEventsExporter } from "./exporter";
 import { schema } from "./graphql";
 import { usePrometheus } from "./prometheus";
 import { rootLogger } from "./util";
-import { ChainWorker, WorkerStatus, type ChainHealth } from "./worker";
+import { ChainWorker, type ChainHealth } from "./worker";
 
 export class Main {
   private static readonly log = rootLogger.child({ name: "Main" });
@@ -79,14 +80,7 @@ export class Main {
         execute: (args: any) => args.rootValue.execute(args),
         subscribe: (args: any) => args.rootValue.subscribe(args),
         onSubscribe: async (ctx, msg) => {
-          const {
-            schema,
-            execute,
-            subscribe,
-            contextFactory,
-            parse,
-            validate,
-          } = Main.yoga.getEnveloped({
+          const { schema, execute, subscribe, contextFactory, parse, validate } = Main.yoga.getEnveloped({
             ...ctx,
             req: ctx.extra.request,
             socket: ctx.extra.socket,
@@ -110,7 +104,7 @@ export class Main {
           return args;
         },
       },
-      Main.wsServer
+      Main.wsServer,
     );
   }
 
@@ -121,12 +115,7 @@ export class Main {
         Main.log.info("MongoDB connected !");
 
         Main.networks.forEach((network, index) => {
-          Main.connectChain(
-            index,
-            network.uri,
-            network.directory,
-            network.chainId
-          );
+          Main.connectChain(index, network.uri, network.directory, network.chainId);
         });
 
         this.keepAlive = setInterval(() => {
@@ -142,9 +131,7 @@ export class Main {
         }, Config.delays.workerRestartDelayMs);
 
         Main.httpServer.listen(Main.bindPort, Main.bindAddress, () => {
-          Main.log.info(
-            `GraphQL API server started at http://${Main.bindAddress}:${Main.bindPort}/`
-          );
+          Main.log.info(`GraphQL API server started at http://${Main.bindAddress}:${Main.bindPort}/`);
         });
       })
       .catch((err) => {
@@ -165,12 +152,7 @@ export class Main {
     return await mongoose.connect(Config.db.uri);
   }
 
-  private static connectChain(
-    index: number,
-    rpc: string,
-    directory: string,
-    chainId: number
-  ) {
+  private static connectChain(index: number, rpc: string, directory: string, chainId: number) {
     Main.log.info({
       msg: `Creating provider and starting worker for network ${chainId} : ${rpc} and directory ${directory}`,
       chainId,

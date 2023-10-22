@@ -2,11 +2,59 @@ export { BigNumber } from "ethers";
 
 const Contract = jest.fn().mockImplementation(() => {
   return {
+    // common functions
+    on: jest.fn(),
     queryFilter: jest.fn(),
+    removeAllListeners: jest.fn(),
+    areUserFunctionsDisabled: jest.fn(),
+    // ERC20 functions
     owner: jest.fn(),
+    name: jest.fn(),
+    symbol: jest.fn(),
+    decimals: jest.fn(),
+    totalSupply: jest.fn(),
+    balanceOf: jest.fn(),
+    // Directory functions
     countWhitelistedProjectOwners: jest.fn(),
     countLTContracts: jest.fn(),
-    areUserFunctionsDisabled: jest.fn(),
+    projectRelatedToLT: jest.fn(),
+    // ChargedToken functions
+    fractionInitialUnlockPerThousand: jest.fn(),
+    durationCliff: jest.fn(),
+    durationLinearVesting: jest.fn(),
+    maxInitialTokenAllocation: jest.fn(),
+    maxWithdrawFeesPerThousandForLT: jest.fn(),
+    maxClaimFeesPerThousandForPT: jest.fn(),
+    maxStakingAPR: jest.fn(),
+    maxStakingTokenAmount: jest.fn(),
+    isInterfaceProjectTokenLocked: jest.fn(),
+    areAllocationsTerminated: jest.fn(),
+    interfaceProjectToken: jest.fn(),
+    ratioFeesToRewardHodlersPerThousand: jest.fn(),
+    currentRewardPerShare1e18: jest.fn(),
+    stakedLT: jest.fn(),
+    totalTokenAllocated: jest.fn(),
+    withdrawFeesPerThousandForLT: jest.fn(),
+    stakingStartDate: jest.fn(),
+    stakingDuration: jest.fn(),
+    stakingDateLastCheckpoint: jest.fn(),
+    campaignStakingRewards: jest.fn(),
+    totalStakingRewards: jest.fn(),
+    getUserFullyChargedBalanceLiquiToken: jest.fn(),
+    getUserPartiallyChargedBalanceLiquiToken: jest.fn(),
+    getUserDateOfPartiallyChargedToken: jest.fn(),
+    claimedRewardPerShare1e18: jest.fn(),
+    loadValueProjectTokenToFullRecharge: jest.fn(),
+    // InterfaceProjectToken functions
+    liquidityToken: jest.fn(),
+    projectToken: jest.fn(),
+    dateLaunch: jest.fn(),
+    dateEndCliff: jest.fn(),
+    claimFeesPerThousandForPT: jest.fn(),
+    // DelegableToLT functions
+    countValidatedInterfaceProjectToken: jest.fn(),
+    isListOfInterfaceProjectTokenComplete: jest.fn(),
+    getValidatedInterfaceProjectToken: jest.fn(),
   };
 });
 
