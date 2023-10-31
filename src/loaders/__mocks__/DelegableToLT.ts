@@ -4,5 +4,6 @@ export const DelegableToLT = jest.fn().mockImplementation(() => {
     init: jest.fn(),
     destroy: jest.fn(),
     subscribeToEvents: jest.fn(),
+    loadUserBalance: jest.fn(),
   };
 });

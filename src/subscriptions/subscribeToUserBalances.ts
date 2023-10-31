@@ -20,10 +20,11 @@ export async function subscribeToUserBalancesLoading(directory: Directory): Prom
       msg: `Got user balances reload message for ${user}@${address}`,
       chainId: directory.chainId,
     });
+    const blockNumber = await directory.provider.getBlockNumber();
     try {
       const session = await mongoose.startSession();
       await session.withTransaction(async () => {
-        await directory.loadAllUserBalances(session, user, address);
+        await directory.loadAllUserBalances(session, user, blockNumber, address);
       });
       await session.endSession();
     } catch (err) {

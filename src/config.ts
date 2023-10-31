@@ -10,7 +10,7 @@ interface JsonApiConfig {
   enableGraphiql: boolean;
 }
 
-interface JsonNetworkConfig {
+export interface JsonNetworkConfig {
   chainId: number;
   uri: string;
   directory: string;
@@ -43,7 +43,7 @@ const configDefaults: JsonConfig = {
     logLevel: "info",
     enableGraphiql: true,
   },
-  networks: [],
+  networks: [{ chainId: 1337, uri: "ws://127.0.0.1:8545", directory: "0xA8CA002BF4d8253b8493b1c92Fd3055F05A2DF6B" }],
   delays: {
     workerRestartDelayMs: 3000,
     rpcMaxParallelRequests: 4,
@@ -55,6 +55,4 @@ const configDefaults: JsonConfig = {
 };
 
 export const Config: JsonConfig =
-  process.env.CONFIG !== undefined
-    ? { ...configDefaults, ...JSON.parse(process.env.CONFIG) }
-    : configDefaults;
+  process.env.CONFIG !== undefined ? { ...configDefaults, ...JSON.parse(process.env.CONFIG) } : configDefaults;

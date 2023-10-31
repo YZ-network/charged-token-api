@@ -3,8 +3,8 @@
     "node": true,
     "es2021": true
   },
-  "extends": ["plugin:@typescript-eslint/recommended", "eslint:recommended", "prettier", "prettier/@typescript-eslint"],
-  "plugins": ["prettier"],
+  "extends": ["plugin:@typescript-eslint/recommended", "prettier"],
+  "plugins": ["@typescript-eslint/eslint-plugin", "prettier"],
   "overrides": [
     {
       "env": {
@@ -23,7 +23,7 @@
   },
   "rules": {
     "@typescript-eslint/explicit-function-return-type": "warn",
-    "@typescript-eslint/no-floating-promises": "warn",
+    "@typescript-eslint/no-floating-promises": "off",
     "@typescript-eslint/no-non-null-assertion": "warn",
     "@typescript-eslint/no-dynamic-delete": "warn",
     "@typescript-eslint/no-extraneous-class": "warn",
@@ -36,6 +36,8 @@
     "@typescript-eslint/space-before-function-paren": "off",
     "@typescript-eslint/quotes": "off",
     "@typescript-eslint/member-delimiter-style": "off",
-    "@typescript-eslint/indent": "off"
+    "@typescript-eslint/indent": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/no-unused-vars": "off"
   }
 }

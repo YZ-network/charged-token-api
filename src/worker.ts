@@ -219,17 +219,18 @@ export class ChainWorker {
     try {
       this.eventListener = new EventListener();
       this.directory = new Directory(this.eventListener, this.chainId, this.provider, this.directoryAddress);
-      const actualBlock = this.blockNumberBeforeDisconnect !== 0 ? this.blockNumberBeforeDisconnect : undefined;
+      const blockNumber = await this.provider.getBlockNumber();
 
       log.info({
         msg: "Initializing directory",
         chainId: this.chainId,
-        actualBlock,
+        blockNumber,
         blockNumberBeforeDisconnect: this.blockNumberBeforeDisconnect,
       });
 
       const session = await mongoose.startSession();
-      await this.directory.init(session, actualBlock, true);
+
+      await this.directory.init(session, blockNumber, true);
       await session.endSession();
       log.info({
         msg: `Initialization complete for ${this.name} subscribing to updates`,

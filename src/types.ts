@@ -1,47 +1,44 @@
-import {
-  type ClientSession,
-  type HydratedDocument,
-  type Model
-} from 'mongoose';
+import { type ClientSession, type HydratedDocument, type Model } from "mongoose";
 
 export interface IContract {
-  chainId: number
-  address: string
-  initBlock: number
-  lastUpdateBlock: number
+  chainId: number;
+  address: string;
+  initBlock: number;
+  lastUpdateBlock: number;
 }
 
 export interface IOwnable extends IContract {
-  owner: string
+  owner: string;
 }
 
 export interface IErc20 extends IOwnable {
-  name: string
-  symbol: string
-  decimals: string
-  totalSupply: string
+  name: string;
+  symbol: string;
+  decimals: string;
+  totalSupply: string;
 }
 
 export interface IEntry {
-  key: string
-  value: string
+  key: string;
+  value: string;
 }
 
-export type IKeyValueList = IEntry[]
+export type IKeyValueList = IEntry[];
 
 export type IEventHandler = (
   session: ClientSession,
   args: any[],
+  blockNumber: number,
   eventName: string,
-) => Promise<void>
+) => Promise<void>;
 
-export type IToModel<T> = (data: T) => HydratedDocument<T>
+export type IToModel<T> = (data: T) => HydratedDocument<T>;
 
-export type IToGraphQL<T> = (doc: HydratedDocument<T>) => any
+export type IToGraphQL<T> = (doc: HydratedDocument<T>) => any;
 
 export type IModel<T> = Model<T> & {
-  toModel: IToModel<T>
-  toGraphQL: IToGraphQL<T>
-}
+  toModel: IToModel<T>;
+  toGraphQL: IToGraphQL<T>;
+};
 
-export const EMPTY_ADDRESS = '0x0000000000000000000000000000000000000000';
+export const EMPTY_ADDRESS = "0x0000000000000000000000000000000000000000";

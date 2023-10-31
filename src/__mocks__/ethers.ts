@@ -44,13 +44,14 @@ const Contract = jest.fn().mockImplementation(() => {
     getUserPartiallyChargedBalanceLiquiToken: jest.fn(),
     getUserDateOfPartiallyChargedToken: jest.fn(),
     claimedRewardPerShare1e18: jest.fn(),
-    loadValueProjectTokenToFullRecharge: jest.fn(),
+    userLiquiToken: jest.fn(),
     // InterfaceProjectToken functions
     liquidityToken: jest.fn(),
     projectToken: jest.fn(),
     dateLaunch: jest.fn(),
     dateEndCliff: jest.fn(),
     claimFeesPerThousandForPT: jest.fn(),
+    valueProjectTokenToFullRecharge: jest.fn(),
     // DelegableToLT functions
     countValidatedInterfaceProjectToken: jest.fn(),
     isListOfInterfaceProjectTokenComplete: jest.fn(),

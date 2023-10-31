@@ -15,6 +15,8 @@ const Schema = jest.fn().mockImplementation(() => {
 });
 
 export default {
+  set: jest.fn(),
+  connect: jest.fn(),
   startSession: jest.fn(() => {
     return { endSession: jest.fn() };
   }),

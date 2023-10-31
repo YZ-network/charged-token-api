@@ -1,6 +1,7 @@
 import { BigNumber, ethers } from "ethers";
 import { ClientSession } from "mongodb";
 import { pubSub } from "../../graphql";
+import { UserBalanceModel } from "../../models";
 import { EMPTY_ADDRESS } from "../../types";
 import { ChargedToken } from "../ChargedToken";
 import { DelegableToLT } from "../DelegableToLT";
@@ -60,7 +61,6 @@ describe("InterfaceProjectToken loader", () => {
     expect(loader.ct).toBe(ctLoader);
     expect(loader.address).toBe(ADDRESS);
     expect(loader.initBlock).toBe(0);
-    expect(loader.actualBlock).toBe(0);
     expect(loader.lastUpdateBlock).toBe(0);
     expect(loader.lastState).toEqual(undefined);
 
@@ -97,12 +97,11 @@ describe("InterfaceProjectToken loader", () => {
     loader.instance.claimFeesPerThousandForPT.mockImplementationOnce(async () => BigNumber.from(3));
 
     // tested function
-    await loader.init(session, undefined, true);
+    await loader.init(session, BLOCK_NUMBER, true);
 
     // expectations
     expect(loader.initBlock).toBe(BLOCK_NUMBER);
     expect(loader.lastUpdateBlock).toBe(BLOCK_NUMBER);
-    expect(loader.actualBlock).toBe(BLOCK_NUMBER);
     expect(loader.lastState).toEqual(graphqlModel);
 
     expect((loader.model as any).exists).toBeCalledTimes(1);
@@ -186,12 +185,11 @@ describe("InterfaceProjectToken loader", () => {
     (loader.instance as any).queryFilter.mockImplementationOnce(() => []);
 
     // tested function
-    await loader.init(session, undefined, true);
+    await loader.init(session, BLOCK_NUMBER, true);
 
     // expectations
     expect(loader.initBlock).toBe(PREV_BLOCK_NUMBER);
     expect(loader.lastUpdateBlock).toBe(PREV_BLOCK_NUMBER);
-    expect(loader.actualBlock).toBe(BLOCK_NUMBER);
     expect(loader.lastState).toEqual(graphqlModel);
 
     expect((loader.model as any).exists).toBeCalledTimes(0);
@@ -262,7 +260,7 @@ describe("InterfaceProjectToken loader", () => {
     (loader.instance as any).queryFilter.mockImplementationOnce(() => []);
 
     // tested function
-    await loader.init(session, undefined, true);
+    await loader.init(session, BLOCK_NUMBER, true);
     loader.subscribeToEvents();
 
     // expectations
@@ -319,7 +317,7 @@ describe("InterfaceProjectToken loader", () => {
     (loader.instance as any).queryFilter.mockImplementationOnce(() => []);
 
     // tested function
-    await loader.init(session, undefined, true);
+    await loader.init(session, BLOCK_NUMBER, true);
     loader.subscribeToEvents();
 
     // expectations
@@ -332,6 +330,78 @@ describe("InterfaceProjectToken loader", () => {
     expect(InterfaceProjectToken.projectInstances[PT_ADDRESS]).toBe(ptLoader);
     expect(InterfaceProjectToken.projectUsageCount[PT_ADDRESS]).toBe(1);
     expect(InterfaceProjectToken.subscribedProjects).toContain(PT_ADDRESS);
+  });
+
+  test("should load PT balance from delegable to lt contract", async () => {
+    // initialization
+    const provider = new ethers.providers.JsonRpcProvider();
+    const directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS);
+    const ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader);
+    const loader = new InterfaceProjectToken(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader);
+
+    loader.projectToken = new DelegableToLT(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader);
+
+    await loader.loadUserBalancePT("0xUSER");
+
+    expect(loader.projectToken.loadUserBalance).toHaveBeenNthCalledWith(1, "0xUSER");
+  });
+
+  test("should load value project token to full recharge from blockchain", async () => {
+    // initialization
+    const provider = new ethers.providers.JsonRpcProvider();
+    const directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS);
+    const ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader);
+    const loader = new InterfaceProjectToken(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader);
+
+    (loader.instance as any).valueProjectTokenToFullRecharge.mockImplementationOnce(async () => BigNumber.from(0));
+
+    await loader.loadValueProjectTokenToFullRecharge("0xUSER");
+
+    expect(loader.instance.valueProjectTokenToFullRecharge).toHaveBeenNthCalledWith(1, "0xUSER");
+  });
+
+  test("should update all matching balances with project token address and PT balance", async () => {
+    // initialization
+    const provider = new ethers.providers.JsonRpcProvider();
+    const directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS);
+    const ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader);
+    const loader = new InterfaceProjectToken(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader);
+    const session = new ClientSession();
+
+    const balancesToUpdate = [
+      { address: "0xCT", user: "0xUSER1" },
+      { address: "0xCT", user: "0xUSER2" },
+    ];
+    (UserBalanceModel as any).find.mockImplementationOnce(async () => balancesToUpdate);
+
+    const loadPTBalance = jest
+      .spyOn(loader, "loadUserBalancePT")
+      .mockImplementationOnce(async () => "1")
+      .mockImplementationOnce(async () => "2");
+
+    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockImplementation(async () => undefined);
+
+    await loader.setProjectTokenAddressOnBalances(session, "0xCT", "0xPT", BLOCK_NUMBER);
+
+    expect(UserBalanceModel.find).toHaveBeenNthCalledWith(1, { address: "0xCT" }, null, { session });
+    expect(loadPTBalance).toHaveBeenNthCalledWith(1, "0xUSER1");
+    expect(loadPTBalance).toHaveBeenNthCalledWith(2, "0xUSER2");
+    expect(updateBalance).toHaveBeenNthCalledWith(
+      1,
+      session,
+      "0xCT",
+      "0xUSER1",
+      { ptAddress: "0xPT", balancePT: "1" },
+      BLOCK_NUMBER,
+    );
+    expect(updateBalance).toHaveBeenNthCalledWith(
+      2,
+      session,
+      "0xCT",
+      "0xUSER2",
+      { ptAddress: "0xPT", balancePT: "2" },
+      BLOCK_NUMBER,
+    );
   });
 
   test("destroy interface with project when it is the last reference", async () => {
@@ -387,8 +457,6 @@ describe("InterfaceProjectToken loader", () => {
     const loader = new InterfaceProjectToken(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader);
     const session = new ClientSession();
 
-    loader.actualBlock = BLOCK_NUMBER;
-
     (loader.model as any).exists.mockImplementationOnce(async () => "not_null");
     (loader.model as any).toGraphQL.mockImplementationOnce(() => loadedModel);
     const loadedModel = sampleData();
@@ -396,7 +464,7 @@ describe("InterfaceProjectToken loader", () => {
     const dateLaunch = BigNumber.from("10");
     const dateEndCliff = BigNumber.from("20");
 
-    await loader.onStartSetEvent(session, [dateLaunch, dateEndCliff], "StartSet");
+    await loader.onStartSetEvent(session, [dateLaunch, dateEndCliff], BLOCK_NUMBER, "StartSet");
 
     expect((loader.model as any).exists).toBeCalledTimes(1);
     expect((loader.model as any).findOne).toBeCalledTimes(1);
@@ -409,5 +477,120 @@ describe("InterfaceProjectToken loader", () => {
 
     expect(pubSub.publish).toHaveBeenCalledWith(`InterfaceProjectToken.${CHAIN_ID}.${ADDRESS}`, loadedModel);
     expect(pubSub.publish).toHaveBeenCalledWith(`InterfaceProjectToken.${CHAIN_ID}`, loadedModel);
+  });
+
+  test("ProjectTokenReceived", async () => {
+    // initialization
+    const provider = new ethers.providers.JsonRpcProvider();
+    const directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS);
+    const ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader);
+    const loader = new InterfaceProjectToken(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader);
+    const session = new ClientSession();
+
+    // does nothing
+    await loader.onProjectTokenReceivedEvent(session, [], BLOCK_NUMBER, "ProjectTokenReceived");
+  });
+
+  test("IncreasedValueProjectTokenToFullRecharge", async () => {
+    // initialization
+    const provider = new ethers.providers.JsonRpcProvider();
+    const directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS);
+    const ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader);
+    const loader = new InterfaceProjectToken(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader);
+    const session = new ClientSession();
+    const ctContract = new ethers.Contract("", []);
+
+    Object.defineProperty(ctLoader, "address", { value: "0xCT" });
+    Object.defineProperty(ctLoader, "instance", { value: ctContract });
+
+    const balance = {
+      valueProjectTokenToFullRecharge: "100",
+    };
+    (UserBalanceModel as any).findOne.mockImplementationOnce(async () => balance);
+    ctLoader.instance.userLiquiToken.mockImplementationOnce(async () => {
+      return { dateOfPartiallyCharged: BigNumber.from("150") };
+    });
+    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockImplementation(async () => undefined);
+
+    await loader.onIncreasedValueProjectTokenToFullRechargeEvent(
+      session,
+      ["0xUSER", "100"],
+      BLOCK_NUMBER,
+      "IncreasedValueProjectTokenToFullRecharge",
+    );
+
+    expect(UserBalanceModel.findOne).toBeCalledTimes(1);
+    expect(updateBalance).toHaveBeenNthCalledWith(
+      1,
+      session,
+      "0xCT",
+      "0xUSER",
+      {
+        valueProjectTokenToFullRecharge: "200",
+        dateOfPartiallyCharged: "150",
+      },
+      BLOCK_NUMBER,
+      undefined,
+      "IncreasedValueProjectTokenToFullRecharge",
+    );
+  });
+
+  test("LTRecharged", async () => {
+    // initialization
+    const provider = new ethers.providers.JsonRpcProvider();
+    const directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS);
+    const ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader);
+    const loader = new InterfaceProjectToken(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader);
+    const session = new ClientSession();
+
+    Object.defineProperty(ctLoader, "address", { value: "0xCT" });
+
+    const balance = {
+      valueProjectTokenToFullRecharge: "150",
+    } as any;
+
+    const getBalance = jest.spyOn(loader, "getBalance").mockImplementationOnce(async () => balance);
+    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockImplementationOnce(async () => undefined);
+
+    await loader.onLTRechargedEvent(session, ["0xUSER", "999", "50", "777"], BLOCK_NUMBER, "LTRecharged");
+
+    expect(getBalance).toBeCalledTimes(1);
+    expect(updateBalance).toHaveBeenNthCalledWith(
+      1,
+      session,
+      "0xCT",
+      "0xUSER",
+      {
+        valueProjectTokenToFullRecharge: "100",
+      },
+      BLOCK_NUMBER,
+      undefined,
+      "LTRecharged",
+    );
+  });
+
+  test("ClaimFeesUpdated", async () => {
+    // initialization
+    const provider = new ethers.providers.JsonRpcProvider();
+    const directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS);
+    const ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader);
+    const loader = new InterfaceProjectToken(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader);
+    const session = new ClientSession();
+
+    const applyUpdateAndNotify = jest
+      .spyOn(loader, "applyUpdateAndNotify")
+      .mockImplementationOnce(async () => undefined);
+
+    await loader.onClaimFeesUpdatedEvent(session, ["1234"], BLOCK_NUMBER, "ClaimFeesUpdated");
+
+    expect(applyUpdateAndNotify).toHaveBeenNthCalledWith(
+      1,
+      session,
+      {
+        claimFeesPerThousandForPT: "1234",
+      },
+      BLOCK_NUMBER,
+      "ClaimFeesUpdated",
+    );
   });
 });

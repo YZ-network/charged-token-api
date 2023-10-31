@@ -58,7 +58,7 @@ export class EventListener {
             this._eventsAdded = false;
           }
         }
-      }, 500);
+      }, 50);
     }
   }
 
@@ -113,7 +113,7 @@ export class EventListener {
       args: args.map((arg) => arg.toString()),
     });
 
-    /*
+    // sort queued events in case they come unordered
     this.queue.sort((a, b) => {
       if (a.block < b.block) return -1;
       if (a.block > b.block) return 1;
@@ -123,7 +123,6 @@ export class EventListener {
       if (a.ev > b.ev) return 1;
       throw new Error(`Found duplicate event while sorting : ${a} ${b}`);
     });
-    */
 
     this._eventsAdded = true;
   }

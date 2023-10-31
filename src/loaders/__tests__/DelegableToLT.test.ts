@@ -1,9 +1,12 @@
 import { BigNumber, ethers } from "ethers";
 import { ClientSession } from "mongodb";
+import { FlattenMaps } from "mongoose";
+import { IDelegableToLT } from "../../models";
+import { EMPTY_ADDRESS } from "../../types";
 import { ChargedToken } from "../ChargedToken";
 import { DelegableToLT } from "../DelegableToLT";
 import { Directory } from "../Directory";
-import { type EventListener } from "../EventListener";
+import { EventListener } from "../EventListener";
 
 jest.mock("../EventListener");
 jest.mock("../../topics");
@@ -35,7 +38,6 @@ describe("DelegableToLT loader", () => {
     expect(loader.ct).toBe(ctLoader);
     expect(loader.address).toBe(ADDRESS);
     expect(loader.initBlock).toBe(0);
-    expect(loader.actualBlock).toBe(0);
     expect(loader.lastUpdateBlock).toBe(0);
     expect(loader.lastState).toEqual(undefined);
 
@@ -77,12 +79,11 @@ describe("DelegableToLT loader", () => {
     loader.instance.isListOfInterfaceProjectTokenComplete.mockImplementationOnce(async () => false);
 
     // tested function
-    await loader.init(session, undefined, true);
+    await loader.init(session, BLOCK_NUMBER, true);
 
     // expectations
     expect(loader.initBlock).toBe(BLOCK_NUMBER);
     expect(loader.lastUpdateBlock).toBe(BLOCK_NUMBER);
-    expect(loader.actualBlock).toBe(BLOCK_NUMBER);
     expect(loader.lastState).toEqual(graphqlModel);
 
     expect((loader.model as any).exists).toBeCalledTimes(1);
@@ -167,12 +168,11 @@ describe("DelegableToLT loader", () => {
     (loader.instance as any).queryFilter.mockImplementationOnce(() => []);
 
     // tested function
-    await loader.init(session, undefined, true);
+    await loader.init(session, BLOCK_NUMBER, true);
 
     // expectations
     expect(loader.initBlock).toBe(PREV_BLOCK_NUMBER);
     expect(loader.lastUpdateBlock).toBe(PREV_BLOCK_NUMBER);
-    expect(loader.actualBlock).toBe(BLOCK_NUMBER);
     expect(loader.lastState).toEqual(graphqlModel);
 
     expect((loader.model as any).exists).toBeCalledTimes(0);
@@ -203,5 +203,281 @@ describe("DelegableToLT loader", () => {
 
     expect((session as any).startTransaction).toBeCalledTimes(1);
     expect((session as any).commitTransaction).toBeCalledTimes(1);
+  });
+
+  test("should load user balance from contract", async () => {
+    const provider = new ethers.providers.JsonRpcProvider();
+    const eventsListener = new EventListener();
+    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, { eventsListener } as any, undefined as any);
+
+    loader.instance.balanceOf.mockImplementationOnce(async () => BigNumber.from(10));
+
+    const result = await loader.loadUserBalance("0xUSER");
+
+    expect(result).toBe("10");
+    expect(loader.instance.balanceOf).toHaveBeenCalledWith("0xUSER");
+  });
+
+  // Event Handlers
+  test("AddedInterfaceProjectToken", async () => {
+    const provider = new ethers.providers.JsonRpcProvider();
+    const eventsListener = new EventListener();
+    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, { eventsListener } as any, undefined as any);
+    const session = new ClientSession();
+
+    const blockNumber = 15;
+
+    const loadedModel = {
+      validatedInterfaceProjectToken: ["0xIF1", "0xIF2"],
+    };
+    const getJsonModel = jest
+      .spyOn(loader, "getJsonModel")
+      .mockImplementationOnce(async () => loadedModel as FlattenMaps<IDelegableToLT>);
+    const applyUpdateAndNotify = jest
+      .spyOn(loader, "applyUpdateAndNotify")
+      .mockImplementationOnce(async () => undefined);
+
+    await loader.onAddedInterfaceProjectTokenEvent(
+      session,
+      ["0xNEW_INTERFACE"],
+      blockNumber,
+      "AddedInterfaceProjectToken",
+    );
+
+    expect(getJsonModel).toBeCalled();
+    expect(applyUpdateAndNotify).toHaveBeenCalledWith(
+      session,
+      {
+        validatedInterfaceProjectToken: ["0xIF1", "0xIF2", "0xNEW_INTERFACE"],
+      },
+      blockNumber,
+      "AddedInterfaceProjectToken",
+    );
+  });
+
+  test("ListOfValidatedInterfaceProjectTokenIsFinalized", async () => {
+    const provider = new ethers.providers.JsonRpcProvider();
+    const eventsListener = new EventListener();
+    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, { eventsListener } as any, undefined as any);
+    const session = new ClientSession();
+
+    const blockNumber = 15;
+
+    const applyUpdateAndNotify = jest
+      .spyOn(loader, "applyUpdateAndNotify")
+      .mockImplementationOnce(async () => undefined);
+
+    await loader.onListOfValidatedInterfaceProjectTokenIsFinalizedEvent(
+      session,
+      [],
+      blockNumber,
+      "ListOfValidatedInterfaceProjectTokenIsFinalized",
+    );
+
+    expect(applyUpdateAndNotify).toHaveBeenCalledWith(
+      session,
+      {
+        isListOfInterfaceProjectTokenComplete: true,
+      },
+      blockNumber,
+      "ListOfValidatedInterfaceProjectTokenIsFinalized",
+    );
+  });
+
+  test("InterfaceProjectTokenRemoved", async () => {
+    const provider = new ethers.providers.JsonRpcProvider();
+    const eventsListener = new EventListener();
+    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, { eventsListener } as any, undefined as any);
+    const session = new ClientSession();
+
+    const blockNumber = 15;
+
+    const loadedModel = {
+      validatedInterfaceProjectToken: ["0xIF1", "0xIF2REMOVE", "0xIF3"],
+    };
+    const getJsonModel = jest
+      .spyOn(loader, "getJsonModel")
+      .mockImplementationOnce(async () => loadedModel as FlattenMaps<IDelegableToLT>);
+    const applyUpdateAndNotify = jest
+      .spyOn(loader, "applyUpdateAndNotify")
+      .mockImplementationOnce(async () => undefined);
+
+    await loader.onInterfaceProjectTokenRemovedEvent(
+      session,
+      ["0xIF2REMOVE"],
+      blockNumber,
+      "InterfaceProjectTokenRemoved",
+    );
+
+    expect(getJsonModel).toBeCalled();
+    expect(applyUpdateAndNotify).toHaveBeenCalledWith(
+      session,
+      {
+        validatedInterfaceProjectToken: ["0xIF1", "0xIF3"],
+      },
+      blockNumber,
+      "InterfaceProjectTokenRemoved",
+    );
+  });
+
+  // Transfer use cases
+  test("Transfer: empty value should do nothing", async () => {
+    const provider = new ethers.providers.JsonRpcProvider();
+    const eventsListener = new EventListener();
+    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, { eventsListener } as any, undefined as any);
+    const session = new ClientSession();
+
+    await loader.onTransferEvent(session, ["0xFROM", "0xTO", "0"], 15, "Transfer");
+  });
+
+  test("Transfer: p2p transfers should update both balances", async () => {
+    const provider = new ethers.providers.JsonRpcProvider();
+    const eventsListener = new EventListener();
+    const loader = new DelegableToLT(
+      CHAIN_ID,
+      provider,
+      ADDRESS,
+      { eventsListener } as any,
+      { address: ADDRESS } as any,
+    );
+    const session = new ClientSession();
+
+    const blockNumber = 15;
+
+    const fromBalance = { balancePT: "150" } as any;
+    const toBalance = { balancePT: "60" } as any;
+    const getBalance = jest
+      .spyOn(loader, "getBalance")
+      .mockImplementationOnce(async () => fromBalance)
+      .mockImplementationOnce(async () => toBalance);
+    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockImplementation(async () => undefined);
+
+    await loader.onTransferEvent(session, ["0xFROM", "0xTO", "10"], blockNumber, "Transfer");
+
+    expect(getBalance).toHaveBeenNthCalledWith(1, session, ADDRESS, "0xFROM");
+    expect(updateBalance).toHaveBeenNthCalledWith(
+      1,
+      session,
+      ADDRESS,
+      "0xFROM",
+      { balancePT: "140" },
+      blockNumber,
+      ADDRESS,
+      "Transfer",
+    );
+    expect(getBalance).toHaveBeenNthCalledWith(2, session, ADDRESS, "0xTO");
+    expect(updateBalance).toHaveBeenNthCalledWith(
+      2,
+      session,
+      ADDRESS,
+      "0xTO",
+      { balancePT: "70" },
+      blockNumber,
+      ADDRESS,
+      "Transfer",
+    );
+  });
+
+  test("Transfer: mint should increase user balance and totalSupply", async () => {
+    const provider = new ethers.providers.JsonRpcProvider();
+    const eventsListener = new EventListener();
+    const loader = new DelegableToLT(
+      CHAIN_ID,
+      provider,
+      ADDRESS,
+      { eventsListener } as any,
+      { address: ADDRESS } as any,
+    );
+    const session = new ClientSession();
+
+    const blockNumber = 15;
+
+    const userBalance = { balancePT: "60" } as any;
+    const getBalance = jest.spyOn(loader, "getBalance").mockImplementationOnce(async () => userBalance);
+    const contract = { totalSupply: "1000" } as any;
+    const getJsonModel = jest.spyOn(loader, "getJsonModel").mockImplementation(async () => contract);
+    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockImplementation(async () => undefined);
+    const updateContract = jest.spyOn(loader, "applyUpdateAndNotify").mockImplementation(async () => undefined);
+
+    await loader.onTransferEvent(session, [EMPTY_ADDRESS, "0xTO", "10"], blockNumber, "Transfer");
+
+    expect(getBalance).toHaveBeenNthCalledWith(1, session, ADDRESS, "0xTO");
+    expect(updateBalance).toHaveBeenNthCalledWith(
+      1,
+      session,
+      ADDRESS,
+      "0xTO",
+      { balancePT: "70" },
+      blockNumber,
+      ADDRESS,
+      "Transfer",
+    );
+    expect(getJsonModel).toHaveBeenCalledWith(session);
+    expect(updateContract).toHaveBeenCalledWith(session, { totalSupply: "1010" }, blockNumber, "Transfer");
+  });
+
+  test("Transfer: burn should decrease user balance and totalSupply", async () => {
+    const provider = new ethers.providers.JsonRpcProvider();
+    const eventsListener = new EventListener();
+    const loader = new DelegableToLT(
+      CHAIN_ID,
+      provider,
+      ADDRESS,
+      { eventsListener } as any,
+      { address: ADDRESS } as any,
+    );
+    const session = new ClientSession();
+
+    const blockNumber = 15;
+
+    const userBalance = { balancePT: "60" } as any;
+    const getBalance = jest.spyOn(loader, "getBalance").mockImplementationOnce(async () => userBalance);
+    const contract = { totalSupply: "1000" } as any;
+    const getJsonModel = jest.spyOn(loader, "getJsonModel").mockImplementation(async () => contract);
+    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockImplementation(async () => undefined);
+    const updateContract = jest.spyOn(loader, "applyUpdateAndNotify").mockImplementation(async () => undefined);
+
+    await loader.onTransferEvent(session, ["0xFROM", EMPTY_ADDRESS, "10"], blockNumber, "Transfer");
+
+    expect(getBalance).toHaveBeenNthCalledWith(1, session, ADDRESS, "0xFROM");
+    expect(updateBalance).toHaveBeenNthCalledWith(
+      1,
+      session,
+      ADDRESS,
+      "0xFROM",
+      { balancePT: "50" },
+      blockNumber,
+      ADDRESS,
+      "Transfer",
+    );
+    expect(getJsonModel).toHaveBeenCalledWith(session);
+    expect(updateContract).toHaveBeenCalledWith(session, { totalSupply: "990" }, blockNumber, "Transfer");
+  });
+
+  // extraneous events
+
+  test("Approval", async () => {
+    const provider = new ethers.providers.JsonRpcProvider();
+    const eventsListener = new EventListener();
+    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, { eventsListener } as any, undefined as any);
+    const session = new ClientSession();
+
+    // does nothing
+    await loader.onApprovalEvent(session, [], 15, "Approval");
+  });
+
+  test("AddedAllTimeValidatedInterfaceProjectToken", async () => {
+    const provider = new ethers.providers.JsonRpcProvider();
+    const eventsListener = new EventListener();
+    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, { eventsListener } as any, undefined as any);
+    const session = new ClientSession();
+
+    // does nothing
+    await loader.onAddedAllTimeValidatedInterfaceProjectTokenEvent(
+      session,
+      [],
+      15,
+      "AddedAllTimeValidatedInterfaceProjectToken",
+    );
   });
 });

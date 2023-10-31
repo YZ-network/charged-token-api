@@ -37,8 +37,8 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     this.ct = ct;
   }
 
-  async init(session: ClientSession, actualBlock?: number, createTransaction?: boolean) {
-    await super.init(session, actualBlock, createTransaction);
+  async init(session: ClientSession, blockNumber: number, createTransaction?: boolean) {
+    await super.init(session, blockNumber, createTransaction);
 
     if (!InterfaceProjectToken.subscribedProjects.includes(this.lastState!.projectToken)) {
       this.projectToken = new DelegableToLT(
@@ -62,7 +62,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         msg: `Added Project Token ${this.lastState!.projectToken} to instances list`,
       });
 
-      await this.projectToken.init(session, actualBlock, createTransaction);
+      await this.projectToken.init(session, blockNumber, createTransaction);
     } else {
       this.projectToken = InterfaceProjectToken.projectInstances[this.lastState!.projectToken];
       InterfaceProjectToken.projectUsageCount[this.projectToken.address]++;
@@ -81,7 +81,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     return (InterfaceProjectTokenModel as any).toModel(data);
   }
 
-  async load() {
+  async load(blockNumber: number) {
     this.log.info({
       msg: "Reading entire interface project token",
       chainId: this.chainId,
@@ -94,8 +94,8 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     return {
       // contract
       chainId: this.chainId,
-      initBlock: this.lastState !== undefined ? this.lastState.initBlock : this.actualBlock,
-      lastUpdateBlock: this.actualBlock,
+      initBlock: blockNumber,
+      lastUpdateBlock: blockNumber,
       address: this.address,
       // ownable
       owner: await ins.owner(),
@@ -123,7 +123,12 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     return (await this.instance.valueProjectTokenToFullRecharge(user)).toString();
   }
 
-  async setProjectTokenAddressOnBalances(session: ClientSession, address: string, ptAddress: string): Promise<void> {
+  async setProjectTokenAddressOnBalances(
+    session: ClientSession,
+    address: string,
+    ptAddress: string,
+    blockNumber: number,
+  ): Promise<void> {
     this.log.info({
       msg: "will update PT address on balances for all users one by one",
       address,
@@ -153,10 +158,16 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         });
       }
 
-      this.updateBalanceAndNotify(session, address, balance.user, {
-        ptAddress,
-        balancePT: userPTBalances[balance.user],
-      });
+      await this.updateBalanceAndNotify(
+        session,
+        address,
+        balance.user,
+        {
+          ptAddress,
+          balancePT: userPTBalances[balance.user],
+        },
+        blockNumber,
+      );
     }
   }
 
@@ -205,13 +216,19 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     await super.destroy();
   }
 
-  async onStartSetEvent(session: ClientSession, [dateLaunch, dateEndCliff]: any[], eventName?: string): Promise<void> {
+  async onStartSetEvent(
+    session: ClientSession,
+    [dateLaunch, dateEndCliff]: any[],
+    blockNumber: number,
+    eventName?: string,
+  ): Promise<void> {
     await this.applyUpdateAndNotify(
       session,
       {
         dateLaunch: dateLaunch.toString(),
         dateEndCliff: dateEndCliff.toString(),
       },
+      blockNumber,
       eventName,
     );
   }
@@ -219,6 +236,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   async onProjectTokenReceivedEvent(
     session: ClientSession,
     [user, value, fees, hodlRewards]: any[],
+    blockNumber: number,
     eventName?: string,
   ): Promise<void> {
     // user balances & totalSupply updated by TransferEvents
@@ -227,6 +245,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   async onIncreasedValueProjectTokenToFullRechargeEvent(
     session: ClientSession,
     [user, valueIncreased]: any[],
+    blockNumber: number,
     eventName?: string,
   ): Promise<void> {
     const oldBalance = await this.getBalance(session, this.ct.address, user);
@@ -246,6 +265,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
           valueProjectTokenToFullRecharge,
           dateOfPartiallyCharged: dateOfPartiallyCharged.toString(),
         },
+        blockNumber,
         undefined,
         eventName,
       );
@@ -255,6 +275,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   async onLTRechargedEvent(
     session: ClientSession,
     [user, value, valueProjectToken, hodlRewards]: any[],
+    blockNumber: number,
     eventName?: string,
   ): Promise<void> {
     const oldBalance = await this.getBalance(session, this.ct.address, user);
@@ -271,18 +292,25 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         {
           valueProjectTokenToFullRecharge,
         },
+        blockNumber,
         undefined,
         eventName,
       );
     }
   }
 
-  async onClaimFeesUpdatedEvent(session: ClientSession, [valuePerThousand]: any[], eventName?: string): Promise<void> {
+  async onClaimFeesUpdatedEvent(
+    session: ClientSession,
+    [valuePerThousand]: any[],
+    blockNumber: number,
+    eventName?: string,
+  ): Promise<void> {
     await this.applyUpdateAndNotify(
       session,
       {
         claimFeesPerThousandForPT: valuePerThousand.toString(),
       },
+      blockNumber,
       eventName,
     );
   }

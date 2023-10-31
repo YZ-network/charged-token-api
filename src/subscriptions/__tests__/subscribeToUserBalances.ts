@@ -40,6 +40,7 @@ describe("User balances subscriptions", () => {
       generatorCount++;
     }
 
+    const getBlockNumber = jest.fn();
     const directory = new Directory(
       undefined as unknown as EventListener,
       1337,
@@ -47,6 +48,9 @@ describe("User balances subscriptions", () => {
       "0xDIRECTORY",
     );
     Object.defineProperty(directory, "chainId", { value: 1337 });
+    Object.defineProperty(directory, "provider", { value: { getBlockNumber } });
+
+    getBlockNumber.mockImplementation(async () => 15);
 
     const generatorInstance = generator();
 
@@ -59,13 +63,14 @@ describe("User balances subscriptions", () => {
     await subscribeToUserBalancesLoading(directory);
     await waitForGeneratorToComplete(3);
 
+    expect(getBlockNumber).toBeCalledTimes(3);
     expect(pubSub.subscribe).toHaveBeenNthCalledWith(1, "UserBalance.1337/load");
     expect(mongoose.startSession).toBeCalledTimes(3);
     expect(mockSession.withTransaction).toBeCalledTimes(3);
     expect(mockSession.endSession).toBeCalledTimes(3);
-    expect(directory.loadAllUserBalances).toHaveBeenNthCalledWith(1, mockSession, "0xUSER1", "0xADDR1");
-    expect(directory.loadAllUserBalances).toHaveBeenNthCalledWith(2, mockSession, "0xUSER2", "0xADDR2");
-    expect(directory.loadAllUserBalances).toHaveBeenNthCalledWith(3, mockSession, "0xUSER3", undefined);
+    expect(directory.loadAllUserBalances).toHaveBeenNthCalledWith(1, mockSession, "0xUSER1", 15, "0xADDR1");
+    expect(directory.loadAllUserBalances).toHaveBeenNthCalledWith(2, mockSession, "0xUSER2", 15, "0xADDR2");
+    expect(directory.loadAllUserBalances).toHaveBeenNthCalledWith(3, mockSession, "0xUSER3", 15, undefined);
   });
 
   it("should catch errors on user balances loading requests", async () => {
@@ -75,6 +80,7 @@ describe("User balances subscriptions", () => {
       generatorCount++;
     }
 
+    const getBlockNumber = jest.fn();
     const directory = new Directory(
       undefined as unknown as EventListener,
       1337,
@@ -82,6 +88,9 @@ describe("User balances subscriptions", () => {
       "0xDIRECTORY",
     );
     Object.defineProperty(directory, "chainId", { value: 1337 });
+    Object.defineProperty(directory, "provider", { value: { getBlockNumber } });
+
+    getBlockNumber.mockImplementation(async () => 15);
 
     const generatorInstance = generator();
 
@@ -94,6 +103,7 @@ describe("User balances subscriptions", () => {
     await subscribeToUserBalancesLoading(directory);
     await waitForGeneratorToComplete(1);
 
+    expect(getBlockNumber).toBeCalledTimes(1);
     expect(pubSub.subscribe).toHaveBeenNthCalledWith(1, "UserBalance.1337/load");
     expect(mongoose.startSession).toBeCalledTimes(1);
     expect(directory.loadAllUserBalances).not.toBeCalled();

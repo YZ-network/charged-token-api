@@ -1,9 +1,5 @@
 import { BigNumber, ethers, type EventFilter } from "ethers";
-import {
-  type ClientSession,
-  type FlattenMaps,
-  type HydratedDocument,
-} from "mongoose";
+import { type ClientSession, type FlattenMaps, type HydratedDocument } from "mongoose";
 import { type Logger } from "pino";
 import { pubSub } from "../graphql";
 import { EventModel, UserBalanceModel, type IUserBalance } from "../models";
@@ -33,7 +29,6 @@ export abstract class AbstractLoader<T extends IOwnable> {
   readonly iface: ethers.utils.Interface;
   initBlock: number = 0;
   lastUpdateBlock: number = 0;
-  actualBlock: number = 0;
   lastState: FlattenMaps<T> | undefined;
 
   readonly eventsListener: EventListener;
@@ -50,7 +45,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
     provider: ethers.providers.JsonRpcProvider,
     address: string,
     contract: any,
-    model: IModel<T>
+    model: IModel<T>,
   ) {
     this.eventsListener = eventListener;
     this.chainId = chainId;
@@ -75,13 +70,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
    *
    * After initialization, the contract is up to date and the loader is subscribed to events.
    */
-  async init(
-    session: ClientSession,
-    actualBlock?: number,
-    createTransaction?: boolean
-  ): Promise<void> {
-    this.actualBlock = actualBlock ?? (await this.provider.getBlockNumber());
-
+  async init(session: ClientSession, blockNumber: number, createTransaction?: boolean): Promise<void> {
     const existing = await this.get(session);
 
     if (createTransaction === true) session.startTransaction();
@@ -102,8 +91,19 @@ export abstract class AbstractLoader<T extends IOwnable> {
       const eventsStartBlock = Math.max(
         this.lastUpdateBlock, // last update block should be included in case of partial events handling
         this.initBlock + 1, // init block must be skipped because it was a full loading
-        this.actualBlock - 100 // otherwise, limit the number of past blocks to query
+        blockNumber - 300, // otherwise, limit the number of past blocks to query
       );
+
+      if (eventsStartBlock > this.lastUpdateBlock) {
+        this.log.warn({
+          msg: "Skipped blocks for events syncing",
+          contract: this.constructor.name,
+          address: this.address,
+          chainId: this.chainId,
+          lastUpdateBlock: this.lastUpdateBlock,
+          eventsStartBlock,
+        });
+      }
 
       await this.loadAndSyncEvents(eventsStartBlock, session);
     } else {
@@ -113,18 +113,12 @@ export abstract class AbstractLoader<T extends IOwnable> {
         address: this.address,
         chainId: this.chainId,
       });
-      await this.saveOrUpdate(session, await this.load());
+      await this.saveOrUpdate(session, await this.load(blockNumber), blockNumber);
 
-      this.initBlock = this.actualBlock;
+      this.initBlock = blockNumber;
 
-      pubSub.publish(
-        `${this.constructor.name}.${this.chainId}.${this.address}`,
-        this.lastState
-      );
-      pubSub.publish(
-        `${this.constructor.name}.${this.chainId}`,
-        this.lastState
-      );
+      pubSub.publish(`${this.constructor.name}.${this.chainId}.${this.address}`, this.lastState);
+      pubSub.publish(`${this.constructor.name}.${this.chainId}`, this.lastState);
     }
 
     if (createTransaction === true) await session.commitTransaction();
@@ -133,14 +127,12 @@ export abstract class AbstractLoader<T extends IOwnable> {
   /**
    * Contract state full loading from blockchain method.
    */
-  abstract load(): Promise<T>;
+  abstract load(blockNumber: number): Promise<T>;
 
   /**
    * Conversion from load method result to a mongoose document.
    */
-  toModel(data: T): HydratedDocument<T> {
-    return this.model.toModel(data);
-  }
+  abstract toModel(data: T): HydratedDocument<T>;
 
   /** Checks for contract state in the database. */
   async exists(): Promise<boolean> {
@@ -160,14 +152,14 @@ export abstract class AbstractLoader<T extends IOwnable> {
         address: this.address,
       },
       undefined,
-      { session }
+      { session },
     );
   }
 
   async getBalance(
     session: ClientSession,
     address: string,
-    user: string
+    user: string,
   ): Promise<HydratedDocument<IUserBalance> | null> {
     return await UserBalanceModel.findOne(
       {
@@ -175,14 +167,14 @@ export abstract class AbstractLoader<T extends IOwnable> {
         user,
       },
       undefined,
-      { session }
+      { session },
     );
   }
 
   async getBalancesByProjectToken(
     session: ClientSession,
     ptAddress: string,
-    user: string
+    user: string,
   ): Promise<Array<HydratedDocument<IUserBalance>> | null> {
     return await UserBalanceModel.find(
       {
@@ -190,7 +182,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
         user,
       },
       undefined,
-      { session }
+      { session },
     );
   }
 
@@ -198,7 +190,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
     name: string,
     data: Record<string, string>,
     fieldsToCheck: string[],
-    logData: Record<string, any> = {}
+    logData: Record<string, any> = {},
   ) {
     const faultyFields: Record<string, string> = {};
     fieldsToCheck.forEach((field) => {
@@ -218,11 +210,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
     }
   }
 
-  protected checkBalanceUpdateAmounts(
-    data: Partial<IUserBalance>,
-    address: string,
-    user: string
-  ) {
+  protected checkBalanceUpdateAmounts(data: Partial<IUserBalance>, address: string, user: string) {
     const fieldsToCheck: Array<keyof IUserBalance> = [
       "balance",
       "balancePT",
@@ -232,15 +220,10 @@ export abstract class AbstractLoader<T extends IOwnable> {
       "valueProjectTokenToFullRecharge",
     ];
 
-    this.detectNegativeAmount(
-      "user balance",
-      data as Record<string, string>,
-      fieldsToCheck,
-      {
-        address,
-        user,
-      }
-    );
+    this.detectNegativeAmount("user balance", data as Record<string, string>, fieldsToCheck, {
+      address,
+      user,
+    });
   }
 
   protected checkUpdateAmounts(data: Partial<T> | T) {}
@@ -250,8 +233,9 @@ export abstract class AbstractLoader<T extends IOwnable> {
     address: string,
     user: string,
     balanceUpdates: Partial<IUserBalance>,
+    blockNumber: number,
     ptAddress?: string,
-    eventName?: string
+    eventName?: string,
   ): Promise<void> {
     this.checkBalanceUpdateAmounts(balanceUpdates, address, user);
 
@@ -265,9 +249,13 @@ export abstract class AbstractLoader<T extends IOwnable> {
       chainId: this.chainId,
     });
 
-    await UserBalanceModel.updateOne({ address, user }, balanceUpdates, {
-      session,
-    });
+    await UserBalanceModel.updateOne(
+      { address, user },
+      { ...balanceUpdates, lastUpdateBlock: blockNumber },
+      {
+        session,
+      },
+    );
 
     if (balanceUpdates.balancePT !== undefined && ptAddress !== undefined) {
       this.log.info({
@@ -290,19 +278,15 @@ export abstract class AbstractLoader<T extends IOwnable> {
 
       await UserBalanceModel.updateMany(
         { user, ptAddress, address: { $ne: address } },
-        { balancePT: balanceUpdates.balancePT },
+        { balancePT: balanceUpdates.balancePT, lastUpdateBlock: blockNumber },
         {
           session,
-        }
+        },
       );
     }
 
     if (ptAddress === undefined) {
-      const newBalance = (await this.getBalance(
-        session,
-        address,
-        user
-      )) as HydratedDocument<IUserBalance>;
+      const newBalance = (await this.getBalance(session, address, user)) as HydratedDocument<IUserBalance>;
 
       this.log.trace({
         msg: "sending balance update :",
@@ -312,16 +296,11 @@ export abstract class AbstractLoader<T extends IOwnable> {
         chainId: this.chainId,
       });
 
-      pubSub.publish(
-        `UserBalance.${this.chainId}.${user}`,
-        JSON.stringify([UserBalanceModel.toGraphQL(newBalance)])
-      );
+      pubSub.publish(`UserBalance.${this.chainId}.${user}`, JSON.stringify([UserBalanceModel.toGraphQL(newBalance)]));
     } else {
-      const updatedBalances = (await this.getBalancesByProjectToken(
-        session,
-        ptAddress,
-        user
-      )) as Array<HydratedDocument<IUserBalance>>;
+      const updatedBalances = (await this.getBalancesByProjectToken(session, ptAddress, user)) as Array<
+        HydratedDocument<IUserBalance>
+      >;
 
       try {
         this.log.trace({
@@ -333,10 +312,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
         });
 
         for (const b of updatedBalances) {
-          pubSub.publish(
-            `UserBalance.${this.chainId}.${user}`,
-            JSON.stringify([UserBalanceModel.toGraphQL(b)])
-          );
+          pubSub.publish(`UserBalance.${this.chainId}.${user}`, JSON.stringify([UserBalanceModel.toGraphQL(b)]));
         }
       } catch (err) {
         this.log.error({
@@ -350,47 +326,27 @@ export abstract class AbstractLoader<T extends IOwnable> {
   }
 
   /** Saves or updates the document in database with the given data. */
-  async saveOrUpdate(
-    session: ClientSession,
-    data: Partial<T> | T
-  ): Promise<HydratedDocument<T>> {
+  async saveOrUpdate(session: ClientSession, data: Partial<T> | T, blockNumber: number): Promise<HydratedDocument<T>> {
     this.checkUpdateAmounts(data);
 
     if (await this.exists()) {
       await this.model.updateOne(
         { chainId: this.chainId, address: this.address },
-        { ...data, lastUpdateBlock: this.actualBlock },
-        { session }
+        { ...data, lastUpdateBlock: blockNumber },
+        { session },
       );
     } else {
       await this.toModel(data as T).save({ session });
     }
+    this.lastUpdateBlock = blockNumber;
 
     const result = await this.get(session);
     if (result === null) {
       throw new Error("Error connecting to database !");
     }
-
-    this.lastUpdateBlock = this.actualBlock;
     this.lastState = this.model.toGraphQL(result);
 
     return result;
-  }
-
-  notifyUpdate(): void {
-    this.log.trace({
-      msg: "sending contract update",
-      data: this.lastState,
-      contract: this.constructor.name,
-      address: this.address,
-      chainId: this.chainId,
-    });
-
-    pubSub.publish(
-      `${this.constructor.name}.${this.chainId}.${this.address}`,
-      this.lastState
-    );
-    pubSub.publish(`${this.constructor.name}.${this.chainId}`, this.lastState);
   }
 
   private async loadAndSyncEvents(fromBlock: number, session: ClientSession) {
@@ -450,9 +406,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
       }
       if (missedEvents.length > filteredEvents.length) {
         this.log.info({
-          msg: `Skipped ${
-            missedEvents.length - filteredEvents.length
-          } events already played`,
+          msg: `Skipped ${missedEvents.length - filteredEvents.length} events already played`,
           // skipped: missedEvents.filter((log) => !filteredEvents.includes(log)),
           contract: this.constructor.name,
           address: this.address,
@@ -507,17 +461,16 @@ export abstract class AbstractLoader<T extends IOwnable> {
     }
   }
 
-  protected async getJsonModel(
-    session: ClientSession
-  ): Promise<FlattenMaps<T>> {
+  async getJsonModel(session: ClientSession): Promise<FlattenMaps<T>> {
     return (await this.get(session))!.toJSON();
   }
 
-  protected async applyUpdateAndNotify(
+  async applyUpdateAndNotify(
     session: ClientSession,
     data: Partial<T>,
-    eventName?: string
-  ) {
+    blockNumber: number,
+    eventName?: string,
+  ): Promise<void> {
     this.log.info({
       msg: "applying update to contract",
       eventName,
@@ -527,7 +480,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
       chainId: this.chainId,
     });
 
-    await this.saveOrUpdate(session, data);
+    await this.saveOrUpdate(session, data, blockNumber);
 
     this.log.debug({
       msg: "sending update to channel",
@@ -538,10 +491,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
       contract: this.constructor.name,
     });
 
-    pubSub.publish(
-      `${this.constructor.name}.${this.chainId}.${this.address}`,
-      this.lastState
-    );
+    pubSub.publish(`${this.constructor.name}.${this.chainId}.${this.address}`, this.lastState);
     pubSub.publish(`${this.constructor.name}.${this.chainId}`, this.lastState);
   }
 
@@ -602,22 +552,13 @@ export abstract class AbstractLoader<T extends IOwnable> {
     this.instance.removeAllListeners();
   }
 
-  async onEvent(
-    session: ClientSession,
-    name: string,
-    args: any[],
-    blockNumber: number
-  ): Promise<void> {
-    if (this.actualBlock < blockNumber) this.actualBlock = blockNumber;
-
+  async onEvent(session: ClientSession, name: string, args: any[], blockNumber: number): Promise<void> {
     const eventHandlerName = `on${name}Event` as keyof this;
 
     try {
       this.log.info({
         msg: `Running event handler for ${name}`,
-        args: args.map((arg) =>
-          arg instanceof BigNumber ? arg.toString() : arg
-        ),
+        args: args.map((arg) => (arg instanceof BigNumber ? arg.toString() : arg)),
         contract: this.constructor.name,
         address: this.address,
         chainId: this.chainId,
@@ -626,12 +567,11 @@ export abstract class AbstractLoader<T extends IOwnable> {
       await (this[eventHandlerName] as IEventHandler).apply(this, [
         session,
         args,
+        blockNumber,
         `${this.constructor.name}.${String(eventHandlerName)}`,
       ]);
     } catch (err) {
-      const msg = `Error running Event handler for event ${
-        eventHandlerName as string
-      }`;
+      const msg = `Error running Event handler for event ${eventHandlerName as string}`;
       this.log.error({
         msg,
         err,
@@ -647,13 +587,14 @@ export abstract class AbstractLoader<T extends IOwnable> {
   async onOwnershipTransferredEvent(
     session: ClientSession,
     [owner]: any[],
-    eventName?: string
+    blockNumber: number,
+    eventName?: string,
   ): Promise<void> {
     // common handler for all ownable contracts
     // we do nothing since it happens only when a ChargedToken is added, which will be read in the same session
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const data = { owner } as Partial<T>;
-    await this.applyUpdateAndNotify(session, data);
+    await this.applyUpdateAndNotify(session, data, blockNumber);
   }
 
   private filterArgs(inputArgs: Record<string, any> | undefined): any[] {

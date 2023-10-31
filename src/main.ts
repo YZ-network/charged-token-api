@@ -11,17 +11,17 @@ import { usePrometheus } from "./prometheus";
 import { rootLogger } from "./util";
 import { ChainWorker, type ChainHealth } from "./worker";
 
-export class Main {
-  private static readonly log = rootLogger.child({ name: "Main" });
-  private static readonly yogaLog = Main.log.child({ name: "yoga" });
+const log = rootLogger.child({ name: "Main" });
+const yogaLog = log.child({ name: "yoga" });
 
-  private static readonly networks = Config.networks;
+class MainClass {
+  readonly networks = Config.networks;
 
-  private static keepAlive: NodeJS.Timeout | undefined;
+  keepAlive: NodeJS.Timeout | undefined;
 
-  private static readonly workers: ChainWorker[] = [];
+  readonly workers: ChainWorker[] = [];
 
-  private static readonly yoga = createYoga({
+  readonly yoga = createYoga({
     schema,
     graphiql: Config.api.enableGraphiql
       ? {
@@ -41,22 +41,22 @@ export class Main {
     } */
     logging: {
       debug(...args) {
-        Main.yogaLog.trace({ yogaLevel: "debug", args });
+        yogaLog.trace({ yogaLevel: "debug", args });
       },
       info(...args) {
-        Main.yogaLog.trace({ yogaLevel: "info", args });
+        yogaLog.trace({ yogaLevel: "info", args });
       },
       warn(...args) {
-        Main.yogaLog.trace({ yogaLevel: "warn", args });
+        yogaLog.trace({ yogaLevel: "warn", args });
       },
       error(...args) {
-        Main.yogaLog.trace({ yogaLevel: "error", args });
+        yogaLog.trace({ yogaLevel: "error", args });
       },
     },
     plugins: [
       useLogger({
         logFn: (eventName, args) => {
-          Main.yogaLog.trace({ eventName, args });
+          yogaLog.trace({ eventName, args });
         },
       }),
       usePrometheus(),
@@ -65,16 +65,16 @@ export class Main {
   });
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  private static readonly httpServer = createServer(Main.yoga);
-  private static readonly wsServer = new WebSocketServer({
-    server: Main.httpServer,
-    path: Main.yoga.graphqlEndpoint,
+  readonly httpServer = createServer(this.yoga);
+  readonly wsServer = new WebSocketServer({
+    server: this.httpServer,
+    path: this.yoga.graphqlEndpoint,
   });
 
-  private static readonly bindAddress = Config.api.bindAddress;
-  private static readonly bindPort = Config.api.bindPort;
+  readonly bindAddress = Config.api.bindAddress;
+  readonly bindPort = Config.api.bindPort;
 
-  static init() {
+  init() {
     useServer(
       {
         execute: (args: any) => args.rootValue.execute(args),
@@ -104,24 +104,24 @@ export class Main {
           return args;
         },
       },
-      Main.wsServer,
+      this.wsServer,
     );
   }
 
-  static async start() {
-    Main.log.info(`Connecting to MongoDB at ${Config.db.uri}`);
-    await Main.connectDB()
+  async start() {
+    log.info(`Connecting to MongoDB at ${Config.db.uri}`);
+    await this.connectDB()
       .then(() => {
-        Main.log.info("MongoDB connected !");
+        log.info("MongoDB connected !");
 
-        Main.networks.forEach((network, index) => {
-          Main.connectChain(index, network.uri, network.directory, network.chainId);
+        this.networks.forEach((network, index) => {
+          this.connectChain(index, network.uri, network.directory, network.chainId);
         });
 
         this.keepAlive = setInterval(() => {
-          for (const worker of Main.workers) {
+          for (const worker of this.workers) {
             if (worker.workerStatus === WorkerStatus.DEAD) {
-              Main.log.info({
+              log.info({
                 msg: `Restarting worker on rpc ${worker.rpc} and chain ${worker.name} ${worker.chainId}`,
                 chainId: worker.chainId,
               });
@@ -130,12 +130,12 @@ export class Main {
           }
         }, Config.delays.workerRestartDelayMs);
 
-        Main.httpServer.listen(Main.bindPort, Main.bindAddress, () => {
-          Main.log.info(`GraphQL API server started at http://${Main.bindAddress}:${Main.bindPort}/`);
+        this.httpServer.listen(this.bindPort, this.bindAddress, () => {
+          log.info(`GraphQL API server started at http://${this.bindAddress}:${this.bindPort}/`);
         });
       })
       .catch((err) => {
-        Main.log.error({ msg: "Error during application startup !", err });
+        log.error({ msg: "Error during application startup !", err });
         if (this.keepAlive !== undefined) {
           clearInterval(this.keepAlive);
           this.keepAlive = undefined;
@@ -143,21 +143,23 @@ export class Main {
       });
   }
 
-  static health(): ChainHealth[] {
+  health(): ChainHealth[] {
     return this.workers.map((worker) => worker.status());
   }
 
-  private static async connectDB() {
+  private async connectDB() {
     mongoose.set("strictQuery", true);
     return await mongoose.connect(Config.db.uri);
   }
 
-  private static connectChain(index: number, rpc: string, directory: string, chainId: number) {
-    Main.log.info({
+  private connectChain(index: number, rpc: string, directory: string, chainId: number) {
+    log.info({
       msg: `Creating provider and starting worker for network ${chainId} : ${rpc} and directory ${directory}`,
       chainId,
     });
 
-    Main.workers.push(new ChainWorker(index, rpc, directory, chainId));
+    this.workers.push(new ChainWorker(index, rpc, directory, chainId));
   }
 }
+
+export const Main = new MainClass();
