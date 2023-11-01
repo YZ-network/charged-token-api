@@ -133,30 +133,35 @@ export class ChainWorker {
         this.stop();
       });
 
+    let prevWsStatus = this.wsStatus;
     this.wsWatch = setInterval(() => {
       if (this.provider?.websocket === undefined) return;
 
       this.wsStatus = WsStatus[this.provider.websocket.readyState];
 
-      if (this.providerStatus !== ProviderStatus.DISCONNECTED && ["CLOSING", "CLOSED"].includes(this.wsStatus)) {
-        log.warn({
-          msg: `Websocket crashed : ${this.name}`,
-          chainId: this.chainId,
-        });
-      }
+      if (this.wsStatus !== prevWsStatus) {
+        prevWsStatus = this.wsStatus;
 
-      if (this.providerStatus !== ProviderStatus.CONNECTING && this.wsStatus === "CONNECTING") {
-        log.info({
-          msg: `Websocket connecting : ${this.name}`,
-          chainId: this.chainId,
-        });
-      }
+        if (this.providerStatus !== ProviderStatus.DISCONNECTED && ["CLOSING", "CLOSED"].includes(this.wsStatus)) {
+          log.warn({
+            msg: `Websocket crashed : ${this.name}`,
+            chainId: this.chainId,
+          });
+        }
 
-      if (this.providerStatus !== ProviderStatus.CONNECTED && this.wsStatus === "OPEN") {
-        log.info({
-          msg: `Websocket connected : ${this.name}`,
-          chainId: this.chainId,
-        });
+        if (this.providerStatus !== ProviderStatus.CONNECTING && this.wsStatus === "CONNECTING") {
+          log.info({
+            msg: `Websocket connecting : ${this.name}`,
+            chainId: this.chainId,
+          });
+        }
+
+        if (this.providerStatus !== ProviderStatus.CONNECTED && this.wsStatus === "OPEN") {
+          log.info({
+            msg: `Websocket connected : ${this.name}`,
+            chainId: this.chainId,
+          });
+        }
       }
     }, 50);
   }

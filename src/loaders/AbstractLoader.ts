@@ -91,7 +91,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
       const eventsStartBlock = Math.max(
         this.lastUpdateBlock, // last update block should be included in case of partial events handling
         this.initBlock + 1, // init block must be skipped because it was a full loading
-        blockNumber - 300, // otherwise, limit the number of past blocks to query
+        blockNumber - 100, // otherwise, limit the number of past blocks to query
       );
 
       if (eventsStartBlock > this.lastUpdateBlock) {
