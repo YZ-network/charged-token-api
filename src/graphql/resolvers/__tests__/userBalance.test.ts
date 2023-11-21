@@ -42,7 +42,7 @@ describe("User balance query resolver", () => {
     expect(result).toStrictEqual([]);
     expect(ChargedTokenModel.count).toBeCalledWith({ chainId });
     expect(UserBalanceModel.count).toBeCalledWith({ chainId, user });
-    expect(pubSub.publish).toBeCalledWith(`UserBalance.${chainId}/load`, JSON.stringify({ user }));
+    expect(pubSub.publish).toBeCalledWith(`UserBalance.${chainId}/load`, { user });
   });
 
   it("should return specific cached balances when address is provided", async () => {
@@ -67,7 +67,7 @@ describe("User balance query resolver", () => {
 
     expect(result).toStrictEqual([]);
     expect(UserBalanceModel.exists).toBeCalledWith({ chainId, user, address });
-    expect(pubSub.publish).toBeCalledWith(`UserBalance.${chainId}/load`, JSON.stringify({ user, address }));
+    expect(pubSub.publish).toBeCalledWith(`UserBalance.${chainId}/load`, { user, address });
   });
 
   it("should subscribe to user balances updatess", async () => {

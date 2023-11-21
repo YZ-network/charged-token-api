@@ -32,12 +32,12 @@ describe("User balances subscriptions", () => {
 
   it("should subscribe to user balances loading requests", async () => {
     generatorCount = 0;
-    function* generator(): Generator<string> {
-      yield JSON.stringify({ user: "0xUSER1", address: "0xADDR1" });
+    function* generator(): Generator<object> {
+      yield { user: "0xUSER1", address: "0xADDR1" };
       generatorCount++;
-      yield JSON.stringify({ user: "0xUSER2", address: "0xADDR2" });
+      yield { user: "0xUSER2", address: "0xADDR2" };
       generatorCount++;
-      yield JSON.stringify({ user: "0xUSER3" });
+      yield { user: "0xUSER3" };
       generatorCount++;
     }
 
@@ -76,8 +76,8 @@ describe("User balances subscriptions", () => {
 
   it("should catch errors on user balances loading requests", async () => {
     generatorCount = 0;
-    function* generator(): Generator<string> {
-      yield JSON.stringify({ user: "0xUSER1", address: "0xADDR1" });
+    function* generator(): Generator<object> {
+      yield { user: "0xUSER1", address: "0xADDR1" };
       generatorCount++;
     }
 

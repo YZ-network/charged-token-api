@@ -173,7 +173,7 @@ describe("AbstractLoader: common loaders features", () => {
     );
     expect(getBalance).toBeCalledWith(session, ADDRESS, "0xUSER");
     expect(UserBalanceModel.toGraphQL).toBeCalledWith(balanceUpdate);
-    expect(pubSub.publish).toBeCalledWith("UserBalance.1337.0xUSER", JSON.stringify([jsonBalance]));
+    expect(pubSub.publish).toBeCalledWith("UserBalance.1337.0xUSER", [jsonBalance]);
   });
 
   it("should propagate changes to the PT balance and notify", async () => {
@@ -204,7 +204,7 @@ describe("AbstractLoader: common loaders features", () => {
     );
     expect(getBalancesByPT).toBeCalledWith(session, "0xPT", "0xUSER");
     expect(UserBalanceModel.toGraphQL).toBeCalledWith(balanceUpdate);
-    expect(pubSub.publish).toBeCalledWith("UserBalance.1337.0xUSER", JSON.stringify([jsonBalance]));
+    expect(pubSub.publish).toBeCalledWith("UserBalance.1337.0xUSER", [jsonBalance]);
   });
 
   it("should add loaded past events to the queue and execute them", async () => {

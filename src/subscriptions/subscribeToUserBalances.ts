@@ -15,7 +15,7 @@ export async function subscribeToUserBalancesLoading(directory: Directory): Prom
   });
 
   for await (const info of sub) {
-    const { user, address } = JSON.parse(info);
+    const { user, address } = info;
     log.info({
       msg: `Got user balances reload message for ${user}@${address}`,
       chainId: directory.chainId,

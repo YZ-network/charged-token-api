@@ -287,7 +287,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
         chainId: this.chainId,
       });
 
-      pubSub.publish(`UserBalance.${this.chainId}.${user}`, JSON.stringify([UserBalanceModel.toGraphQL(newBalance)]));
+      pubSub.publish(`UserBalance.${this.chainId}.${user}`, [UserBalanceModel.toGraphQL(newBalance)]);
     } else {
       const updatedBalances = (await this.getBalancesByProjectToken(session, ptAddress, user)) as Array<
         HydratedDocument<IUserBalance>
@@ -303,7 +303,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
         });
 
         for (const b of updatedBalances) {
-          pubSub.publish(`UserBalance.${this.chainId}.${user}`, JSON.stringify([UserBalanceModel.toGraphQL(b)]));
+          pubSub.publish(`UserBalance.${this.chainId}.${user}`, [UserBalanceModel.toGraphQL(b)]);
         }
       } catch (err) {
         this.log.error({
