@@ -156,7 +156,7 @@ export class Directory extends AbstractLoader<IDirectory> {
 
       pubSub.publish(
         `UserBalance.${this.chainId}.${user}`,
-        JSON.stringify(saved.map((balance) => UserBalanceModel.toGraphQL(balance))),
+        saved.map((balance) => UserBalanceModel.toGraphQL(balance)),
       );
     } else {
       this.log.warn({
