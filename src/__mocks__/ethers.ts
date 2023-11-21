@@ -60,11 +60,14 @@ const Contract = jest.fn().mockImplementation(() => {
 });
 
 const Interface = jest.fn().mockImplementation(() => {
-  return {};
+  return {
+    parseLog: jest.fn(),
+  };
 });
 
 const JsonRpcProvider = jest.fn().mockImplementation(() => {
   return {
+    getBlock: jest.fn(),
     getBlockNumber: jest.fn(),
   };
 });

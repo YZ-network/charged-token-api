@@ -9,6 +9,7 @@ import { Directory } from "../Directory";
 import { type EventListener } from "../EventListener";
 import { InterfaceProjectToken } from "../InterfaceProjectToken";
 
+jest.mock("../../config");
 jest.mock("../EventListener");
 jest.mock("../../topics");
 jest.mock("../../graphql");
@@ -65,7 +66,7 @@ describe("InterfaceProjectToken loader", () => {
     expect(loader.lastState).toEqual(undefined);
 
     // mocking ethers
-    (provider as any).getBlockNumber.mockImplementationOnce(() => BLOCK_NUMBER);
+    (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
     const graphqlModel = {
@@ -82,19 +83,17 @@ describe("InterfaceProjectToken loader", () => {
     };
 
     const modelInstanceMock = { save: jest.fn() };
-    (loader.model as any).toModel.mockImplementationOnce(() => modelInstanceMock);
-    (loader.model as any).exists.mockImplementationOnce(async () => null);
-    (loader.model as any).toGraphQL.mockImplementationOnce(() => {
-      return graphqlModel;
-    });
+    (loader.model as any).toModel.mockReturnValueOnce(modelInstanceMock);
+    (loader.model as any).exists.mockResolvedValueOnce(null);
+    (loader.model as any).toGraphQL.mockReturnValueOnce(graphqlModel);
 
     // mocking contract instance
-    loader.instance.owner.mockImplementationOnce(async () => OWNER);
-    loader.instance.liquidityToken.mockImplementationOnce(async () => "0xLT");
-    loader.instance.projectToken.mockImplementationOnce(async () => EMPTY_ADDRESS);
-    loader.instance.dateLaunch.mockImplementationOnce(async () => BigNumber.from(1));
-    loader.instance.dateEndCliff.mockImplementationOnce(async () => BigNumber.from(2));
-    loader.instance.claimFeesPerThousandForPT.mockImplementationOnce(async () => BigNumber.from(3));
+    loader.instance.owner.mockResolvedValueOnce(OWNER);
+    loader.instance.liquidityToken.mockResolvedValueOnce("0xLT");
+    loader.instance.projectToken.mockResolvedValueOnce(EMPTY_ADDRESS);
+    loader.instance.dateLaunch.mockResolvedValueOnce(BigNumber.from(1));
+    loader.instance.dateEndCliff.mockResolvedValueOnce(BigNumber.from(2));
+    loader.instance.claimFeesPerThousandForPT.mockResolvedValueOnce(BigNumber.from(3));
 
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
@@ -145,7 +144,7 @@ describe("InterfaceProjectToken loader", () => {
     const PREV_BLOCK_NUMBER = 15;
     const BLOCK_NUMBER = 20;
 
-    (provider as any).getBlockNumber.mockImplementationOnce(() => BLOCK_NUMBER);
+    (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
     const loadedModel = {
@@ -175,14 +174,12 @@ describe("InterfaceProjectToken loader", () => {
     };
 
     const modelInstanceMock = { save: jest.fn() };
-    (loader.model as any).toModel.mockImplementationOnce(() => modelInstanceMock);
-    (loader.model as any).findOne.mockImplementationOnce(async () => loadedModel);
-    (loader.model as any).toGraphQL.mockImplementationOnce(() => {
-      return graphqlModel;
-    });
+    (loader.model as any).toModel.mockReturnValueOnce(modelInstanceMock);
+    (loader.model as any).findOne.mockResolvedValueOnce(loadedModel);
+    (loader.model as any).toGraphQL.mockReturnValueOnce(graphqlModel);
 
     // mocking contract instance
-    (loader.instance as any).queryFilter.mockImplementationOnce(() => []);
+    (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
 
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
@@ -234,7 +231,7 @@ describe("InterfaceProjectToken loader", () => {
     // mocking ethers
     const BLOCK_NUMBER = 20;
 
-    (provider as any).getBlockNumber.mockImplementationOnce(() => BLOCK_NUMBER);
+    (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
     const PT_ADDRESS = "0xPT";
@@ -252,12 +249,12 @@ describe("InterfaceProjectToken loader", () => {
     };
 
     const modelInstanceMock = { save: jest.fn() };
-    (loader.model as any).toModel.mockImplementationOnce(() => modelInstanceMock);
-    (loader.model as any).findOne.mockImplementationOnce(async () => loadedModel);
-    (loader.model as any).toGraphQL.mockImplementationOnce(() => loadedModel);
+    (loader.model as any).toModel.mockReturnValueOnce(modelInstanceMock);
+    (loader.model as any).findOne.mockResolvedValueOnce(loadedModel);
+    (loader.model as any).toGraphQL.mockReturnValueOnce(loadedModel);
 
     // mocking contract instance
-    (loader.instance as any).queryFilter.mockImplementationOnce(() => []);
+    (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
 
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
@@ -292,7 +289,7 @@ describe("InterfaceProjectToken loader", () => {
     // mocking ethers
     const BLOCK_NUMBER = 20;
 
-    (provider as any).getBlockNumber.mockImplementationOnce(() => BLOCK_NUMBER);
+    (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
     const loadedModel = {
@@ -309,12 +306,12 @@ describe("InterfaceProjectToken loader", () => {
     };
 
     const modelInstanceMock = { save: jest.fn() };
-    (loader.model as any).toModel.mockImplementationOnce(() => modelInstanceMock);
-    (loader.model as any).findOne.mockImplementationOnce(async () => loadedModel);
-    (loader.model as any).toGraphQL.mockImplementationOnce(() => loadedModel);
+    (loader.model as any).toModel.mockReturnValueOnce(modelInstanceMock);
+    (loader.model as any).findOne.mockResolvedValueOnce(loadedModel);
+    (loader.model as any).toGraphQL.mockReturnValueOnce(loadedModel);
 
     // mocking contract instance
-    (loader.instance as any).queryFilter.mockImplementationOnce(() => []);
+    (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
 
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
@@ -353,7 +350,7 @@ describe("InterfaceProjectToken loader", () => {
     const ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader);
     const loader = new InterfaceProjectToken(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader);
 
-    (loader.instance as any).valueProjectTokenToFullRecharge.mockImplementationOnce(async () => BigNumber.from(0));
+    (loader.instance as any).valueProjectTokenToFullRecharge.mockResolvedValueOnce(BigNumber.from(0));
 
     await loader.loadValueProjectTokenToFullRecharge("0xUSER");
 
@@ -372,14 +369,11 @@ describe("InterfaceProjectToken loader", () => {
       { address: "0xCT", user: "0xUSER1" },
       { address: "0xCT", user: "0xUSER2" },
     ];
-    (UserBalanceModel as any).find.mockImplementationOnce(async () => balancesToUpdate);
+    (UserBalanceModel as any).find.mockResolvedValueOnce(balancesToUpdate);
 
-    const loadPTBalance = jest
-      .spyOn(loader, "loadUserBalancePT")
-      .mockImplementationOnce(async () => "1")
-      .mockImplementationOnce(async () => "2");
+    const loadPTBalance = jest.spyOn(loader, "loadUserBalancePT").mockResolvedValueOnce("1").mockResolvedValueOnce("2");
 
-    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockImplementation(async () => undefined);
+    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockResolvedValue(undefined);
 
     await loader.setProjectTokenAddressOnBalances(session, "0xCT", "0xPT", BLOCK_NUMBER);
 
@@ -457,9 +451,10 @@ describe("InterfaceProjectToken loader", () => {
     const loader = new InterfaceProjectToken(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader);
     const session = new ClientSession();
 
-    (loader.model as any).exists.mockImplementationOnce(async () => "not_null");
-    (loader.model as any).toGraphQL.mockImplementationOnce(() => loadedModel);
     const loadedModel = sampleData();
+
+    (loader.model as any).exists.mockResolvedValueOnce("not_null");
+    (loader.model as any).toGraphQL.mockReturnValueOnce(loadedModel);
 
     const dateLaunch = BigNumber.from("10");
     const dateEndCliff = BigNumber.from("20");
@@ -506,11 +501,9 @@ describe("InterfaceProjectToken loader", () => {
     const balance = {
       valueProjectTokenToFullRecharge: "100",
     };
-    (UserBalanceModel as any).findOne.mockImplementationOnce(async () => balance);
-    ctLoader.instance.userLiquiToken.mockImplementationOnce(async () => {
-      return { dateOfPartiallyCharged: BigNumber.from("150") };
-    });
-    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockImplementation(async () => undefined);
+    (UserBalanceModel as any).findOne.mockResolvedValueOnce(balance);
+    ctLoader.instance.userLiquiToken.mockResolvedValueOnce({ dateOfPartiallyCharged: BigNumber.from("150") });
+    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockResolvedValue(undefined);
 
     await loader.onIncreasedValueProjectTokenToFullRechargeEvent(
       session,
@@ -549,8 +542,8 @@ describe("InterfaceProjectToken loader", () => {
       valueProjectTokenToFullRecharge: "150",
     } as any;
 
-    const getBalance = jest.spyOn(loader, "getBalance").mockImplementationOnce(async () => balance);
-    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockImplementationOnce(async () => undefined);
+    const getBalance = jest.spyOn(loader, "getBalance").mockResolvedValueOnce(balance);
+    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockResolvedValueOnce(undefined);
 
     await loader.onLTRechargedEvent(session, ["0xUSER", "999", "50", "777"], BLOCK_NUMBER, "LTRecharged");
 
@@ -577,9 +570,7 @@ describe("InterfaceProjectToken loader", () => {
     const loader = new InterfaceProjectToken(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader);
     const session = new ClientSession();
 
-    const applyUpdateAndNotify = jest
-      .spyOn(loader, "applyUpdateAndNotify")
-      .mockImplementationOnce(async () => undefined);
+    const applyUpdateAndNotify = jest.spyOn(loader, "applyUpdateAndNotify").mockResolvedValueOnce(undefined);
 
     await loader.onClaimFeesUpdatedEvent(session, ["1234"], BLOCK_NUMBER, "ClaimFeesUpdated");
 

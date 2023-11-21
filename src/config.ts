@@ -25,7 +25,7 @@ interface JsonDelaysConfig {
   rpcRetryDelayMs: number;
 }
 
-interface JsonConfig {
+export interface JsonConfig {
   db: JsonDbConfig;
   api: JsonApiConfig;
   networks: JsonNetworkConfig[];

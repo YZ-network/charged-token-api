@@ -2,6 +2,7 @@ import { type ethers } from "ethers";
 import mongoose, { type ClientSession } from "mongoose";
 import { type Logger } from "pino";
 import { EventHandlerStatus } from "../enums";
+import { getBlockDate } from "../functions";
 import { EventModel } from "../models";
 import { rootLogger } from "../util";
 import { type AbstractLoader } from "./AbstractLoader";
@@ -18,11 +19,10 @@ type EventQueue = Array<{
 export class EventListener {
   private readonly _queue: EventQueue = [];
 
-  private readonly log: Logger = rootLogger.child({ name: "EventListener" });
+  readonly log: Logger = rootLogger.child({ name: "EventListener" });
   private readonly _timer: NodeJS.Timeout | undefined;
   private _running = false;
   private _eventsAdded = false;
-  private readonly blockDates: Record<number, string> = {};
   private _executingEventHandlers = false;
 
   get queue(): EventQueue {
@@ -58,20 +58,28 @@ export class EventListener {
             this._eventsAdded = false;
           }
         }
-      }, 50);
+      }, 100);
     }
-  }
-
-  private async getBlockDate(blockNumber: number, provider: ethers.providers.JsonRpcProvider): Promise<string> {
-    if (this.blockDates[blockNumber] === undefined) {
-      const block = await provider.getBlock(blockNumber);
-      const blockDate = new Date(block.timestamp * 1000).toISOString();
-      this.blockDates[blockNumber] = blockDate;
-    }
-    return this.blockDates[blockNumber];
   }
 
   async queueLog(eventName: string, log: ethers.providers.Log, loader: AbstractLoader<any>) {
+    const decodedLog = loader.iface.parseLog(log);
+    const args = [...decodedLog.args.values()].map((arg) => arg.toString());
+
+    this.log.info({
+      msg: "queuing event",
+      contract: this.constructor.name,
+      eventName,
+      address: loader.address,
+      chainId: loader.chainId,
+      blockNumber: log.blockNumber,
+      txIndex: log.transactionIndex,
+      txHash: log.transactionHash,
+      logIndex: log.logIndex,
+      args,
+      queueSize: this.queue.length,
+    });
+
     if (
       (await EventModel.exists({
         chainId: loader.chainId,
@@ -86,6 +94,45 @@ export class EventListener {
       );
     }
 
+    this.pushEventAndSort(loader, eventName, log);
+
+    await EventModel.create({
+      status: EventHandlerStatus.QUEUED,
+      chainId: loader.chainId,
+      address: log.address,
+      blockNumber: log.blockNumber,
+      blockDate: await getBlockDate(log.blockNumber, loader.provider),
+      txHash: log.transactionHash,
+      txIndex: log.transactionIndex,
+      logIndex: log.logIndex,
+      name: eventName,
+      contract: loader.constructor.name,
+      topics: log.topics,
+      args,
+    });
+  }
+
+  private pushEventAndSort(
+    loader: AbstractLoader<any>,
+    eventName: string,
+    log: ethers.providers.Log,
+    requeued: boolean = false,
+  ): void {
+    if (requeued) {
+      this.log.info({
+        msg: "putting back event in the queue",
+        contract: this.constructor.name,
+        eventName,
+        address: loader.address,
+        chainId: loader.chainId,
+        blockNumber: log.blockNumber,
+        txIndex: log.transactionIndex,
+        txHash: log.transactionHash,
+        logIndex: log.logIndex,
+        queueSize: this.queue.length,
+      });
+    }
+
     this._queue.push({
       eventName,
       log,
@@ -94,37 +141,16 @@ export class EventListener {
       ev: log.logIndex,
       loader,
     });
-
-    const decodedLog = loader.iface.parseLog(log);
-    const args = [...decodedLog.args.values()];
-
-    await EventModel.create({
-      status: EventHandlerStatus.QUEUED,
-      chainId: loader.chainId,
-      address: log.address,
-      blockNumber: log.blockNumber,
-      blockDate: await this.getBlockDate(log.blockNumber, loader.provider),
-      txHash: log.transactionHash,
-      txIndex: log.transactionIndex,
-      logIndex: log.logIndex,
-      name: eventName,
-      contract: loader.constructor.name,
-      topics: log.topics,
-      args: args.map((arg) => arg.toString()),
-    });
+    this._eventsAdded = true;
 
     // sort queued events in case they come unordered
-    this.queue.sort((a, b) => {
+    this._queue.sort((a, b) => {
       if (a.block < b.block) return -1;
       if (a.block > b.block) return 1;
-      if (a.tx < b.tx) return -1;
-      if (a.tx > b.tx) return 1;
       if (a.ev < b.ev) return -1;
       if (a.ev > b.ev) return 1;
-      throw new Error(`Found duplicate event while sorting : ${a} ${b}`);
+      throw new Error(`Found duplicate event while sorting : ${JSON.stringify(a.log)} ${JSON.stringify(b.log)}`);
     });
-
-    this._eventsAdded = true;
   }
 
   async executePendingLogs() {
@@ -134,56 +160,96 @@ export class EventListener {
 
     const session = await mongoose.startSession();
 
-    try {
-      let lastBlockNumber = 0;
-      while (this._queue.length > 0) {
-        const [{ eventName, log, loader }] = this._queue;
+    let lastBlockNumber = 0;
+    while (this.queue.length > 0) {
+      const [{ eventName, log, loader }] = this._queue.splice(0, 1);
 
-        if (lastBlockNumber > 0 && lastBlockNumber !== log.blockNumber) {
-          loader.log.info({
-            msg: "Got events spanned on different blocks, stopping now",
-            chainId: loader.chainId,
-            blockNumber: log.blockNumber,
-            lastBlockNumber,
-          });
-          break;
-        }
+      this.log.info({
+        msg: "Popped event from queue",
+        chainId: loader.chainId,
+        address: loader.address,
+        eventName,
+        blockNumber: log.blockNumber,
+        txIndex: log.transactionIndex,
+        logIndex: log.logIndex,
+        txHash: log.transactionHash,
+        queueSize: this.queue.length,
+      });
 
-        lastBlockNumber = log.blockNumber;
+      if (
+        (await EventModel.exists({
+          chainId: loader.chainId,
+          address: loader.address,
+          blockNumber: log.blockNumber,
+          txIndex: log.transactionIndex,
+          logIndex: log.logIndex,
+        })) === null
+      ) {
+        this.log.warn({
+          msg: "Tried to handle event before saving it in database !",
+          chainId: loader.chainId,
+          address: loader.address,
+          blockNumber: log.blockNumber,
+          lastBlockNumber,
+          eventName,
+          txIndex: log.transactionIndex,
+          logIndex: log.logIndex,
+          txHash: log.transactionHash,
+        });
 
-        const decodedLog = loader.iface.parseLog(log);
-        const args = [...decodedLog.args.values()];
-
-        try {
-          session.startTransaction();
-
-          await loader.onEvent(session, eventName, args, log.blockNumber);
-          await this.updateEventStatus(session, log, loader.chainId, EventHandlerStatus.SUCCESS);
-          this._queue.splice(0, 1);
-
-          await session.commitTransaction();
-        } catch (err) {
-          await session.abortTransaction();
-
-          loader.log.error({
-            msg: `Error running event handler on chain ${loader.chainId}`,
-            err,
-            eventName,
-            args,
-            chainId: loader.chainId,
-            blockNumber: log.blockNumber,
-          });
-          await this.updateEventStatus(session, log, loader.chainId, EventHandlerStatus.FAILURE);
-          break;
-        }
+        this.pushEventAndSort(loader, eventName, log, true);
+        break;
       }
 
-      await session.endSession();
-      this._running = false;
-    } catch (err) {
-      this.log.error({ msg: "Event handlers execution failed !", err });
-      throw err;
+      if (lastBlockNumber > 0 && lastBlockNumber !== log.blockNumber) {
+        this.log.info({
+          msg: "Got events spanned on different blocks, stopping now",
+          chainId: loader.chainId,
+          address: loader.address,
+          blockNumber: log.blockNumber,
+          lastBlockNumber,
+        });
+
+        this.pushEventAndSort(loader, eventName, log, true);
+        break;
+      }
+
+      lastBlockNumber = log.blockNumber;
+
+      const decodedLog = loader.iface.parseLog(log);
+      const args = [...decodedLog.args.values()];
+
+      try {
+        session.startTransaction();
+
+        await loader.onEvent(session, eventName, args, log.blockNumber, log);
+        await this.updateEventStatus(session, log, loader.chainId, EventHandlerStatus.SUCCESS);
+
+        await session.commitTransaction();
+      } catch (err) {
+        this.log.error({
+          msg: `Error running event handler on chain ${loader.chainId}`,
+          err,
+          eventName,
+          args,
+          chainId: loader.chainId,
+          blockNumber: log.blockNumber,
+          txIndex: log.transactionIndex,
+          logIndex: log.logIndex,
+          txHash: log.transactionHash,
+        });
+
+        await session.abortTransaction();
+
+        // automatically requeue the failing event
+        this.pushEventAndSort(loader, eventName, log, true);
+
+        break;
+      }
     }
+
+    await session.endSession();
+    this._running = false;
   }
 
   destroy() {

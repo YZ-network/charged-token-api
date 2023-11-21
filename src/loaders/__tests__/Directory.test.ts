@@ -12,6 +12,7 @@ import { ChargedToken } from "../ChargedToken";
 import { Directory } from "../Directory";
 import { EventListener } from "../EventListener";
 
+jest.mock("../../config");
 jest.mock("../EventListener");
 jest.mock("../../topics");
 jest.mock("../../graphql");
@@ -73,23 +74,21 @@ describe("Directory loader", () => {
     expect(loader.lastState).toEqual(undefined);
 
     // mocking ethers
-    (provider as any).getBlockNumber.mockImplementationOnce(() => BLOCK_NUMBER);
+    (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
     const graphqlModel = sampleGraphqlData();
 
     const modelInstanceMock = { save: jest.fn() };
-    (loader.model as any).toModel.mockImplementationOnce(() => modelInstanceMock);
-    (loader.model as any).exists.mockImplementationOnce(async () => null);
-    (loader.model as any).toGraphQL.mockImplementationOnce(() => {
-      return graphqlModel;
-    });
+    (loader.model as any).toModel.mockReturnValueOnce(modelInstanceMock);
+    (loader.model as any).exists.mockResolvedValueOnce(null);
+    (loader.model as any).toGraphQL.mockReturnValueOnce(graphqlModel);
 
     // mocking contract instance
-    loader.instance.countWhitelistedProjectOwners.mockImplementationOnce(async () => BigNumber.from(0));
-    loader.instance.countLTContracts.mockImplementationOnce(async () => BigNumber.from(0));
-    loader.instance.owner.mockImplementationOnce(async () => OWNER);
-    loader.instance.areUserFunctionsDisabled.mockImplementationOnce(async () => false);
+    loader.instance.countWhitelistedProjectOwners.mockResolvedValueOnce(BigNumber.from(0));
+    loader.instance.countLTContracts.mockResolvedValueOnce(BigNumber.from(0));
+    loader.instance.owner.mockResolvedValueOnce(OWNER);
+    loader.instance.areUserFunctionsDisabled.mockResolvedValueOnce(false);
 
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
@@ -134,7 +133,7 @@ describe("Directory loader", () => {
     const PREV_BLOCK_NUMBER = 15;
     const BLOCK_NUMBER = 20;
 
-    (provider as any).getBlockNumber.mockImplementationOnce(() => BLOCK_NUMBER);
+    (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
     const loadedModel = {
@@ -166,14 +165,12 @@ describe("Directory loader", () => {
     };
 
     const modelInstanceMock = { save: jest.fn() };
-    (loader.model as any).toModel.mockImplementationOnce(() => modelInstanceMock);
-    (loader.model as any).findOne.mockImplementationOnce(async () => loadedModel);
-    (loader.model as any).toGraphQL.mockImplementationOnce(() => {
-      return graphqlModel;
-    });
+    (loader.model as any).toModel.mockReturnValueOnce(modelInstanceMock);
+    (loader.model as any).findOne.mockResolvedValueOnce(loadedModel);
+    (loader.model as any).toGraphQL.mockReturnValueOnce(graphqlModel);
 
     // mocking contract instance
-    (loader.instance as any).queryFilter.mockImplementationOnce(() => []);
+    (loader.instance as any).queryFilter.mockResolvedValueOnce(() => []);
 
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
@@ -220,7 +217,7 @@ describe("Directory loader", () => {
     const PREV_BLOCK_NUMBER = 15;
     const BLOCK_NUMBER = 20;
 
-    (provider as any).getBlockNumber.mockImplementationOnce(() => BLOCK_NUMBER);
+    (provider as any).getBlockNumber.mockResolvedValueOnce(() => BLOCK_NUMBER);
 
     // mocking mongo model
     const loadedModel = {
@@ -252,14 +249,12 @@ describe("Directory loader", () => {
     };
 
     const modelInstanceMock = { save: jest.fn() };
-    (loader.model as any).toModel.mockImplementationOnce(() => modelInstanceMock);
-    (loader.model as any).findOne.mockImplementationOnce(async () => loadedModel);
-    (loader.model as any).toGraphQL.mockImplementationOnce(() => {
-      return graphqlModel;
-    });
+    (loader.model as any).toModel.mockReturnValueOnce(modelInstanceMock);
+    (loader.model as any).findOne.mockResolvedValueOnce(loadedModel);
+    (loader.model as any).toGraphQL.mockReturnValueOnce(graphqlModel);
 
     // mocking contract instance
-    (loader.instance as any).queryFilter.mockImplementationOnce(() => []);
+    (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
 
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
@@ -285,14 +280,14 @@ describe("Directory loader", () => {
 
     const ctBalance = { address: ctAddress, balance: "xxx" };
 
-    (ct as any).loadUserBalances.mockImplementationOnce(async () => ctBalance);
-    (UserBalanceModel as any).exists.mockImplementationOnce(async () => null);
+    (ct as any).loadUserBalances.mockResolvedValueOnce(ctBalance);
+    (UserBalanceModel as any).exists.mockResolvedValueOnce(null);
     const mockModel = { save: jest.fn(async () => undefined) };
-    (UserBalanceModel as any).toModel.mockImplementationOnce(() => mockModel);
-    (UserBalanceModel as any).find.mockImplementationOnce(() => {
-      return { exec: jest.fn(async () => [ctBalance]) };
+    (UserBalanceModel as any).toModel.mockReturnValueOnce(mockModel);
+    (UserBalanceModel as any).find.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue([ctBalance]),
     });
-    (UserBalanceModel as any).toGraphQL.mockImplementationOnce(async () => ctBalance);
+    (UserBalanceModel as any).toGraphQL.mockResolvedValueOnce(ctBalance);
 
     // tested function
     const result = await loader.loadAllUserBalances(session, userAddress, BLOCK_NUMBER, ctAddress);
@@ -329,14 +324,10 @@ describe("Directory loader", () => {
 
     const ctBalance = { address: ctAddress, balance: "xxx" };
 
-    (ct as any).loadUserBalances.mockImplementationOnce(async () => ctBalance);
-    (UserBalanceModel as any).exists.mockImplementationOnce(async () => {
-      return {};
-    });
-    (UserBalanceModel as any).find.mockImplementationOnce(() => {
-      return { exec: jest.fn(async () => [ctBalance]) };
-    });
-    (UserBalanceModel as any).toGraphQL.mockImplementationOnce(async () => ctBalance);
+    (ct as any).loadUserBalances.mockResolvedValueOnce(ctBalance);
+    (UserBalanceModel as any).exists.mockResolvedValueOnce({});
+    (UserBalanceModel as any).find.mockReturnValueOnce({ exec: jest.fn().mockResolvedValue([ctBalance]) });
+    (UserBalanceModel as any).toGraphQL.mockResolvedValueOnce(ctBalance);
 
     // tested function
     const result = await loader.loadAllUserBalances(session, userAddress, BLOCK_NUMBER, ctAddress);
@@ -411,7 +402,17 @@ describe("Directory loader", () => {
     const BLOCK_NUMBER = 15;
 
     // handler under test
-    await loader.onEvent(session, eventName, ["any_arg"], BLOCK_NUMBER);
+    await loader.onEvent(session, eventName, ["any_arg"], BLOCK_NUMBER, {
+      blockNumber: BLOCK_NUMBER,
+      blockHash: "0x",
+      address: "0x",
+      data: "0x",
+      logIndex: 0,
+      transactionIndex: 0,
+      removed: false,
+      topics: [],
+      transactionHash: "0x",
+    });
 
     expect(eventHandler).toHaveBeenNthCalledWith(
       1,
@@ -430,8 +431,8 @@ describe("Directory loader", () => {
 
     const loadedModel = sampleData();
 
-    (loader.model as any).exists.mockImplementationOnce(async () => "not_null");
-    (loader.model as any).toGraphQL.mockImplementationOnce(() => loadedModel);
+    (loader.model as any).exists.mockResolvedValueOnce("not_null");
+    (loader.model as any).toGraphQL.mockReturnValueOnce(loadedModel);
 
     await loader.onUserFunctionsAreDisabledEvent(session, [true], BLOCK_NUMBER, "UserFunctionsAreDisabled");
 
@@ -466,10 +467,10 @@ describe("Directory loader", () => {
     };
 
     const modelInstanceMock = { toJSON: jest.fn(() => loadedModel) };
-    (loader.model as any).findOne.mockImplementationOnce(async () => modelInstanceMock);
+    (loader.model as any).findOne.mockResolvedValueOnce(modelInstanceMock);
 
-    (loader.model as any).exists.mockImplementationOnce(async () => "not_null");
-    (loader.model as any).toGraphQL.mockImplementationOnce(() => loadedModel);
+    (loader.model as any).exists.mockResolvedValueOnce("not_null");
+    (loader.model as any).toGraphQL.mockReturnValueOnce(loadedModel);
 
     await loader.onProjectOwnerWhitelistedEvent(
       session,
@@ -521,22 +522,20 @@ describe("Directory loader", () => {
     };
 
     // mocking init
-    (loader.model as any).findOne.mockImplementationOnce(async () => loadedModel);
-    (loader.model as any).toGraphQL.mockImplementationOnce(() => {
-      return graphqlModel;
-    });
-    (loader.instance as any).queryFilter.mockImplementationOnce(() => []);
+    (loader.model as any).findOne.mockResolvedValueOnce(loadedModel);
+    (loader.model as any).toGraphQL.mockReturnValueOnce(graphqlModel);
+    (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
 
     // initializing directory
     await loader.init(session, BLOCK_NUMBER, true);
 
     // mocking event handler
     const modelInstanceMock = { save: jest.fn(), toJSON: jest.fn(() => loadedModel) };
-    (loader.model as any).findOne.mockImplementationOnce(async () => modelInstanceMock);
-    (loader.model as any).exists.mockImplementationOnce(async () => "not_null");
-    (loader.model as any).toGraphQL.mockImplementationOnce(() => loadedModel);
+    (loader.model as any).findOne.mockResolvedValueOnce(modelInstanceMock);
+    (loader.model as any).exists.mockResolvedValueOnce("not_null");
+    (loader.model as any).toGraphQL.mockReturnValueOnce(loadedModel);
 
-    loader.instance.projectRelatedToLT.mockImplementationOnce(async () => PROJECT);
+    loader.instance.projectRelatedToLT.mockResolvedValueOnce(PROJECT);
 
     // handler under test
     await loader.onAddedLTContractEvent(session, [CONTRACT], BLOCK_NUMBER, "AddedLTContract");
@@ -610,11 +609,11 @@ describe("Directory loader", () => {
       projectToken: "0xPT",
     };
 
-    loadedModel.toJSON.mockImplementationOnce(() => loadedModel);
+    loadedModel.toJSON.mockReturnValueOnce(loadedModel);
 
-    (DirectoryModel as any).findOne.mockImplementationOnce(async () => loadedModel);
-    (InterfaceProjectTokenModel as any).findOne.mockImplementationOnce(async () => loadedInterface);
-    (DelegableToLTModel as any).count.mockImplementationOnce(async () => 1);
+    (DirectoryModel as any).findOne.mockResolvedValueOnce(loadedModel);
+    (InterfaceProjectTokenModel as any).findOne.mockResolvedValueOnce(loadedInterface);
+    (DelegableToLTModel as any).count.mockResolvedValueOnce(1);
 
     const updateFunc = jest.spyOn(loader, "applyUpdateAndNotify");
 
@@ -695,8 +694,8 @@ describe("Directory loader", () => {
       toJSON: jest.fn(),
     };
 
-    loadedModel.toJSON.mockImplementationOnce(() => loadedModel);
-    (DirectoryModel as any).findOne.mockImplementationOnce(async () => loadedModel);
+    loadedModel.toJSON.mockReturnValueOnce(loadedModel);
+    (DirectoryModel as any).findOne.mockResolvedValueOnce(loadedModel);
 
     // handler under test
     await loader.onRemovedProjectByAdminEvent(session, [ownerToRemove], BLOCK_NUMBER, "RemovedProjectByAdmin");
@@ -743,8 +742,8 @@ describe("Directory loader", () => {
       toJSON: jest.fn(),
     };
 
-    loadedModel.toJSON.mockImplementationOnce(() => loadedModel);
-    (DirectoryModel as any).findOne.mockImplementationOnce(async () => loadedModel);
+    loadedModel.toJSON.mockReturnValueOnce(loadedModel);
+    (DirectoryModel as any).findOne.mockResolvedValueOnce(loadedModel);
 
     // handler under test
     await loader.onChangedProjectOwnerAccountEvent(
@@ -796,8 +795,8 @@ describe("Directory loader", () => {
       toJSON: jest.fn(),
     };
 
-    loadedModel.toJSON.mockImplementationOnce(() => loadedModel);
-    (DirectoryModel as any).findOne.mockImplementationOnce(async () => loadedModel);
+    loadedModel.toJSON.mockReturnValueOnce(loadedModel);
+    (DirectoryModel as any).findOne.mockResolvedValueOnce(loadedModel);
 
     // handler under test
     await loader.onChangedProjectNameEvent(session, [oldName, newName], BLOCK_NUMBER, "ChangedProjectName");
@@ -838,8 +837,8 @@ describe("Directory loader", () => {
       toJSON: jest.fn(),
     };
 
-    loadedModel.toJSON.mockImplementationOnce(() => loadedModel);
-    (DirectoryModel as any).findOne.mockImplementationOnce(async () => loadedModel);
+    loadedModel.toJSON.mockReturnValueOnce(loadedModel);
+    (DirectoryModel as any).findOne.mockResolvedValueOnce(loadedModel);
 
     // handler under test
     await loader.onAllocatedLTToProjectEvent(session, [newCT, "Project 2"], BLOCK_NUMBER, "AllocatedLTToProject");
@@ -882,8 +881,8 @@ describe("Directory loader", () => {
       toJSON: jest.fn(),
     };
 
-    loadedModel.toJSON.mockImplementationOnce(() => loadedModel);
-    (DirectoryModel as any).findOne.mockImplementationOnce(async () => loadedModel);
+    loadedModel.toJSON.mockReturnValueOnce(loadedModel);
+    (DirectoryModel as any).findOne.mockResolvedValueOnce(loadedModel);
 
     // handler under test
     await loader.onAllocatedProjectOwnerToProjectEvent(

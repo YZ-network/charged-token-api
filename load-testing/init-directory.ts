@@ -13,6 +13,9 @@ const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
 const dirOwnerWallet = new Wallet(DIR_OWNER_PK).connect(provider);
 const ownerWallet = new Wallet(OWNER_PK).connect(provider);
 
+// number of charge token contracts to deploy
+const ctCount = 10;
+
 // prepare some maps for solc linking resolution
 const SOURCE_MAP: Record<string, string> = {
   AddressSet: "library/AddressSet.sol:AddressSet",
@@ -77,7 +80,7 @@ async function deployDirectory(): Promise<{ directory: ethers.Contract; librarie
   const linkedBytecode = linkBytecode(bytecode, resolveLibraries(bytecode, libraries));
   const contractFactory = new ethers.ContractFactory(contracts.ContractsDirectory.abi, linkedBytecode, dirOwnerWallet);
 
-  console.log("Deploying directory");
+  console.log("Deploying directory at block", await provider.getBlockNumber());
   const directory = await contractFactory.deploy();
   await directory.deployTransaction.wait();
 
@@ -88,6 +91,8 @@ async function deployDirectory(): Promise<{ directory: ethers.Contract; librarie
   console.log("Whitelisting project owner");
   const tx = await directory.whitelistProjectOwner(ownerWallet.address, "Test");
   await tx.wait();
+
+  console.log("Completed directory deployment at block", await provider.getBlockNumber());
 
   return { directory, libraries };
 }
@@ -119,18 +124,32 @@ async function deployChargedToken(
 }
 
 /**
- * Deploys a project token and an interface to link it with the charged token.
+ * Deploys a project token if needed and an interface to link it with the charged token.
  * @param ct
  * @param libraries
+ * @returns address of the project token
  */
-async function createInterface(ct: ethers.Contract, libraries: Record<string, string>) {
-  console.log("Deploying project token");
-  const ptBytecode = contracts.ProjectToken.evm.bytecode.object;
-  const ptLinkedBytecode = linkBytecode(ptBytecode, resolveLibraries(ptBytecode, libraries));
-  const ptContractFactory = new ethers.ContractFactory(contracts.ProjectToken.abi, ptLinkedBytecode, ownerWallet);
+async function createInterface(
+  ct: ethers.Contract,
+  libraries: Record<string, string>,
+  ptAddress?: string,
+): Promise<string> {
+  let pt: ethers.Contract;
 
-  const pt = await ptContractFactory.deploy("Final Test", "TST");
-  await pt.deployTransaction.wait();
+  if (ptAddress === undefined) {
+    console.log("Deploying project token");
+    const ptBytecode = contracts.ProjectToken.evm.bytecode.object;
+    const ptLinkedBytecode = linkBytecode(ptBytecode, resolveLibraries(ptBytecode, libraries));
+    const ptContractFactory = new ethers.ContractFactory(contracts.ProjectToken.abi, ptLinkedBytecode, ownerWallet);
+
+    pt = await ptContractFactory.deploy("Final Test", "TST");
+    await pt.deployTransaction.wait();
+
+    ptAddress = pt.address;
+  } else {
+    console.log("Using existing project token", ptAddress);
+    pt = new ethers.Contract(ptAddress, contracts.DelegableToLT.abi, ownerWallet);
+  }
 
   console.log("Deploying interface");
   const ifBytecode = contracts.InterfaceProjectToken.evm.bytecode.object;
@@ -153,6 +172,8 @@ async function createInterface(ct: ethers.Contract, libraries: Record<string, st
 
   const tx2 = await ct.setInterfaceProjectToken(iface.address);
   await tx2.wait();
+
+  return ptAddress;
 }
 
 /**
@@ -177,17 +198,16 @@ async function deployLibrary(name: string, contract: any): Promise<string> {
 }
 
 deployDirectory()
-  .then(({ directory, libraries }) =>
-    deployChargedToken(directory, libraries)
-      .then((ct) =>
-        createInterface(ct, libraries)
-          .then(() =>
-            console.log(
-              "Everything is ready for the load test. Don't forget to copy setup addresses to the api and dApp if needed.",
-            ),
-          )
-          .catch((err) => console.error(err)),
-      )
-      .catch((err) => console.error(err)),
-  )
+  .then(async ({ directory, libraries }) => {
+    console.log("started deploying contracts at block", await provider.getBlockNumber());
+    let ptAddress: string | undefined;
+    for (let i = 0; i < ctCount; i++) {
+      const ct = await deployChargedToken(directory, libraries);
+      ptAddress = await createInterface(ct, libraries, ptAddress);
+    }
+    console.log(
+      "Everything is ready for the load test. Don't forget to copy setup addresses to the api and dApp if needed. Final block number :",
+      await provider.getBlockNumber(),
+    );
+  })
   .catch((err) => console.error(err));

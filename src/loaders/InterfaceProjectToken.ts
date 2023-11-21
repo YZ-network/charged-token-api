@@ -82,7 +82,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
   }
 
   async load(blockNumber: number) {
-    this.log.info({
+    this.log.debug({
       msg: "Reading entire interface project token",
       chainId: this.chainId,
       contract: this.contract.name,

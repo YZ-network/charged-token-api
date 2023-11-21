@@ -144,6 +144,20 @@ async function preloadInvestorsBalances(investorsWallets: Wallet[]) {
 }
 
 /**
+ * @returns all charged token addresses present in the directory
+ */
+async function getCTAddresses(): Promise<string[]> {
+  const ctCount = (await directory.countLTContracts()).toNumber();
+  const addresses: string[] = [];
+
+  for (let i = 0; i < ctCount; i++) {
+    addresses.push(await directory.getLTContract(i));
+  }
+
+  return addresses;
+}
+
+/**
  * Allocate charged tokens to everyone.
  * @param investorsWallets
  * @returns
@@ -187,40 +201,105 @@ async function claimPT(iface: ethers.Contract, investorsWallets: Wallet[]) {
   console.log("all tx have been mined");
 }
 
+async function rechargePT(iface: ethers.Contract, investorsWallets: Wallet[]) {
+  console.log("recharging tokens for investors");
+  const rechargeAmount = ethers.utils.parseEther("1000");
+
+  // claim transactions
+  const txs = await Promise.all(
+    [ownerWallet, ...investorsWallets].map(async (wallet) => iface.connect(wallet).rechargeLT(rechargeAmount)),
+  );
+  console.log("Sent all recharge transactions");
+
+  console.log("waiting for transactions to be mined");
+  await Promise.all(txs.map(async (tx) => await tx.wait()));
+
+  console.log("all tx have been mined");
+}
+
 /**
- * Wraps all steps together.
+ * Wraps all steps together. The process repeats each step for every
+ * ChargedToken contract present in the directory and each investor's wallet
+ * in the wallets directory.
  */
 async function mainTest() {
   let investorsAddresses = await loadAddressesFromFs();
-  let investorsWallets = investorsAddresses.length === 0 ? await generateWallets() : await loadWalletsFromFs();
+  const investorsWallets = investorsAddresses.length === 0 ? await generateWallets() : await loadWalletsFromFs();
 
   if (investorsAddresses.length !== investorsWallets.length) {
     investorsAddresses = investorsWallets.map((wallet) => wallet.address);
   }
 
   await fillWallets(investorsAddresses);
+  //await preloadInvestorsBalances(investorsWallets);
+
+  const ctContracts = await getCTAddresses();
+
+  console.log("starting allocations and setting TGE at block", await provider.getBlockNumber());
+
+  for (let index = 0; index < ctContracts.length; index++) {
+    const ctAddress = ctContracts[index];
+    const ct = new ethers.Contract(ctAddress, contracts.LiquidityToken.abi, ownerWallet);
+
+    await allocateCT(ct, investorsAddresses);
+  }
+
+  const delayBetweenTGEs = 20;
+  const globalStartDate = Math.ceil(new Date().getTime() / 1000) + 20;
+  const lastTGE = globalStartDate + ctContracts.length * delayBetweenTGEs;
+
+  for (let index = 0; index < ctContracts.length; index++) {
+    const ctAddress = ctContracts[index];
+    const ct = new ethers.Contract(ctAddress, contracts.LiquidityToken.abi, ownerWallet);
+
+    const ifaceAddress = await ct.interfaceProjectToken();
+    const iface = new ethers.Contract(ifaceAddress, contracts.InterfaceProjectToken.abi, ownerWallet);
+
+    // setting start to 5 minutes away + an offset depending on the contract index
+    console.log("setting TGE");
+    const startDate = globalStartDate + index * delayBetweenTGEs;
+
+    const tx = await iface.setStart(startDate);
+    await tx.wait();
+  }
+
+  console.log("finished allocations and setting TGE at block", await provider.getBlockNumber());
+
+  // waiting to ensure TGE it is passed before claims & recharges
+  console.log(
+    "waiting for TGE, first :",
+    new Date(globalStartDate * 1000).toISOString(),
+    "last :",
+    new Date(lastTGE * 1000).toISOString(),
+  );
+  await new Promise((resolve) => setTimeout(resolve, 1000 * (lastTGE - Math.ceil(new Date().getTime() / 1000))));
+  console.log("TGE is passed :", !!(lastTGE < new Date().getTime()));
+
+  console.log("starting claims and recharges at block", await provider.getBlockNumber());
+
+  for (let index = 0; index < ctContracts.length; index++) {
+    const ctAddress = ctContracts[index];
+    const ct = new ethers.Contract(ctAddress, contracts.LiquidityToken.abi, ownerWallet);
+
+    const ifaceAddress = await ct.interfaceProjectToken();
+    const iface = new ethers.Contract(ifaceAddress, contracts.InterfaceProjectToken.abi, ownerWallet);
+
+    await claimPT(iface, investorsWallets);
+  }
+
   await preloadInvestorsBalances(investorsWallets);
 
-  const ctAddress = await directory.getLTContract(0);
-  const ct = new ethers.Contract(ctAddress, contracts.LiquidityToken.abi, ownerWallet);
+  for (let index = 0; index < ctContracts.length; index++) {
+    const ctAddress = ctContracts[index];
+    const ct = new ethers.Contract(ctAddress, contracts.LiquidityToken.abi, ownerWallet);
 
-  await allocateCT(ct, investorsAddresses);
+    const ifaceAddress = await ct.interfaceProjectToken();
+    const iface = new ethers.Contract(ifaceAddress, contracts.InterfaceProjectToken.abi, ownerWallet);
 
-  const ifaceAddress = await ct.interfaceProjectToken();
-  const iface = new ethers.Contract(ifaceAddress, contracts.InterfaceProjectToken.abi, ownerWallet);
+    await rechargePT(iface, investorsWallets);
+  }
 
-  // setting start to 5 minutes away
-  console.log("setting TGE");
-  const startDate = Math.ceil(new Date().getTime() / 1000) + 300;
-
-  const tx = await iface.setStart(startDate);
-  await tx.wait();
-
-  // waiting for 5 minute to ensure TGE is passed
-  console.log("waiting for TGE");
-  await new Promise((resolve) => setTimeout(resolve, 300000));
-
-  await claimPT(iface, investorsWallets);
+  console.log("finished testing at block", await provider.getBlockNumber());
 }
 
 mainTest()

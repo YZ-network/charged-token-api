@@ -37,7 +37,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   }
 
   async load(blockNumber: number) {
-    this.log.info({
+    this.log.debug({
       msg: "Reading entire project token",
       chainId: this.chainId,
       contract: this.contract.name,

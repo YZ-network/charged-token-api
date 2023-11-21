@@ -5,9 +5,14 @@ import { EventModel } from "../../models";
 import { type AbstractLoader } from "../AbstractLoader";
 import { EventListener } from "../EventListener";
 
+jest.mock("../../config");
 jest.mock("../../models");
 
 describe("EventListener", () => {
+  afterEach(() => {
+    (EventModel.exists as jest.Mock).mockReset();
+  });
+
   test("should start looking for event queue to execute and dispose on destroy", () => {
     const listener = new EventListener();
 
@@ -52,7 +57,7 @@ describe("EventListener", () => {
         }),
       },
     };
-    (EventModel as any).exists.mockImplementationOnce(async () => null);
+    (EventModel as any).exists.mockResolvedValueOnce(null);
 
     const listener = new EventListener(false);
     expect(listener.queue.length).toBe(0);
@@ -95,7 +100,7 @@ describe("EventListener", () => {
       chainId: 1337,
       address: "0xaddr",
     };
-    (EventModel as any).exists.mockImplementationOnce(async () => "not_null");
+    (EventModel as any).exists.mockResolvedValueOnce("not_null");
 
     const listener = new EventListener(false);
 
@@ -104,6 +109,8 @@ describe("EventListener", () => {
     ).rejects.toThrowError();
 
     listener.destroy();
+
+    (EventModel as any).exists.mockReset();
   });
 
   async function waitForEventsLoopToComplete(listener: EventListener) {
@@ -148,10 +155,10 @@ describe("EventListener", () => {
       },
       onEvent: jest.fn(),
     };
-    (EventModel as any).exists.mockImplementationOnce(async () => null);
+    (EventModel as any).exists.mockResolvedValue(true).mockResolvedValueOnce(null);
 
     const mockSession = new ClientSession();
-    (mongoose as any).startSession.mockImplementationOnce(() => mockSession);
+    (mongoose as any).startSession.mockReturnValue(mockSession);
 
     const listener = new EventListener();
 
@@ -161,7 +168,14 @@ describe("EventListener", () => {
     expect(mongoose.startSession).toBeCalledTimes(1);
     expect(mockSession.startTransaction).toBeCalledTimes(1);
 
-    expect(mockAbstractLoader.onEvent).toHaveBeenNthCalledWith(1, mockSession, "SampleEvent", ["b"], log.blockNumber);
+    expect(mockAbstractLoader.onEvent).toHaveBeenNthCalledWith(
+      1,
+      mockSession,
+      "SampleEvent",
+      ["b"],
+      log.blockNumber,
+      log,
+    );
     expect(EventModel.updateOne).toHaveBeenNthCalledWith(
       1,
       {
@@ -181,32 +195,7 @@ describe("EventListener", () => {
     listener.destroy();
   });
 
-  async function waitForEventsLoopToToggle(listener: EventListener) {
-    let timeout: NodeJS.Timeout | undefined;
-    let runningToggled = false;
-
-    const promise = new Promise((resolve, reject) => {
-      const interval = setInterval(() => {
-        if (!runningToggled && listener.running) {
-          runningToggled = true;
-        }
-        if (runningToggled && !listener.running) {
-          clearInterval(interval);
-          clearTimeout(timeout);
-          resolve(undefined);
-        }
-      }, 1);
-
-      timeout = setTimeout(() => {
-        clearInterval(interval);
-        reject(new Error("timeout reached ! killing timer"));
-      }, 1500);
-    });
-
-    await promise;
-  }
-
-  test("should track event handler call failure in database", async () => {
+  test("should catch event handler call failure", async () => {
     const log = sampleLog();
     const decodedArgs = new Map([["a", "b"]]);
 
@@ -228,17 +217,16 @@ describe("EventListener", () => {
       onEvent: jest.fn(() => {
         throw new Error("event handler error");
       }),
-      log: {
-        info: jest.fn(),
-        error: jest.fn(),
-      },
     };
-    (EventModel as any).exists.mockImplementationOnce(async () => null);
 
     const mockSession = new ClientSession();
-    (mongoose as any).startSession.mockImplementationOnce(() => mockSession);
+    (mongoose as any).startSession.mockResolvedValue(mockSession);
+
+    (EventModel as any).exists.mockResolvedValue(true).mockResolvedValueOnce(null);
 
     const listener = new EventListener(false);
+
+    const loggerErrorMock = jest.spyOn(listener.log, "error");
 
     await listener.queueLog("SampleEvent", log, mockAbstractLoader as unknown as AbstractLoader<any>);
     await listener.executePendingLogs();
@@ -249,23 +237,17 @@ describe("EventListener", () => {
     expect(mongoose.startSession).toBeCalledTimes(1);
     expect(mockSession.startTransaction).toBeCalledTimes(1);
 
-    expect(mockAbstractLoader.onEvent).toHaveBeenNthCalledWith(1, mockSession, "SampleEvent", ["b"], log.blockNumber);
-    expect(mockAbstractLoader.log.error).toBeCalledTimes(1);
-    expect(mockSession.abortTransaction).toBeCalledTimes(1);
-
-    expect(EventModel.updateOne).toHaveBeenNthCalledWith(
+    expect(mockAbstractLoader.onEvent).toHaveBeenNthCalledWith(
       1,
-      {
-        chainId: mockAbstractLoader.chainId,
-        address: log.address,
-        blockNumber: log.blockNumber,
-        txIndex: log.transactionIndex,
-        logIndex: log.logIndex,
-      },
-      { status: EventHandlerStatus.FAILURE },
-      { session: mockSession },
+      mockSession,
+      "SampleEvent",
+      ["b"],
+      log.blockNumber,
+      log,
     );
+    expect(loggerErrorMock).toBeCalledTimes(1);
 
+    expect(mockSession.abortTransaction).toBeCalledTimes(1);
     expect(mockSession.commitTransaction).toBeCalledTimes(0);
     expect(mockSession.endSession).toBeCalledTimes(1);
 

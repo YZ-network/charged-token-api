@@ -56,7 +56,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   }
 
   async load(blockNumber: number) {
-    this.log.info({
+    this.log.debug({
       msg: "Reading entire charged token",
       chainId: this.chainId,
       contract: this.contract.name,
@@ -334,8 +334,6 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         undefined,
         eventName,
       );
-    } else {
-      await this.directory.loadAllUserBalances(session, user, blockNumber, this.address);
     }
   }
 

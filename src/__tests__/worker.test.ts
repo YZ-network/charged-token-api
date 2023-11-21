@@ -6,6 +6,7 @@ import { subscribeToUserBalancesLoading } from "../subscriptions";
 import { AutoWebSocketProvider, Metrics } from "../util";
 import { ChainWorker } from "../worker";
 
+jest.mock("../config");
 jest.mock("../util/AutoWebSocketProvider");
 jest.mock("../loaders/EventListener");
 jest.mock("../loaders/Directory");
@@ -123,7 +124,7 @@ describe("ChainWorker", () => {
       };
     });
 
-    (EventModel as any).find.mockImplementationOnce(async () => []).mockImplementationOnce(async () => []);
+    (EventModel as any).find.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
     const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID);
 
@@ -148,13 +149,13 @@ describe("ChainWorker", () => {
   });
 
   test("should initialize directory upon connection", async () => {
-    (AutoWebSocketProvider as any).mockImplementationOnce(() => mockProviderBase());
+    (AutoWebSocketProvider as any).mockReturnValueOnce(mockProviderBase());
 
-    (EventModel as any).find.mockImplementationOnce(async () => []).mockImplementationOnce(async () => []);
+    (EventModel as any).find.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     const mockSession = {
       endSession: jest.fn(),
     };
-    (mongoose as any).startSession.mockImplementationOnce(async () => mockSession);
+    (mongoose as any).startSession.mockResolvedValueOnce(mockSession);
 
     const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID);
     await waitForWorkerToStart(worker);
@@ -205,8 +206,8 @@ describe("ChainWorker", () => {
       };
     });
 
-    (EventModel as any).find.mockImplementation(async () => []);
-    (EventModel as any).deleteMany.mockImplementationOnce(async () => []);
+    (EventModel as any).find.mockResolvedValue([]);
+    (EventModel as any).deleteMany.mockResolvedValueOnce([]);
 
     const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID);
 
@@ -243,10 +244,10 @@ describe("ChainWorker", () => {
   });
 
   test("should manage provider error event creating directory", async () => {
-    (AutoWebSocketProvider as any).mockImplementationOnce(() => mockProviderBase());
+    (AutoWebSocketProvider as any).mockReturnValueOnce(mockProviderBase());
 
-    (EventModel as any).find.mockImplementation(async () => []);
-    (EventModel as any).deleteMany.mockImplementationOnce(async () => []);
+    (EventModel as any).find.mockResolvedValue([]);
+    (EventModel as any).deleteMany.mockResolvedValueOnce([]);
 
     const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID);
 
@@ -287,9 +288,9 @@ describe("ChainWorker", () => {
   });
 
   test("should catch worker errors and stop", async () => {
-    (AutoWebSocketProvider as any).mockImplementationOnce(() => mockProviderBase());
+    (AutoWebSocketProvider as any).mockReturnValueOnce(mockProviderBase());
 
-    (EventModel as any).find.mockImplementationOnce(async () => []).mockImplementationOnce(async () => []);
+    (EventModel as any).find.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
     (Directory as any).mockImplementationOnce(() => {
       return {

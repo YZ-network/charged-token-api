@@ -1,5 +1,6 @@
 import mockedTopicsMap from "../topics";
 
+jest.mock("../config");
 jest.mock("../topics");
 
 jest.unmock("ethers");

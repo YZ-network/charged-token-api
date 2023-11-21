@@ -46,7 +46,7 @@ export class Directory extends AbstractLoader<IDirectory> {
   }
 
   async load(blockNumber: number): Promise<IDirectory> {
-    this.log.info({
+    this.log.debug({
       msg: "Reading entire directory",
       chainId: this.chainId,
       contract: this.contract.name,
@@ -119,6 +119,7 @@ export class Directory extends AbstractLoader<IDirectory> {
           msg: `updating CT balance for ${user}`,
           chainId: this.chainId,
           address: entry.address,
+          balance: entry,
         });
         await UserBalanceModel.updateOne({ chainId: this.chainId, user, address: entry.address }, entry, { session });
       } else if (this.ct[entry.address] !== undefined) {

@@ -6,6 +6,7 @@ import { type EventListener } from "../../loaders/EventListener";
 import { type AutoWebSocketProvider } from "../../util";
 import subscribeToUserBalancesLoading from "../subscribeToUserBalances";
 
+jest.mock("../../config");
 jest.mock("../../graphql");
 jest.mock("../../loaders/Directory");
 
@@ -50,14 +51,14 @@ describe("User balances subscriptions", () => {
     Object.defineProperty(directory, "chainId", { value: 1337 });
     Object.defineProperty(directory, "provider", { value: { getBlockNumber } });
 
-    getBlockNumber.mockImplementation(async () => 15);
+    getBlockNumber.mockResolvedValue(15);
 
     const generatorInstance = generator();
 
-    (pubSub as any).subscribe.mockImplementationOnce(() => generatorInstance);
+    (pubSub as any).subscribe.mockReturnValueOnce(generatorInstance);
 
     const mockSession = new ClientSession();
-    (mongoose as any).startSession.mockImplementation(async () => mockSession);
+    (mongoose as any).startSession.mockResolvedValue(mockSession);
     (mockSession as any).withTransaction.mockImplementation(async (fn: () => Promise<void>) => await fn());
 
     await subscribeToUserBalancesLoading(directory);
@@ -94,7 +95,7 @@ describe("User balances subscriptions", () => {
 
     const generatorInstance = generator();
 
-    (pubSub as any).subscribe.mockImplementationOnce(() => generatorInstance);
+    (pubSub as any).subscribe.mockReturnValueOnce(generatorInstance);
 
     (mongoose as any).startSession.mockImplementation(async () => {
       throw new Error("triggered error");

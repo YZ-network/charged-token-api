@@ -14,7 +14,7 @@ import { ChainWorker, type ChainHealth } from "./worker";
 const log = rootLogger.child({ name: "Main" });
 const yogaLog = log.child({ name: "yoga" });
 
-class MainClass {
+export class MainClass {
   readonly networks = Config.networks;
 
   keepAlive: NodeJS.Timeout | undefined;

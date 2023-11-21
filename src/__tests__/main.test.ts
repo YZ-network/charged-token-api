@@ -1,10 +1,13 @@
 import mongoose from "mongoose";
 import { Socket } from "net";
 import { Config } from "../config";
-import { Main } from "../main";
+import { WorkerStatus } from "../enums";
+import { MainClass } from "../main";
+import { ChainWorker } from "../worker";
 
 jest.unmock("ws");
 
+jest.mock("../config");
 jest.mock("../graphql");
 jest.mock("../exporter");
 jest.mock("../worker");
@@ -15,62 +18,102 @@ describe("Main class", () => {
   });
 
   test("Constructor initialization", () => {
-    expect(Main.bindAddress).toBeDefined();
-    expect(Main.bindPort).toBeDefined();
-    expect(Main.networks).toBeDefined();
-    expect(Main.yoga).toBeDefined();
-    expect(Main.httpServer).toBeDefined();
-    expect(Main.wsServer).toBeDefined();
-    expect(Main.workers).toEqual([]);
-    expect(Main.keepAlive).toBeUndefined();
+    const main = new MainClass();
+
+    expect(main.bindAddress).toBeDefined();
+    expect(main.bindPort).toBeDefined();
+    expect(main.networks).toBeDefined();
+    expect(main.yoga).toBeDefined();
+    expect(main.httpServer).toBeDefined();
+    expect(main.wsServer).toBeDefined();
+    expect(main.workers).toEqual([]);
+    expect(main.keepAlive).toBeUndefined();
   });
 
   test("should return empty health check initially", () => {
-    expect(Main.health()).toEqual([]);
+    const main = new MainClass();
+
+    expect(main.health()).toEqual([]);
   });
 
   test("init function should connect ws server to graphql api", () => {
-    expect(Main.wsServer.listenerCount("error")).toBe(0);
-    expect(Main.wsServer.listenerCount("connection")).toBe(0);
-    expect(Main.wsServer.listenerCount("close")).toBe(0);
+    const main = new MainClass();
 
-    Main.init();
+    expect(main.wsServer.listenerCount("error")).toBe(0);
+    expect(main.wsServer.listenerCount("connection")).toBe(0);
+    expect(main.wsServer.listenerCount("close")).toBe(0);
 
-    expect(Main.wsServer.listenerCount("error")).toBe(1);
-    expect(Main.wsServer.listenerCount("connection")).toBe(1);
+    main.init();
+
+    expect(main.wsServer.listenerCount("error")).toBe(1);
+    expect(main.wsServer.listenerCount("connection")).toBe(1);
   });
 
   test("start function should connect to mongodb before starting api", async () => {
+    const main = new MainClass();
+
     const sockets = new Set<Socket>();
 
-    (mongoose as any).connect.mockImplementationOnce(
-      async () =>
-        new Promise<void>((resolve) => {
-          resolve();
-        }),
-    );
+    (mongoose as any).connect.mockResolvedValueOnce(Promise.resolve);
 
-    expect(Main.httpServer.listenerCount("listening")).toBe(1);
-    expect(Main.httpServer.listening).toBe(false);
+    expect(main.httpServer.listenerCount("listening")).toBe(1);
+    expect(main.httpServer.listening).toBe(false);
 
-    Main.httpServer.on("connection", (socket) => {
+    main.httpServer.on("connection", (socket) => {
       sockets.add(socket);
-      Main.httpServer.once("close", () => {
+      main.httpServer.once("close", () => {
         sockets.delete(socket);
       });
     });
 
-    await Main.start();
+    await main.start();
 
-    expect(Main.keepAlive).toBeDefined();
+    expect(main.keepAlive).toBeDefined();
     expect(mongoose.set).toHaveBeenNthCalledWith(1, "strictQuery", true);
     expect(mongoose.connect).toHaveBeenNthCalledWith(1, Config.db.uri);
-    expect(Main.workers.length).toBe(Config.networks.length);
-    expect(Main.httpServer.listenerCount("listening")).toBe(2);
+    expect(main.workers.length).toBe(Config.networks.length);
+    expect(main.httpServer.listenerCount("listening")).toBe(2);
 
-    await new Promise<void>((resolve, reject) => {
+    await waitForServerStart(main);
+
+    await closeServerAndWait(main, sockets);
+  });
+
+  test("dead worker should be respawned automatically", async () => {
+    const main = new MainClass();
+
+    const sockets = new Set<Socket>();
+
+    (mongoose as any).connect.mockResolvedValueOnce(Promise.resolve());
+
+    main.httpServer.on("connection", (socket) => {
+      sockets.add(socket);
+      main.httpServer.once("close", () => {
+        sockets.delete(socket);
+      });
+    });
+
+    expect(main.workers.length).toBe(0);
+
+    await main.start();
+    await waitForServerStart(main);
+
+    expect(main.workers.length).toBe(1);
+    expect(main.workers[0].start).toBeCalledTimes(0);
+
+    main.workers[0].workerStatus = WorkerStatus.DEAD;
+
+    await waitForWorkerToRestart(main.workers[0]);
+
+    expect(main.workers[0].start).toBeCalledTimes(1);
+
+    await closeServerAndWait(main, sockets);
+  });
+
+  function waitForServerStart(main: MainClass): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
       const interval = setInterval(() => {
-        if (Main.httpServer.listening) {
+        if (main.httpServer.listening) {
           clearInterval(interval);
           clearTimeout(timeout);
           resolve();
@@ -82,13 +125,30 @@ describe("Main class", () => {
         reject(new Error("Server did not start in time"));
       }, 500);
     });
-    expect(Main.httpServer.listening).toBe(true);
+  }
 
-    clearInterval(Main.keepAlive);
+  function waitForWorkerToRestart(worker: ChainWorker): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const interval = setInterval(() => {
+        if ((worker as any).start.mock.calls.length > 0) {
+          clearInterval(interval);
+          clearTimeout(timeout);
+          resolve();
+        }
+      }, 1);
+
+      const timeout = setTimeout(() => {
+        clearInterval(interval);
+        reject(new Error("Server did not start in time"));
+      }, 500);
+    });
+  }
+
+  async function closeServerAndWait(main: MainClass, sockets: Set<Socket>): Promise<void> {
+    clearInterval(main.keepAlive);
     await new Promise<void>((resolve, reject) =>
-      Main.httpServer.close((err) => {
+      main.httpServer.close((err) => {
         if (err !== undefined) {
-          console.error("Could not close server", err);
           reject(err);
         }
 
@@ -101,6 +161,6 @@ describe("Main class", () => {
       }),
     );
 
-    expect(Main.httpServer.listening).toBe(false);
-  });
+    expect(main.httpServer.listening).toBe(false);
+  }
 });

@@ -8,6 +8,7 @@ import { DelegableToLT } from "../DelegableToLT";
 import { Directory } from "../Directory";
 import { EventListener } from "../EventListener";
 
+jest.mock("../../config");
 jest.mock("../EventListener");
 jest.mock("../../topics");
 jest.mock("../../graphql");
@@ -44,7 +45,7 @@ describe("DelegableToLT loader", () => {
     // mocking ethers
     const BLOCK_NUMBER = 15;
 
-    (provider as any).getBlockNumber.mockImplementationOnce(() => BLOCK_NUMBER);
+    (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
     const graphqlModel = {
@@ -62,21 +63,19 @@ describe("DelegableToLT loader", () => {
     };
 
     const modelInstanceMock = { save: jest.fn() };
-    (loader.model as any).toModel.mockImplementationOnce(() => modelInstanceMock);
-    (loader.model as any).exists.mockImplementationOnce(async () => null);
-    (loader.model as any).toGraphQL.mockImplementationOnce(() => {
-      return graphqlModel;
-    });
+    (loader.model as any).toModel.mockReturnValueOnce(modelInstanceMock);
+    (loader.model as any).exists.mockResolvedValueOnce(null);
+    (loader.model as any).toGraphQL.mockReturnValueOnce(graphqlModel);
 
     // mocking contract instance
-    loader.instance.owner.mockImplementationOnce(async () => OWNER);
-    loader.instance.name.mockImplementationOnce(async () => NAME);
-    loader.instance.symbol.mockImplementationOnce(async () => SYMBOL);
-    loader.instance.decimals.mockImplementationOnce(async () => BigNumber.from(18));
-    loader.instance.totalSupply.mockImplementationOnce(async () => BigNumber.from(1));
-    loader.instance.countValidatedInterfaceProjectToken.mockImplementationOnce(async () => BigNumber.from(1));
-    loader.instance.getValidatedInterfaceProjectToken.mockImplementationOnce(async () => "0xADDR");
-    loader.instance.isListOfInterfaceProjectTokenComplete.mockImplementationOnce(async () => false);
+    loader.instance.owner.mockResolvedValueOnce(OWNER);
+    loader.instance.name.mockResolvedValueOnce(NAME);
+    loader.instance.symbol.mockResolvedValueOnce(SYMBOL);
+    loader.instance.decimals.mockResolvedValueOnce(BigNumber.from(18));
+    loader.instance.totalSupply.mockResolvedValueOnce(BigNumber.from(1));
+    loader.instance.countValidatedInterfaceProjectToken.mockResolvedValueOnce(BigNumber.from(1));
+    loader.instance.getValidatedInterfaceProjectToken.mockResolvedValueOnce("0xADDR");
+    loader.instance.isListOfInterfaceProjectTokenComplete.mockResolvedValueOnce(false);
 
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
@@ -126,7 +125,7 @@ describe("DelegableToLT loader", () => {
     const PREV_BLOCK_NUMBER = 15;
     const BLOCK_NUMBER = 20;
 
-    (provider as any).getBlockNumber.mockImplementationOnce(() => BLOCK_NUMBER);
+    (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
     const loadedModel = {
@@ -158,14 +157,12 @@ describe("DelegableToLT loader", () => {
     };
 
     const modelInstanceMock = { save: jest.fn() };
-    (loader.model as any).toModel.mockImplementationOnce(() => modelInstanceMock);
-    (loader.model as any).findOne.mockImplementationOnce(async () => loadedModel);
-    (loader.model as any).toGraphQL.mockImplementationOnce(() => {
-      return graphqlModel;
-    });
+    (loader.model as any).toModel.mockReturnValueOnce(modelInstanceMock);
+    (loader.model as any).findOne.mockResolvedValueOnce(loadedModel);
+    (loader.model as any).toGraphQL.mockReturnValueOnce(graphqlModel);
 
     // mocking contract instance
-    (loader.instance as any).queryFilter.mockImplementationOnce(() => []);
+    (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
 
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
@@ -210,7 +207,7 @@ describe("DelegableToLT loader", () => {
     const eventsListener = new EventListener();
     const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, { eventsListener } as any, undefined as any);
 
-    loader.instance.balanceOf.mockImplementationOnce(async () => BigNumber.from(10));
+    loader.instance.balanceOf.mockResolvedValueOnce(BigNumber.from(10));
 
     const result = await loader.loadUserBalance("0xUSER");
 
@@ -232,10 +229,8 @@ describe("DelegableToLT loader", () => {
     };
     const getJsonModel = jest
       .spyOn(loader, "getJsonModel")
-      .mockImplementationOnce(async () => loadedModel as FlattenMaps<IDelegableToLT>);
-    const applyUpdateAndNotify = jest
-      .spyOn(loader, "applyUpdateAndNotify")
-      .mockImplementationOnce(async () => undefined);
+      .mockResolvedValueOnce(loadedModel as FlattenMaps<IDelegableToLT>);
+    const applyUpdateAndNotify = jest.spyOn(loader, "applyUpdateAndNotify").mockResolvedValueOnce(undefined);
 
     await loader.onAddedInterfaceProjectTokenEvent(
       session,
@@ -263,9 +258,7 @@ describe("DelegableToLT loader", () => {
 
     const blockNumber = 15;
 
-    const applyUpdateAndNotify = jest
-      .spyOn(loader, "applyUpdateAndNotify")
-      .mockImplementationOnce(async () => undefined);
+    const applyUpdateAndNotify = jest.spyOn(loader, "applyUpdateAndNotify").mockResolvedValueOnce(undefined);
 
     await loader.onListOfValidatedInterfaceProjectTokenIsFinalizedEvent(
       session,
@@ -297,10 +290,8 @@ describe("DelegableToLT loader", () => {
     };
     const getJsonModel = jest
       .spyOn(loader, "getJsonModel")
-      .mockImplementationOnce(async () => loadedModel as FlattenMaps<IDelegableToLT>);
-    const applyUpdateAndNotify = jest
-      .spyOn(loader, "applyUpdateAndNotify")
-      .mockImplementationOnce(async () => undefined);
+      .mockResolvedValueOnce(loadedModel as FlattenMaps<IDelegableToLT>);
+    const applyUpdateAndNotify = jest.spyOn(loader, "applyUpdateAndNotify").mockResolvedValueOnce(undefined);
 
     await loader.onInterfaceProjectTokenRemovedEvent(
       session,
@@ -348,9 +339,9 @@ describe("DelegableToLT loader", () => {
     const toBalance = { balancePT: "60" } as any;
     const getBalance = jest
       .spyOn(loader, "getBalance")
-      .mockImplementationOnce(async () => fromBalance)
-      .mockImplementationOnce(async () => toBalance);
-    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockImplementation(async () => undefined);
+      .mockResolvedValueOnce(fromBalance)
+      .mockResolvedValueOnce(toBalance);
+    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockResolvedValue(undefined);
 
     await loader.onTransferEvent(session, ["0xFROM", "0xTO", "10"], blockNumber, "Transfer");
 
@@ -393,11 +384,11 @@ describe("DelegableToLT loader", () => {
     const blockNumber = 15;
 
     const userBalance = { balancePT: "60" } as any;
-    const getBalance = jest.spyOn(loader, "getBalance").mockImplementationOnce(async () => userBalance);
+    const getBalance = jest.spyOn(loader, "getBalance").mockResolvedValueOnce(userBalance);
     const contract = { totalSupply: "1000" } as any;
-    const getJsonModel = jest.spyOn(loader, "getJsonModel").mockImplementation(async () => contract);
-    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockImplementation(async () => undefined);
-    const updateContract = jest.spyOn(loader, "applyUpdateAndNotify").mockImplementation(async () => undefined);
+    const getJsonModel = jest.spyOn(loader, "getJsonModel").mockResolvedValue(contract);
+    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockResolvedValue(undefined);
+    const updateContract = jest.spyOn(loader, "applyUpdateAndNotify").mockResolvedValue(undefined);
 
     await loader.onTransferEvent(session, [EMPTY_ADDRESS, "0xTO", "10"], blockNumber, "Transfer");
 
@@ -431,11 +422,11 @@ describe("DelegableToLT loader", () => {
     const blockNumber = 15;
 
     const userBalance = { balancePT: "60" } as any;
-    const getBalance = jest.spyOn(loader, "getBalance").mockImplementationOnce(async () => userBalance);
+    const getBalance = jest.spyOn(loader, "getBalance").mockResolvedValueOnce(userBalance);
     const contract = { totalSupply: "1000" } as any;
-    const getJsonModel = jest.spyOn(loader, "getJsonModel").mockImplementation(async () => contract);
-    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockImplementation(async () => undefined);
-    const updateContract = jest.spyOn(loader, "applyUpdateAndNotify").mockImplementation(async () => undefined);
+    const getJsonModel = jest.spyOn(loader, "getJsonModel").mockResolvedValue(contract);
+    const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockResolvedValue(undefined);
+    const updateContract = jest.spyOn(loader, "applyUpdateAndNotify").mockResolvedValue(undefined);
 
     await loader.onTransferEvent(session, ["0xFROM", EMPTY_ADDRESS, "10"], blockNumber, "Transfer");
 
