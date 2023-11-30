@@ -79,7 +79,7 @@ describe("AbstractLoader: common loaders features", () => {
         undefined,
         "SampleEvent",
       ),
-    ).rejects.toThrow(ERROR_MSG);
+    ).rejects.toThrowError(ERROR_MSG);
 
     await expect(
       loader.updateBalanceAndNotify(
@@ -91,7 +91,7 @@ describe("AbstractLoader: common loaders features", () => {
         undefined,
         "SampleEvent",
       ),
-    ).rejects.toThrow(ERROR_MSG);
+    ).rejects.toThrowError(ERROR_MSG);
 
     await expect(
       loader.updateBalanceAndNotify(
@@ -103,7 +103,7 @@ describe("AbstractLoader: common loaders features", () => {
         undefined,
         "SampleEvent",
       ),
-    ).rejects.toThrow(ERROR_MSG);
+    ).rejects.toThrowError(ERROR_MSG);
 
     await expect(
       loader.updateBalanceAndNotify(
@@ -115,7 +115,7 @@ describe("AbstractLoader: common loaders features", () => {
         undefined,
         "SampleEvent",
       ),
-    ).rejects.toThrow(ERROR_MSG);
+    ).rejects.toThrowError(ERROR_MSG);
 
     await expect(
       loader.updateBalanceAndNotify(
@@ -127,7 +127,7 @@ describe("AbstractLoader: common loaders features", () => {
         undefined,
         "SampleEvent",
       ),
-    ).rejects.toThrow(ERROR_MSG);
+    ).rejects.toThrowError(ERROR_MSG);
 
     await expect(
       loader.updateBalanceAndNotify(
@@ -139,7 +139,7 @@ describe("AbstractLoader: common loaders features", () => {
         undefined,
         "SampleEvent",
       ),
-    ).rejects.toThrow(ERROR_MSG);
+    ).rejects.toThrowError(ERROR_MSG);
   });
 
   it("should update user balances and notify", async () => {

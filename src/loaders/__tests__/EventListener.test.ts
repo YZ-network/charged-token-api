@@ -99,14 +99,19 @@ describe("EventListener", () => {
     const mockAbstractLoader = {
       chainId: 1337,
       address: "0xaddr",
+      iface: {
+        parseLog: jest.fn(() => {
+          return { args: new Map() };
+        }),
+      },
     };
     (EventModel as any).exists.mockResolvedValueOnce("not_null");
 
     const listener = new EventListener(false);
 
-    await expect(
-      listener.queueLog("SampleEvent", log, mockAbstractLoader as unknown as AbstractLoader<any>),
-    ).rejects.toThrowError();
+    await listener.queueLog("SampleEvent", log, mockAbstractLoader as unknown as AbstractLoader<any>);
+
+    expect(listener.queue.length).toBe(0);
 
     listener.destroy();
 

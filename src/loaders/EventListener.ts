@@ -89,9 +89,17 @@ export class EventListener {
         logIndex: log.logIndex,
       })) !== null
     ) {
-      throw new Error(
-        `Tried to queue same event twice ! event=${eventName} chainId=${loader.chainId} address=${loader.address} blockNumber=${log.blockNumber} txIndex=${log.transactionIndex} logIndex=${log.logIndex}`,
-      );
+      this.log.warn({
+        msg: "Tried to queue same event twice !",
+        eventName,
+        chainId: loader.chainId,
+        address: loader.address,
+        contract: loader.constructor.name,
+        blockNumber: log.blockNumber,
+        txIndex: log.transactionIndex,
+        logIndex: log.logIndex,
+      });
+      return;
     }
 
     this.pushEventAndSort(loader, eventName, log);

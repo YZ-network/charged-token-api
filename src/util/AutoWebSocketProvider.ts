@@ -17,7 +17,7 @@ import {
   type Subscription,
   type WebSocketLike,
 } from "@ethersproject/providers/lib/websocket-provider";
-import { WebSocket } from "ws";
+import { MessageEvent, WebSocket } from "ws";
 import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";
 
@@ -81,19 +81,18 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
 
   _wsReady: boolean;
 
-  private pingInterval: NodeJS.Timeout | undefined;
-  private pongTimeout: NodeJS.Timeout | undefined;
+  private _pingInterval: NodeJS.Timeout | undefined;
+  private _pongTimeout: NodeJS.Timeout | undefined;
+  private fauxPoll: NodeJS.Timeout;
 
   constructor(
     url: string | WebSocketLike,
     options: Partial<AutoWebSocketProviderOptions> & { chainId: number },
-    network?: Networkish
+    network?: Networkish,
   ) {
     // This will be added in the future; please open an issue to expedite
     if (network === "any") {
-      throw new Error(
-        "AutoWebSocketProvider does not support 'any' network yet"
-      );
+      throw new Error("AutoWebSocketProvider does not support 'any' network yet");
     }
 
     if (typeof url === "string") {
@@ -118,9 +117,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     } else if (url instanceof WebSocket) {
       this._websocket = url;
     } else {
-      throw Error(
-        "This provider only accepts websocket URL or a real WebSocket as parameter"
-      );
+      throw Error("This provider only accepts websocket URL or a real WebSocket as parameter");
     }
 
     this._requests = [];
@@ -148,8 +145,8 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
       }
     };
 
-    this.websocket.onmessage = (messageEvent: { data: string }) => {
-      const data = messageEvent.data;
+    this.websocket.onmessage = (messageEvent: MessageEvent) => {
+      const data = messageEvent.data as string;
       const result = JSON.parse(data);
       if (result.id != null && result.id !== 0) {
         this._onRequestResponse(data, result);
@@ -176,12 +173,19 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     // This Provider does not actually poll, but we want to trigger
     // poll events for things that depend on them (like stalling for
     // block and transaction lookups)
-    const fauxPoll = setInterval(() => {
+    this.fauxPoll = setInterval(() => {
       this.emit("poll");
     }, 1000);
-    if (fauxPoll.unref) {
-      fauxPoll.unref();
+    if (this.fauxPoll.unref) {
+      this.fauxPoll.unref();
     }
+  }
+
+  get pingInterval(): NodeJS.Timeout | undefined {
+    return this._pingInterval;
+  }
+  get pongTimeout(): NodeJS.Timeout | undefined {
+    return this._pongTimeout;
   }
 
   _onRequestResponse(data: string, result: any) {
@@ -262,7 +266,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
 
   // Cannot narrow the type of _websocket, as that is not backwards compatible
   // so we add a getter and let the WebSocket be a public API.
-  get websocket(): WebSocketLike {
+  get websocket(): WebSocket {
     return this._websocket;
   }
 
@@ -337,11 +341,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     return "ws://localhost:8546";
   }
 
-  async _subscribe(
-    tag: string,
-    param: any[],
-    processFunc: (result: any) => void
-  ): Promise<void> {
+  async _subscribe(tag: string, param: any[], processFunc: (result: any) => void): Promise<void> {
     let subIdPromise = this._subIds[tag];
     if (subIdPromise == null) {
       subIdPromise = Promise.all(param).then(async (param) => {
@@ -352,10 +352,7 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     const subId = await subIdPromise;
     this._subs[subId] = { tag, processFunc };
     this._detectNetwork.then((network) => {
-      Metrics.setSubscriptionCount(
-        network.chainId,
-        Object.keys(this._subIds).length
-      );
+      Metrics.setSubscriptionCount(network.chainId, Object.keys(this._subIds).length);
     });
   }
 
@@ -370,26 +367,18 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
         break;
 
       case "pending":
-        this._subscribe(
-          "pending",
-          ["newPendingTransactions"],
-          (result: any) => {
-            this.emit("pending", result);
-          }
-        );
+        this._subscribe("pending", ["newPendingTransactions"], (result: any) => {
+          this.emit("pending", result);
+        });
         break;
 
       case "filter":
-        this._subscribe(
-          event.tag,
-          ["logs", this._getFilter(event.filter)],
-          (result: any) => {
-            if (result.removed == null) {
-              result.removed = false;
-            }
-            this.emit(event.filter, this.formatter.filterLog(result));
+        this._subscribe(event.tag, ["logs", this._getFilter(event.filter)], (result: any) => {
+          if (result.removed == null) {
+            result.removed = false;
           }
-        );
+          this.emit(event.filter, this.formatter.filterLog(result));
+        });
         break;
 
       case "tx": {
@@ -456,23 +445,21 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
       }
       delete this._subs[subId];
       this._detectNetwork.then((network) => {
-        Metrics.setSubscriptionCount(
-          network.chainId,
-          Object.keys(this._subIds).length
-        );
+        Metrics.setSubscriptionCount(network.chainId, Object.keys(this._subIds).length);
       });
       this.send("eth_unsubscribe", [subId]);
     });
   }
 
   async destroy(): Promise<void> {
-    if (this.pingInterval !== undefined) {
-      clearInterval(this.pingInterval);
-      this.pingInterval = undefined;
+    clearInterval(this.fauxPoll);
+    if (this._pingInterval !== undefined) {
+      clearInterval(this._pingInterval);
+      this._pingInterval = undefined;
     }
-    if (this.pongTimeout !== undefined) {
-      clearTimeout(this.pongTimeout);
-      this.pongTimeout = undefined;
+    if (this._pongTimeout !== undefined) {
+      clearTimeout(this._pongTimeout);
+      this._pongTimeout = undefined;
     }
 
     // Wait until we have connected before trying to disconnect
@@ -534,10 +521,10 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
   }
 
   private _setupPings() {
-    this.pingInterval = setInterval(() => {
-      if (this.pongTimeout === undefined) {
+    this._pingInterval = setInterval(() => {
+      if (this._pongTimeout === undefined) {
         this._websocket.ping();
-        this.pongTimeout = setTimeout(() => {
+        this._pongTimeout = setTimeout(() => {
           logger.warn({
             msg: "Websocket crashed",
             chainId: this.chainId,
@@ -545,9 +532,9 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
           this._detectNetwork.then((network) => {
             Metrics.disconnected(network.chainId);
           });
-          if (this.pingInterval !== undefined) {
-            clearInterval(this.pingInterval);
-            this.pingInterval = undefined;
+          if (this._pingInterval !== undefined) {
+            clearInterval(this._pingInterval);
+            this._pingInterval = undefined;
           }
           this._websocket.terminate();
         }, this.options.pongMaxWaitMs);
@@ -555,9 +542,9 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
     }, this.options.pingDelayMs);
 
     this._websocket.on("pong", () => {
-      if (this.pongTimeout !== undefined) {
-        clearTimeout(this.pongTimeout);
-        this.pongTimeout = undefined;
+      if (this._pongTimeout !== undefined) {
+        clearTimeout(this._pongTimeout);
+        this._pongTimeout = undefined;
       }
     });
   }
