@@ -341,7 +341,35 @@ export abstract class AbstractLoader<T extends IOwnable> {
   }
 
   private async loadAndSyncEvents(fromBlock: number, session: ClientSession) {
-    const missedEvents: ethers.Event[] = await this.getFilteredMissedEvents(fromBlock, session);
+    let missedEvents: ethers.Event[] = [];
+
+    let eventsFetchRetryCount = 0;
+    while (eventsFetchRetryCount < 3) {
+      try {
+        missedEvents = await this.getFilteredMissedEvents(fromBlock, session);
+        break;
+      } catch (err) {
+        this.log.warn({
+          msg: `Could not retrieve events from block ${fromBlock}`,
+          err,
+          contract: this.constructor.name,
+          address: this.address,
+          chainId: this.chainId,
+        });
+        eventsFetchRetryCount++;
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
+
+    if (eventsFetchRetryCount >= 3) {
+      this.log.error({
+        msg: `Error retrieving events from block ${fromBlock} after 3 tries`,
+        contract: this.constructor.name,
+        address: this.address,
+        chainId: this.chainId,
+      });
+      return;
+    }
 
     if (missedEvents.length === 0) return;
 
@@ -370,91 +398,79 @@ export abstract class AbstractLoader<T extends IOwnable> {
   }
 
   private async getFilteredMissedEvents(fromBlock: number, session: ClientSession): Promise<ethers.Event[]> {
-    try {
-      const eventFilter: EventFilter = {
-        address: this.address,
-      };
+    const eventFilter: EventFilter = {
+      address: this.address,
+    };
 
+    this.log.info({
+      msg: `Querying missed events from block ${fromBlock}`,
+      contract: this.constructor.name,
+      address: this.address,
+      chainId: this.chainId,
+    });
+
+    const missedEvents = await this.instance.queryFilter(eventFilter, fromBlock);
+
+    if (missedEvents === null) {
+      this.log.warn({
+        msg: `Events querying returned null since block ${fromBlock}`,
+        contract: this.constructor.name,
+        address: this.address,
+        chainId: this.chainId,
+      });
+      return [];
+    } else if (missedEvents.length === 0) {
       this.log.info({
-        msg: `Querying missed events from block ${fromBlock}`,
+        msg: "No events missed",
         contract: this.constructor.name,
         address: this.address,
         chainId: this.chainId,
       });
-
-      const missedEvents = await this.instance.queryFilter(eventFilter, fromBlock);
-
-      if (missedEvents === null) {
-        this.log.warn({
-          msg: `Events querying returned null since block ${fromBlock}`,
-          contract: this.constructor.name,
-          address: this.address,
-          chainId: this.chainId,
-        });
-        return [];
-      } else if (missedEvents.length === 0) {
-        this.log.info({
-          msg: "No events missed",
-          contract: this.constructor.name,
-          address: this.address,
-          chainId: this.chainId,
-        });
-        return [];
-      }
-
-      this.log.info({
-        msg: `Found ${missedEvents.length} potentially missed events`,
-        contract: this.constructor.name,
-        address: this.address,
-        chainId: this.chainId,
-      });
-
-      const filteredEvents: ethers.Event[] = [];
-      for (const event of missedEvents) {
-        if (
-          (await EventModel.exists({
-            chainId: this.chainId,
-            address: this.address,
-            blockNumber: event.blockNumber,
-            txIndex: event.transactionIndex,
-            logIndex: event.logIndex,
-          })) === null
-        ) {
-          filteredEvents.push(event);
-        }
-      }
-
-      if (missedEvents.length > filteredEvents.length) {
-        this.log.info({
-          msg: `Skipped ${missedEvents.length - filteredEvents.length} events already played`,
-          contract: this.constructor.name,
-          address: this.address,
-          chainId: this.chainId,
-        });
-      }
-
-      if (filteredEvents.length > 0) {
-        this.log.info({
-          msg: `Found ${filteredEvents.length} really missed events`,
-          // missedEvents,
-          contract: this.constructor.name,
-          address: this.address,
-          chainId: this.chainId,
-        });
-      }
-
-      return filteredEvents;
-    } catch (err) {
-      this.log.error({
-        msg: `Error retrieving events from block ${fromBlock}`,
-        err,
-        contract: this.constructor.name,
-        address: this.address,
-        chainId: this.chainId,
-      });
-
       return [];
     }
+
+    this.log.info({
+      msg: `Found ${missedEvents.length} potentially missed events`,
+      contract: this.constructor.name,
+      address: this.address,
+      chainId: this.chainId,
+    });
+
+    const filteredEvents: ethers.Event[] = [];
+    for (const event of missedEvents) {
+      if (
+        (await EventModel.exists({
+          chainId: this.chainId,
+          address: this.address,
+          blockNumber: event.blockNumber,
+          txIndex: event.transactionIndex,
+          logIndex: event.logIndex,
+        })) === null
+      ) {
+        filteredEvents.push(event);
+      }
+    }
+
+    if (missedEvents.length > filteredEvents.length) {
+      this.log.info({
+        msg: `Skipped ${missedEvents.length - filteredEvents.length} events already played`,
+        contract: this.constructor.name,
+        address: this.address,
+        chainId: this.chainId,
+      });
+    }
+
+    if (filteredEvents.length > 0) {
+      this.log.info({
+        msg: `Found ${filteredEvents.length} really missed events`,
+        // missedEvents,
+        contract: this.constructor.name,
+        address: this.address,
+        chainId: this.chainId,
+      });
+    }
+
+    return filteredEvents;
   }
 
   async getJsonModel(session: ClientSession): Promise<FlattenMaps<T>> {
