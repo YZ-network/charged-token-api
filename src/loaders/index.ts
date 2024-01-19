@@ -3,4 +3,5 @@ export * from "./ChargedToken";
 export * from "./DelegableToLT";
 export * from "./Directory";
 export * from "./EventListener";
+export * from "./FundraisingChargedToken";
 export * from "./InterfaceProjectToken";

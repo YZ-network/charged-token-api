@@ -1,32 +1,20 @@
-import { Repeater } from "graphql-yoga";
-import { Main } from "../../main";
 import { rootLogger } from "../../util";
+import pubSub from "../pubsub";
 
 const log = rootLogger.child({ name: "health" });
 
-export const HealthQueryResolver = () => {
-  return Main.health();
+export const HealthQueryResolver = async () => {
+  const subscription = pubSub.subscribe("Health");
+  return await subscription.return();
 };
 
 export const HealthSubscriptionResolver = {
-  subscribe: (_: any, { pollingMs }: { pollingMs: number }) => {
+  subscribe: (_: any) => {
     log.debug({
       msg: "client subscribing to health checks",
     });
 
-    return new Repeater(async (push, stop) => {
-      push(Main.health());
-
-      const timer = setInterval(() => {
-        log.debug({ msg: "pushing health status" });
-        push(Main.health());
-      }, pollingMs);
-
-      stop.then((err) => {
-        log.warn(`client health check sub stopped by ${err}`);
-        clearInterval(timer);
-      });
-    });
+    return pubSub.subscribe("Health");
   },
   resolve: (payload: any) => payload,
 };

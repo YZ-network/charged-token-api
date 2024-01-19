@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import { WebSocket } from "ws";
-import { Config } from "./config";
-import { EventHandlerStatus, ProviderStatus, WorkerStatus } from "./enums";
+import { Config, EventHandlerStatus, ProviderStatus, WorkerStatus } from "./globals";
 import { Directory } from "./loaders/Directory";
 import { EventListener } from "./loaders/EventListener";
 import { EventModel } from "./models";

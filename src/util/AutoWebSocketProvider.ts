@@ -6,17 +6,16 @@
 /* eslint-disable @typescript-eslint/strict-boolean-expressions */
 "use strict";
 
-import { BigNumber } from "@ethersproject/bignumber";
 import { type Network, type Networkish } from "@ethersproject/networks";
-import { defineReadOnly } from "@ethersproject/properties";
+import { BigNumber } from "ethers";
 
-import { JsonRpcProvider } from "@ethersproject/providers";
 import { type Event } from "@ethersproject/providers/lib/base-provider";
 import {
   type InflightRequest,
   type Subscription,
   type WebSocketLike,
 } from "@ethersproject/providers/lib/websocket-provider";
+import { ethers } from "ethers";
 import { MessageEvent, WebSocket } from "ws";
 import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";
@@ -63,7 +62,7 @@ let NextId = 1;
 // For more info about the Real-time Event API see:
 //   https://geth.ethereum.org/docs/rpc/pubsub
 
-export class AutoWebSocketProvider extends JsonRpcProvider {
+export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
   readonly _websocket: WebSocket;
   readonly _requests: IdInflightRequest[];
   readonly _detectNetwork: Promise<Network>;
@@ -212,8 +211,8 @@ export class AutoWebSocketProvider extends JsonRpcProvider {
       let error: Error | null = null;
       if (result.error) {
         error = new Error(result.error.message || "unknown error");
-        defineReadOnly(error as any, "code", result.error.code || null);
-        defineReadOnly(error as any, "response", data);
+        Object.defineProperty(error, "code", { enumerable: true, value: result.error.code || null, writable: false });
+        Object.defineProperty(error, "response", { enumerable: true, value: data, writable: false });
       } else {
         error = new Error("unknown error");
       }

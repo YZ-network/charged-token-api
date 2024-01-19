@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
-import { ProviderStatus, WorkerStatus } from "../enums";
+import { ProviderStatus, WorkerStatus } from "../globals";
 import { Directory } from "../loaders/Directory";
 import { EventModel } from "../models";
 import { subscribeToUserBalancesLoading } from "../subscriptions";
 import { AutoWebSocketProvider, Metrics } from "../util";
 import { ChainWorker } from "../worker";
 
-jest.mock("../config");
+jest.mock("../globals/config");
 jest.mock("../util/AutoWebSocketProvider");
 jest.mock("../loaders/EventListener");
 jest.mock("../loaders/Directory");

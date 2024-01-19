@@ -1,8 +1,7 @@
 import { type ethers } from "ethers";
 import mongoose, { type ClientSession } from "mongoose";
 import { type Logger } from "pino";
-import { EventHandlerStatus } from "../enums";
-import { getBlockDate } from "../functions";
+import { EventHandlerStatus, getBlockDate } from "../globals";
 import { EventModel } from "../models";
 import { rootLogger } from "../util";
 import { type AbstractLoader } from "./AbstractLoader";

@@ -1,5 +1,5 @@
 import ethers from "ethers";
-import { getBlockDate, recordToEntryList } from "../functions";
+import { getBlockDate, recordToEntryList } from "../globals";
 
 describe("Common functions", () => {
   test("converts record to list of entries with key and value", () => {

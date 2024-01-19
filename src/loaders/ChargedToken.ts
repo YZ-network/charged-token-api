@@ -10,7 +10,7 @@ import { InterfaceProjectToken } from "./InterfaceProjectToken";
 
 export class ChargedToken extends AbstractLoader<IChargedToken> {
   interface: InterfaceProjectToken | undefined;
-  private readonly directory: Directory;
+  protected readonly directory: Directory;
 
   constructor(chainId: number, provider: ethers.providers.JsonRpcProvider, address: string, directory: Directory) {
     super(directory.eventsListener, chainId, provider, address, contracts.LiquidityToken, ChargedTokenModel);
@@ -105,6 +105,12 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       stakingDateLastCheckpoint: (await ins.stakingDateLastCheckpoint()).toString(),
       campaignStakingRewards: (await ins.campaignStakingRewards()).toString(),
       totalStakingRewards: (await ins.totalStakingRewards()).toString(),
+      // fundraising
+      isFundraisingContract: false,
+      fundraisingTokenSymbol: "",
+      priceTokenPer1e18: "0",
+      fundraisingToken: EMPTY_ADDRESS,
+      isFundraisingActive: false,
     };
   }
 
@@ -633,5 +639,47 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         eventName,
       );
     }
+  }
+
+  // Fundraising
+  async onFundraisingConditionsSet(
+    session: ClientSession,
+    [token, symbol, price1e18]: any[],
+    blockNumber: number,
+    eventName?: string,
+  ): Promise<void> {
+    await this.applyUpdateAndNotify(
+      session,
+      {
+        fundraisingTokenSymbol: symbol,
+        priceTokenPer1e18: price1e18,
+        fundraisingToken: token,
+      },
+      blockNumber,
+      eventName,
+    );
+  }
+
+  async onLTAllocatedThroughSale(
+    session: ClientSession,
+    [user, valueLT, valuePayment, fee]: any[],
+    blockNumber: number,
+    eventName?: string,
+  ): Promise<void> {}
+
+  async onFundraisingStatusChanged(
+    session: ClientSession,
+    []: any[],
+    blockNumber: number,
+    eventName?: string,
+  ): Promise<void> {
+    await this.applyUpdateAndNotify(
+      session,
+      {
+        isFundraisingActive: await this.instance.isFundraisingActive(),
+      },
+      blockNumber,
+      eventName,
+    );
   }
 }

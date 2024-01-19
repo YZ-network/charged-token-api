@@ -7,7 +7,7 @@ import { ChargedToken } from "../ChargedToken";
 import { Directory } from "../Directory";
 import { EventListener } from "../EventListener";
 
-jest.mock("../../config");
+jest.mock("../../globals/config");
 jest.mock("../../topics");
 jest.mock("../../graphql");
 jest.mock("../../models");

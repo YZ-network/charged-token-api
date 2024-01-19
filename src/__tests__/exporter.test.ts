@@ -1,6 +1,6 @@
 import { OnRequestEventPayload } from "@whatwg-node/server";
-import { EventHandlerStatus } from "../enums";
 import { useEventsExporter } from "../exporter";
+import { EventHandlerStatus } from "../globals";
 import { EventModel } from "../models";
 
 jest.mock("../models");

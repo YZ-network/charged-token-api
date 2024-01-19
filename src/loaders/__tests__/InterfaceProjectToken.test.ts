@@ -9,7 +9,7 @@ import { Directory } from "../Directory";
 import { type EventListener } from "../EventListener";
 import { InterfaceProjectToken } from "../InterfaceProjectToken";
 
-jest.mock("../../config");
+jest.mock("../../globals/config");
 jest.mock("../EventListener");
 jest.mock("../../topics");
 jest.mock("../../graphql");

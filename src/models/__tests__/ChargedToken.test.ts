@@ -1,3 +1,4 @@
+import { EMPTY_ADDRESS } from "../../types";
 import { ChargedTokenModel, type IChargedToken } from "../ChargedToken";
 
 jest.unmock("mongoose");
@@ -44,6 +45,12 @@ describe("ChargedTokenModel", () => {
       stakingDateLastCheckpoint: "18",
       campaignStakingRewards: "19",
       totalStakingRewards: "20",
+      //fundraising
+      isFundraisingContract: false,
+      fundraisingToken: EMPTY_ADDRESS,
+      fundraisingTokenSymbol: "",
+      isFundraisingActive: false,
+      priceTokenPer1e18: "0",
     };
   }
 

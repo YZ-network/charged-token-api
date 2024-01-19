@@ -9,7 +9,7 @@ import { Directory } from "../Directory";
 import { EventListener } from "../EventListener";
 import { InterfaceProjectToken } from "../InterfaceProjectToken";
 
-jest.mock("../../config");
+jest.mock("../../globals/config");
 jest.mock("../EventListener");
 jest.mock("../../topics");
 jest.mock("../../graphql");
@@ -60,6 +60,11 @@ describe("ChargedToken loader", () => {
       stakingDateLastCheckpoint: "19",
       campaignStakingRewards: "20",
       totalStakingRewards: "21",
+      isFundraisingContract: false,
+      fundraisingToken: EMPTY_ADDRESS,
+      fundraisingTokenSymbol: "",
+      isFundraisingActive: false,
+      priceTokenPer1e18: "0",
     };
   }
 

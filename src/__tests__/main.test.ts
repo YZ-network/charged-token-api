@@ -1,13 +1,14 @@
+import { buildHTTPExecutor } from "@graphql-tools/executor-http";
+import gql from "graphql-tag";
 import mongoose from "mongoose";
 import { Socket } from "net";
-import { Config } from "../config";
-import { WorkerStatus } from "../enums";
+import { Config, WorkerStatus } from "../globals";
 import { MainClass } from "../main";
 import { ChainWorker } from "../worker";
 
 jest.unmock("ws");
 
-jest.mock("../config");
+jest.mock("../globals/config");
 jest.mock("../graphql");
 jest.mock("../exporter");
 jest.mock("../worker");
@@ -56,7 +57,7 @@ describe("Main class", () => {
 
     (mongoose as any).connect.mockResolvedValueOnce(Promise.resolve);
 
-    expect(main.httpServer.listenerCount("listening")).toBe(1);
+    const listenerCountBefore = main.httpServer.listenerCount("listening");
     expect(main.httpServer.listening).toBe(false);
 
     main.httpServer.on("connection", (socket) => {
@@ -69,14 +70,59 @@ describe("Main class", () => {
     await main.start();
 
     expect(main.keepAlive).toBeDefined();
+    expect(main.healthTimer).toBeDefined();
     expect(mongoose.set).toHaveBeenNthCalledWith(1, "strictQuery", true);
     expect(mongoose.connect).toHaveBeenNthCalledWith(1, Config.db.uri);
     expect(main.workers.length).toBe(Config.networks.length);
-    expect(main.httpServer.listenerCount("listening")).toBe(2);
+    expect(main.httpServer.listenerCount("listening")).toBe(listenerCountBefore + 1);
 
     await waitForServerStart(main);
 
+    // trying some gql queries
+    const executor = buildHTTPExecutor({
+      fetch: main.yoga.fetch,
+    });
+
+    const healthSub = await executor({
+      document: gql`
+        subscription testSub {
+          health {
+            restartCount
+          }
+        }
+      `,
+    });
+
+    const subValue = await healthSub;
+
+    const healthQuery = await executor({
+      document: gql`
+        query testQuery {
+          health {
+            restartCount
+          }
+        }
+      `,
+    });
+
     await closeServerAndWait(main, sockets);
+  });
+
+  test("failure after start should dispose of timers", async () => {
+    const main = new MainClass();
+
+    (mongoose as any).connect.mockImplementationOnce(async () => {
+      throw new Error();
+    });
+
+    main.keepAlive = setInterval(() => {}, 1000);
+    main.healthTimer = setInterval(() => {}, 1000);
+
+    await main.start();
+
+    expect(mongoose.connect).toBeCalled();
+    expect(main.keepAlive).toBeUndefined();
+    expect(main.healthTimer).toBeUndefined();
   });
 
   test("dead worker should be respawned automatically", async () => {
@@ -145,7 +191,13 @@ describe("Main class", () => {
   }
 
   async function closeServerAndWait(main: MainClass, sockets: Set<Socket>): Promise<void> {
-    clearInterval(main.keepAlive);
+    if (main.keepAlive !== undefined) {
+      clearInterval(main.keepAlive);
+    }
+    if (main.healthTimer !== undefined) {
+      clearInterval(main.healthTimer);
+    }
+
     await new Promise<void>((resolve, reject) =>
       main.httpServer.close((err) => {
         if (err !== undefined) {

@@ -1,4 +1,4 @@
-import { EventHandlerStatus } from "../../enums";
+import { EventHandlerStatus } from "../../globals";
 import { EventModel, type IEvent } from "../Event";
 
 jest.unmock("mongoose");

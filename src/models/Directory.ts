@@ -1,5 +1,5 @@
 import mongoose, { type HydratedDocument } from "mongoose";
-import { recordToEntryList } from "../functions";
+import { recordToEntryList } from "../globals";
 import { type IModel, type IOwnable } from "../types";
 
 export interface IDirectory extends IOwnable {

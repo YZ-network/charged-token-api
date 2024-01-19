@@ -1,5 +1,5 @@
 import mongoose, { type HydratedDocument } from "mongoose";
-import { EventHandlerStatus } from "../enums";
+import { EventHandlerStatus } from "../globals";
 import { type IModel } from "../types";
 
 export interface IEvent {

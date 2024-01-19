@@ -1,6 +1,6 @@
-import { createSchema } from 'graphql-yoga';
+import { createSchema } from "graphql-yoga";
 
-import resolvers from './resolvers';
+import resolvers from "./resolvers";
 
 const schema = createSchema({
   typeDefs: `
@@ -73,6 +73,12 @@ const schema = createSchema({
     totalLocked: String!
     totalTokenAllocated: String!
     withdrawFeesPerThousandForLT: String!
+
+    isFundraisingContract: Boolean!
+    fundraisingTokenSymbol: String!
+    priceTokenPer1e18: String!
+    fundraisingToken: String!
+    isFundraisingActive: Boolean!
   }
 
   type IInterfaceProjectToken implements IOwnable {
@@ -162,10 +168,10 @@ const schema = createSchema({
     InterfaceProjectToken(chainId: Int!, address: String!): IInterfaceProjectToken!
     DelegableToLT(chainId: Int!, address: String!): IDelegableToLT!
     userBalances(chainId: Int!, user: String!): [IUserBalancesEntry!]!
-    health(pollingMs: Int!): [IWorkerHealth!]!
+    health: [IWorkerHealth!]!
   }
 `,
-  resolvers
+  resolvers,
 });
 
-export default schema
+export default schema;

@@ -1,5 +1,7 @@
 import { AutoWebSocketProvider } from "../AutoWebSocketProvider";
 
+jest.unmock("ethers");
+
 describe("AutoWebSocketProvider", () => {
   const URL = "ws://localhost";
   const chainId = 1337;

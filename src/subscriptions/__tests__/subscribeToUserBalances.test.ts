@@ -6,7 +6,7 @@ import { type EventListener } from "../../loaders/EventListener";
 import { type AutoWebSocketProvider } from "../../util";
 import subscribeToUserBalancesLoading from "../subscribeToUserBalances";
 
-jest.mock("../../config");
+jest.mock("../../globals/config");
 jest.mock("../../graphql");
 jest.mock("../../loaders/Directory");
 

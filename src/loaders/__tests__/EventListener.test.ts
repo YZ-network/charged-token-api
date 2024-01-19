@@ -1,11 +1,11 @@
 import { ClientSession } from "mongodb";
 import mongoose from "mongoose";
-import { EventHandlerStatus } from "../../enums";
+import { EventHandlerStatus } from "../../globals";
 import { EventModel } from "../../models";
 import { type AbstractLoader } from "../AbstractLoader";
 import { EventListener } from "../EventListener";
 
-jest.mock("../../config");
+jest.mock("../../globals/config");
 jest.mock("../../models");
 
 describe("EventListener", () => {

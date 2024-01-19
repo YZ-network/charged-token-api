@@ -8,7 +8,7 @@ import { DelegableToLT } from "../DelegableToLT";
 import { Directory } from "../Directory";
 import { EventListener } from "../EventListener";
 
-jest.mock("../../config");
+jest.mock("../../globals/config");
 jest.mock("../EventListener");
 jest.mock("../../topics");
 jest.mock("../../graphql");

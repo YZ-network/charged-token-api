@@ -117,8 +117,10 @@ export abstract class AbstractLoader<T extends IOwnable> {
 
       this.initBlock = blockNumber;
 
-      pubSub.publish(`${this.constructor.name}.${this.chainId}.${this.address}`, this.lastState);
-      pubSub.publish(`${this.constructor.name}.${this.chainId}`, this.lastState);
+      const contractName = this.constructor.name === "FundraisingChargedToken" ? "ChargedToken" : this.constructor.name;
+
+      pubSub.publish(`${contractName}.${this.chainId}.${this.address}`, this.lastState);
+      pubSub.publish(`${contractName}.${this.chainId}`, this.lastState);
     }
 
     if (createTransaction === true) await session.commitTransaction();
@@ -503,8 +505,10 @@ export abstract class AbstractLoader<T extends IOwnable> {
       contract: this.constructor.name,
     });
 
-    pubSub.publish(`${this.constructor.name}.${this.chainId}.${this.address}`, this.lastState);
-    pubSub.publish(`${this.constructor.name}.${this.chainId}`, this.lastState);
+    const contractName = this.constructor.name === "FundraisingChargedToken" ? "ChargedToken" : this.constructor.name;
+
+    pubSub.publish(`${contractName}.${this.chainId}.${this.address}`, this.lastState);
+    pubSub.publish(`${contractName}.${this.chainId}`, this.lastState);
   }
 
   subscribeToEvents() {
@@ -617,16 +621,5 @@ export abstract class AbstractLoader<T extends IOwnable> {
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const data = { owner } as Partial<T>;
     await this.applyUpdateAndNotify(session, data, blockNumber);
-  }
-
-  private filterArgs(inputArgs: Record<string, any> | undefined): any[] {
-    if (inputArgs === undefined) return [];
-
-    const len = Object.keys(inputArgs).length >> 1;
-    const args: any[] = [];
-    for (let i = 0; i < len; i++) {
-      args.push(inputArgs[`${i}`]);
-    }
-    return args;
   }
 }

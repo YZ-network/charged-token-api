@@ -581,7 +581,7 @@
   "storageLayout": {
     "storage": [
       {
-        "astId": 3332,
+        "astId": 3609,
         "contract": "DelegableToLT.sol:DelegableToLT",
         "label": "_balances",
         "offset": 0,
@@ -589,7 +589,7 @@
         "type": "t_mapping(t_address,t_uint256)"
       },
       {
-        "astId": 3338,
+        "astId": 3615,
         "contract": "DelegableToLT.sol:DelegableToLT",
         "label": "_allowances",
         "offset": 0,
@@ -597,7 +597,7 @@
         "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))"
       },
       {
-        "astId": 3340,
+        "astId": 3617,
         "contract": "DelegableToLT.sol:DelegableToLT",
         "label": "_totalSupply",
         "offset": 0,
@@ -605,7 +605,7 @@
         "type": "t_uint256"
       },
       {
-        "astId": 3342,
+        "astId": 3619,
         "contract": "DelegableToLT.sol:DelegableToLT",
         "label": "_name",
         "offset": 0,
@@ -613,7 +613,7 @@
         "type": "t_string_storage"
       },
       {
-        "astId": 3344,
+        "astId": 3621,
         "contract": "DelegableToLT.sol:DelegableToLT",
         "label": "_symbol",
         "offset": 0,
@@ -621,7 +621,7 @@
         "type": "t_string_storage"
       },
       {
-        "astId": 3346,
+        "astId": 3623,
         "contract": "DelegableToLT.sol:DelegableToLT",
         "label": "_decimals",
         "offset": 0,
@@ -629,7 +629,7 @@
         "type": "t_uint8"
       },
       {
-        "astId": 2823,
+        "astId": 3100,
         "contract": "DelegableToLT.sol:DelegableToLT",
         "label": "_owner",
         "offset": 1,
@@ -642,7 +642,7 @@
         "label": "validatedInterfaceProjectToken",
         "offset": 0,
         "slot": "6",
-        "type": "t_struct(Data)2938_storage"
+        "type": "t_struct(Data)3215_storage"
       },
       {
         "astId": 571,
@@ -650,7 +650,7 @@
         "label": "allTimeValidatedInterfaceProjectToken",
         "offset": 0,
         "slot": "9",
-        "type": "t_struct(Data)2938_storage"
+        "type": "t_struct(Data)3215_storage"
       },
       {
         "astId": 573,
@@ -704,12 +704,12 @@
         "label": "string",
         "numberOfBytes": "32"
       },
-      "t_struct(Data)2938_storage": {
+      "t_struct(Data)3215_storage": {
         "encoding": "inplace",
         "label": "struct AddressSet.Data",
         "members": [
           {
-            "astId": 2931,
+            "astId": 3208,
             "contract": "DelegableToLT.sol:DelegableToLT",
             "label": "values",
             "offset": 0,
@@ -717,7 +717,7 @@
             "type": "t_array(t_address)dyn_storage"
           },
           {
-            "astId": 2935,
+            "astId": 3212,
             "contract": "DelegableToLT.sol:DelegableToLT",
             "label": "index",
             "offset": 0,
@@ -725,7 +725,7 @@
             "type": "t_mapping(t_address,t_uint128)"
           },
           {
-            "astId": 2937,
+            "astId": 3214,
             "contract": "DelegableToLT.sol:DelegableToLT",
             "label": "count",
             "offset": 0,

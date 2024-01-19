@@ -45,6 +45,12 @@ const Contract = jest.fn().mockImplementation(() => {
     getUserDateOfPartiallyChargedToken: jest.fn(),
     claimedRewardPerShare1e18: jest.fn(),
     userLiquiToken: jest.fn(),
+    fundraisingTokenSymbol: jest.fn(),
+    priceTokenPer1e18: jest.fn(),
+    fundraisingToken: jest.fn(),
+    isFundraisingActive: jest.fn(() => {
+      throw new Error("Not implemented");
+    }),
     // InterfaceProjectToken functions
     liquidityToken: jest.fn(),
     projectToken: jest.fn(),

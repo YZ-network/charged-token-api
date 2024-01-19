@@ -3,7 +3,7 @@ import { ChargedTokenModel, UserBalanceModel } from "../../../models";
 import pubSub from "../../pubsub";
 import { UserBalanceQueryResolver, UserBalanceSubscriptionResolver } from "../userBalance";
 
-jest.mock("../../../config");
+jest.mock("../../../globals/config");
 jest.mock("../../pubsub");
 jest.mock("../../../models");
 

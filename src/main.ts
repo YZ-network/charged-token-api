@@ -1,23 +1,23 @@
 import { useServer } from "graphql-ws/lib/use/ws";
-import { createYoga, useLogger } from "graphql-yoga";
+import { createYoga } from "graphql-yoga";
 import { createServer } from "http";
 import mongoose from "mongoose";
 import { WebSocketServer } from "ws";
-import { Config } from "./config";
-import { WorkerStatus } from "./enums";
 import { useEventsExporter } from "./exporter";
-import { schema } from "./graphql";
+import { Config, WorkerStatus } from "./globals";
+import { pubSub, schema } from "./graphql";
 import { usePrometheus } from "./prometheus";
 import { rootLogger } from "./util";
-import { ChainWorker, type ChainHealth } from "./worker";
+import { ChainHealth, ChainWorker } from "./worker";
 
 const log = rootLogger.child({ name: "Main" });
-const yogaLog = log.child({ name: "yoga" });
+// const yogaLog = log.child({ name: "yoga" });
 
 export class MainClass {
   readonly networks = Config.networks;
 
   keepAlive: NodeJS.Timeout | undefined;
+  healthTimer: NodeJS.Timeout | undefined;
 
   readonly workers: ChainWorker[] = [];
 
@@ -38,7 +38,7 @@ export class MainClass {
     /* {
       origin: Config.api.corsOrigins,
       methods: ["POST", "OPTIONS"],
-    } */
+    }
     logging: {
       debug(...args) {
         yogaLog.trace({ yogaLevel: "debug", args });
@@ -53,12 +53,15 @@ export class MainClass {
         yogaLog.trace({ yogaLevel: "error", args });
       },
     },
+     */
     plugins: [
+      /*
       useLogger({
         logFn: (eventName, args) => {
           yogaLog.trace({ eventName, args });
         },
       }),
+      */
       usePrometheus(),
       useEventsExporter(),
     ],
@@ -74,7 +77,7 @@ export class MainClass {
   readonly bindAddress = Config.api.bindAddress;
   readonly bindPort = Config.api.bindPort;
 
-  init() {
+  init(): void {
     useServer(
       {
         execute: (args: any) => args.rootValue.execute(args),
@@ -108,51 +111,61 @@ export class MainClass {
     );
   }
 
-  async start() {
+  async start(): Promise<void> {
     log.info(`Connecting to MongoDB at ${Config.db.uri}`);
-    await this.connectDB()
-      .then(() => {
-        log.info("MongoDB connected !");
 
-        this.networks.forEach((network, index) => {
-          this.connectChain(index, network.uri, network.directory, network.chainId);
-        });
+    try {
+      await this.connectDB();
 
-        this.keepAlive = setInterval(() => {
-          for (const worker of this.workers) {
-            if (worker.workerStatus === WorkerStatus.DEAD) {
-              log.info({
-                msg: `Restarting worker on rpc ${worker.rpc} and chain ${worker.name} ${worker.chainId}`,
-                chainId: worker.chainId,
-              });
-              worker.start();
-            }
-          }
-        }, Config.delays.workerRestartDelayMs);
+      log.info("MongoDB connected !");
 
-        this.httpServer.listen(this.bindPort, this.bindAddress, () => {
-          log.info(`GraphQL API server started at http://${this.bindAddress}:${this.bindPort}/`);
-        });
-      })
-      .catch((err) => {
-        log.error({ msg: "Error during application startup !", err });
-        if (this.keepAlive !== undefined) {
-          clearInterval(this.keepAlive);
-          this.keepAlive = undefined;
-        }
+      this.networks.forEach((network, index) => {
+        this.connectChain(index, network.uri, network.directory, network.chainId);
       });
+
+      this.keepAlive = setInterval(() => {
+        for (const worker of this.workers) {
+          if (worker.workerStatus === WorkerStatus.DEAD) {
+            log.info({
+              msg: `Restarting worker on rpc ${worker.rpc} and chain ${worker.name} ${worker.chainId}`,
+              chainId: worker.chainId,
+            });
+            worker.start();
+          }
+        }
+      }, Config.delays.workerRestartDelayMs);
+
+      this.healthTimer = setInterval(() => {
+        log.debug({ msg: "pushing health status" });
+        pubSub.publish("Health", this.health());
+      }, Config.delays.healthPublishDelayMs);
+
+      this.httpServer.listen(this.bindPort, this.bindAddress, () => {
+        log.info(`GraphQL API server started at http://${this.bindAddress}:${this.bindPort}/`);
+      });
+    } catch (err) {
+      log.error({ msg: "Error during application startup !", err });
+      if (this.keepAlive !== undefined) {
+        clearInterval(this.keepAlive);
+        this.keepAlive = undefined;
+      }
+      if (this.healthTimer !== undefined) {
+        clearInterval(this.healthTimer);
+        this.healthTimer = undefined;
+      }
+    }
   }
 
   health(): ChainHealth[] {
     return this.workers.map((worker) => worker.status());
   }
 
-  private async connectDB() {
+  private async connectDB(): Promise<typeof mongoose> {
     mongoose.set("strictQuery", true);
     return await mongoose.connect(Config.db.uri);
   }
 
-  private connectChain(index: number, rpc: string, directory: string, chainId: number) {
+  private connectChain(index: number, rpc: string, directory: string, chainId: number): void {
     log.info({
       msg: `Creating provider and starting worker for network ${chainId} : ${rpc} and directory ${directory}`,
       chainId,

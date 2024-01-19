@@ -1,4 +1,4 @@
-import { type ethers } from "ethers";
+import { ethers } from "ethers";
 import { type ClientSession } from "mongodb";
 import { contracts } from "../contracts";
 import { pubSub } from "../graphql";
@@ -15,10 +15,11 @@ import { EMPTY_ADDRESS } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
 import { type EventListener } from "./EventListener";
+import { FundraisingChargedToken } from "./FundraisingChargedToken";
 import { InterfaceProjectToken } from "./InterfaceProjectToken";
 
 export class Directory extends AbstractLoader<IDirectory> {
-  readonly ct: Record<string, ChargedToken> = {};
+  readonly ct: Record<string, ChargedToken | FundraisingChargedToken> = {};
 
   constructor(
     eventListener: EventListener,
@@ -32,12 +33,34 @@ export class Directory extends AbstractLoader<IDirectory> {
   async init(session: ClientSession, blockNumber: number, createTransaction?: boolean) {
     await super.init(session, blockNumber, createTransaction);
 
-    this.lastState!.directory.forEach(
-      (address) => (this.ct[address] = new ChargedToken(this.chainId, this.provider, address, this)),
-    );
+    for (const address of this.lastState!.directory) {
+      this.ct[address] = await this.guessChargedTokenKindAndCreate(address);
+    }
 
     for (const ct of Object.values(this.ct)) {
       await ct.init(session, blockNumber, createTransaction);
+    }
+  }
+
+  private async guessChargedTokenKindAndCreate(address: string): Promise<ChargedToken | FundraisingChargedToken> {
+    try {
+      const instance = new ethers.Contract(address, contracts.LiquidityToken.abi, this.provider);
+      await instance.isFundraisingActive();
+      this.log.info({
+        msg: "Detected Fundraising Contract",
+        chainId: this.chainId,
+        contract: this.contract.name,
+        address,
+      });
+      return new FundraisingChargedToken(this.chainId, this.provider, address, this);
+    } catch (err) {
+      this.log.info({
+        msg: "Detected old Charged Token Contract",
+        chainId: this.chainId,
+        contract: this.contract.name,
+        address,
+      });
+      return new ChargedToken(this.chainId, this.provider, address, this);
     }
   }
 
@@ -109,7 +132,9 @@ export class Directory extends AbstractLoader<IDirectory> {
     const results =
       address === undefined || this.ct[address] === undefined
         ? await Promise.all(
-            Object.values(this.ct).map(async (ct: ChargedToken) => await ct.loadUserBalances(user, blockNumber)),
+            Object.values(this.ct).map(
+              async (ct: ChargedToken | FundraisingChargedToken) => await ct.loadUserBalances(user, blockNumber),
+            ),
           )
         : [await this.ct[address].loadUserBalances(user, blockNumber)];
 
@@ -246,7 +271,7 @@ export class Directory extends AbstractLoader<IDirectory> {
       },
     };
 
-    this.ct[contract] = new ChargedToken(this.chainId, this.provider, contract, this);
+    this.ct[contract] = await this.guessChargedTokenKindAndCreate(contract);
 
     await this.ct[contract].init(session, blockNumber, false);
     this.ct[contract].subscribeToEvents();

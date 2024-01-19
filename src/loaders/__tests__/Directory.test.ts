@@ -12,12 +12,13 @@ import { ChargedToken } from "../ChargedToken";
 import { Directory } from "../Directory";
 import { EventListener } from "../EventListener";
 
-jest.mock("../../config");
+jest.mock("../../globals/config");
 jest.mock("../EventListener");
 jest.mock("../../topics");
 jest.mock("../../graphql");
 jest.mock("../../models");
 jest.mock("../ChargedToken");
+jest.mock("../FundraisingChargedToken");
 
 describe("Directory loader", () => {
   const CHAIN_ID = 1337;
