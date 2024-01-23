@@ -1,5 +1,5 @@
 {
-  "name": "ct-api",
+  "name": "charged-token-api",
   "version": "1.0.0",
   "description": "Backend API to cache contracts data",
   "main": "src/index.ts",
@@ -22,14 +22,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ynaciri/CT-api.git"
+    "url": "git+https://github.com/YZ-network/charged-token-api.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/ynaciri/CT-api/issues"
+    "url": "https://github.com/YZ-network/charged-token-api/issues"
   },
-  "homepage": "https://github.com/ynaciri/CT-api#readme",
+  "homepage": "https://github.com/YZ-network/charged-token-api#readme",
   "dependencies": {
     "csv-stringify": "^6.4.5",
     "ethers": "=5.7.2",
