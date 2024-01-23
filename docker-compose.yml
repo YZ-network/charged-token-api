@@ -1,7 +1,7 @@
 version: "3"
 services:
   api:
-    image: 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz:${TAG}
+    image: 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-test:${TAG}
     entrypoint: ["bash", "-c", "sleep 6 && node lib/index.js"]
     ports:
       - "80:80"
@@ -13,19 +13,18 @@ services:
     logging:
       driver: awslogs
       options:
-        awslogs-group: yz-api
+        awslogs-group: yz-api-test
         awslogs-region: eu-west-3
-        awslogs-stream-prefix: "yz-api"
+        awslogs-stream-prefix: "yz-api-test"
   dbsetup:
     image: mongo:6.0
-    entrypoint:
-      ["mongosh", "--host", "localhost:27017", "--eval", "'rs.initiate()'"]
+    entrypoint: ["mongosh", "--host", "localhost:27017", "--eval", "'rs.initiate()'"]
     logging:
       driver: awslogs
       options:
-        awslogs-group: yz-db-setup
+        awslogs-group: yz-db-setup-test
         awslogs-region: eu-west-3
-        awslogs-stream-prefix: "yz-db-setup"
+        awslogs-stream-prefix: "yz-db-setup-test"
   db:
     image: mongo:6.0
     entrypoint: ["/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0"]
@@ -39,6 +38,6 @@ services:
     logging:
       driver: awslogs
       options:
-        awslogs-group: yz-db
+        awslogs-group: yz-db-test
         awslogs-region: eu-west-3
-        awslogs-stream-prefix: "yz-db"
+        awslogs-stream-prefix: "yz-db-test"

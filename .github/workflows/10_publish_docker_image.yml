@@ -35,10 +35,10 @@ jobs:
       - name: Build image
         shell: bash
         run: |
-          docker build -t yz:snapshot .
-          docker tag yz:snapshot 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz:snapshot
+          docker build -t yz-test:snapshot .
+          docker tag yz-test:snapshot 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-test:snapshot
           aws ecr get-login-password --region eu-west-3 | docker login --username AWS --password-stdin 940219468121.dkr.ecr.eu-west-3.amazonaws.com
-          docker push 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz:snapshot
+          docker push 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-test:snapshot
 
   deploy-snapshot:
     needs: publish-image
@@ -60,7 +60,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
-          ECR_REPOSITORY: 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz:snapshot
+          ECR_REPOSITORY: 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-test:snapshot
           GITHUB_SHA: ${{ github.sha }}
         shell: bash
         run: |
@@ -70,8 +70,8 @@ jobs:
           # Install ecs cli
           curl -Lo /usr/local/bin/ecs-cli https://amazon-ecs-cli.s3.amazonaws.com/ecs-cli-linux-amd64-latest
           chmod +x /usr/local/bin/ecs-cli
-          ecs-cli configure profile --profile-name yz --access-key $AWS_ACCESS_KEY_ID --secret-key $AWS_SECRET_ACCESS_KEY
-          ecs-cli configure --cluster yz --default-launch-type FARGATE --region eu-west-3 --config-name yz
+          ecs-cli configure profile --profile-name yz-test --access-key $AWS_ACCESS_KEY_ID --secret-key $AWS_SECRET_ACCESS_KEY
+          ecs-cli configure --cluster yz-test --default-launch-type FARGATE --region eu-west-3 --config-name yz-test
 
       - name: Deploy
         env:
@@ -80,9 +80,9 @@ jobs:
           AWS_ACCOUNT_ID: 940219468121
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
-          ECR_REPOSITORY: 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz:snapshot
+          ECR_REPOSITORY: 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-test:snapshot
           GITHUB_SHA: ${{ github.sha }}
         run: |
           LATEST_TASK=$(ecs-cli compose --ecs-params ecs-params.yml create --launch-type FARGATE | sed -E 's/.*TaskDefinition="(.+)".*/\1/')
           echo Updating service to use task "${LATEST_TASK}"
-          aws ecs update-service --cluster yz --service CT-api --task-definition $LATEST_TASK --force-new-deployment --region eu-west-3
+          aws ecs update-service --cluster yz-test --service CT-api-test --task-definition $LATEST_TASK --force-new-deployment --region eu-west-3
