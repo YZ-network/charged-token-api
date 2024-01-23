@@ -1,4 +1,4 @@
-# CT-api
+# Charged Token API
 
 # Load testing
 

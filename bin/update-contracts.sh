@@ -3,7 +3,7 @@
 PROJECT_DIR=$PWD
 
 INSTALLED_API_VERSION=$(git log --name-status HEAD^..HEAD | grep commit | awk '{print $2}')
-INSTALLED_CT_VERSION=$(npm ls Charged-token | grep github | sed 's/^.*#\(.*\)).*$/\1/')
+INSTALLED_CT_VERSION=$(npm ls charged-token-contracts | grep github | sed 's/^.*#\(.*\)).*$/\1/')
 
 echo
 echo "[$(date -Iseconds)] (BOT) Updating project ========================================"
@@ -18,10 +18,10 @@ echo
 echo "[$(date -Iseconds)] (BOT) Pulling last contracts =================================="
 echo
 
-npm i Charged-token
+npm i charged-token-contracts
 [ $? != 0 ] && exit 2
 
-CT_VERSION=$(npm ls Charged-token | grep github | sed 's/^.*#\(.*\)).*$/\1/')
+CT_VERSION=$(npm ls charged-token-contracts | grep github | sed 's/^.*#\(.*\)).*$/\1/')
 
 if [ $CT_VERSION == $INSTALLED_CT_VERSION -a $API_VERSION == $INSTALLED_API_VERSION ]
 then
@@ -38,7 +38,7 @@ echo "[$(date -Iseconds)] (BOT) Contracts version ${CT_VERSION} ==============="
 echo "[$(date -Iseconds)] (BOT) Preparing build environment ============================="
 echo
 
-cd node_modules/Charged-token
+cd node_modules/charged-token-contracts
 npm i
 [ $? != 0 ] && exit 3
 
