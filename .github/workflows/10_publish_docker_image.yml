@@ -34,6 +34,6 @@ jobs:
         shell: bash
         run: |
           docker build -t ct-api:latest .
-          docker tag ct-api:latest 940219468121.dkr.ecr.eu-west-3.amazonaws.com/ct-api-image-test:latest
+          docker tag ct-api:latest 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:snapshot
           aws ecr get-login-password --region eu-west-3 | docker login --username AWS --password-stdin 940219468121.dkr.ecr.eu-west-3.amazonaws.com
-          docker push 940219468121.dkr.ecr.eu-west-3.amazonaws.com/ct-api-image-test:latest
+          docker push 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:snapshot
