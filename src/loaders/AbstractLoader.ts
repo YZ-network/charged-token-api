@@ -4,7 +4,7 @@ import { type Logger } from "pino";
 import { pubSub } from "../graphql";
 import { type IUserBalance } from "../models";
 import topicsMap from "../topics";
-import { DataType, type IOwnable } from "../types";
+import { DataType, IEventHandler, type IOwnable } from "../types";
 import { rootLogger } from "../util";
 import { AbstractDbRepository } from "./AbstractDbRepository";
 import { type EventListener } from "./EventListener";

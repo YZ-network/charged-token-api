@@ -1,5 +1,5 @@
 import { EventHandlerStatus } from "../globals";
-import { IEvent, IInterfaceProjectToken, IUserBalance } from "../models";
+import { IDirectory, IEvent, IInterfaceProjectToken, IUserBalance } from "../models";
 import { DataType, IContract } from "../types";
 
 export abstract class AbstractDbRepository {
@@ -13,11 +13,22 @@ export abstract class AbstractDbRepository {
     logIndex: number,
   ): Promise<boolean>;
 
+  abstract isUserBalancesLoaded(chainId: number, user: string): Promise<boolean>;
+
+  abstract countEvents(chainId: number): Promise<number>;
+
   abstract get<T>(dataType: DataType, chainId: number, address: string): Promise<T | null>;
+  abstract getAllMatching<T extends IContract>(
+    dataType: DataType,
+    filter: Partial<T> & Pick<T, "chainId">,
+  ): Promise<T[]>;
+  abstract getDirectory(chainId: number): Promise<IDirectory | null>;
   abstract getInterfaceByChargedToken(chainId: number, ctAddress: string): Promise<IInterfaceProjectToken | null>;
   abstract getBalances(chainId: number, address: string): Promise<IUserBalance[]>;
   abstract getBalance(chainId: number, address: string, user: string): Promise<IUserBalance | null>;
   abstract getBalancesByProjectToken(chainId: number, ptAddress: string, user: string): Promise<IUserBalance[]>;
+  abstract getAllEvents(): Promise<IEvent[]>;
+  abstract getEventsPaginated(chainId: number, count: number, offset: number): Promise<IEvent[]>;
 
   abstract save<T extends IContract>(dataType: DataType, data: T): Promise<void>;
   abstract saveBalance(data: IUserBalance): Promise<void>;
@@ -40,4 +51,5 @@ export abstract class AbstractDbRepository {
   ): Promise<void>;
 
   abstract delete<T extends IContract>(dataType: DataType, chainId: number, address: string | string[]): Promise<void>;
+  abstract deletePendingAndFailedEvents(chainId: number): Promise<void>;
 }

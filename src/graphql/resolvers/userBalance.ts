@@ -1,47 +1,37 @@
 import { Repeater } from "graphql-yoga";
-import { ChargedTokenModel, UserBalanceModel } from "../../models";
+import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
 import { rootLogger } from "../../util";
 import pubSub from "../pubsub";
 
 const log = rootLogger.child({ name: "userBalance" });
 
-export const UserBalanceQueryResolver = async (
-  _: any,
-  { chainId, user, address }: { chainId: number; user: string; address?: string },
-) => {
-  log.debug({ msg: "checking existing balances", chainId, user, address });
+export const UserBalanceQueryResolverFactory =
+  (db: AbstractDbRepository) =>
+  async (_: any, { chainId, user, address }: { chainId: number; user: string; address?: string }) => {
+    log.debug({ msg: "checking existing balances", chainId, user, address });
 
-  if (address !== undefined) {
-    if ((await UserBalanceModel.exists({ chainId, user, address })) !== null) {
-      const balance = await UserBalanceModel.findOne({
-        chainId,
-        user,
-        address,
-      });
-      return UserBalanceModel.toGraphQL(balance!);
-    }
-  } else {
-    const contractsCount = await ChargedTokenModel.count({ chainId });
-    const balancesCount = await UserBalanceModel.count({ chainId, user });
-
-    if (contractsCount === balancesCount) {
+    if (address !== undefined) {
+      if ((await db.existsBalance(chainId, address, user)) !== null) {
+        const balance = await db.getBalance(chainId, address, user);
+        return balance!; //TODO convert to graphql
+      }
+    } else if (await db.isUserBalancesLoaded(chainId, user)) {
       log.debug(`returning cached balances for ${chainId} ${user}`);
-      return (await UserBalanceModel.find({ chainId, user })).map((balance) => UserBalanceModel.toGraphQL(balance));
+      return await db.getBalances(chainId, user); // TODO convert to graphql
     }
-  }
 
-  log.info({
-    msg: "Notifying worker to load balances",
-    user,
-    chainId,
-    address,
-  });
-  pubSub.publish(`UserBalance.${chainId}/load`, { user, address });
+    log.info({
+      msg: "Notifying worker to load balances",
+      user,
+      chainId,
+      address,
+    });
+    pubSub.publish(`UserBalance.${chainId}/load`, { user, address });
 
-  return [];
-};
+    return [];
+  };
 
-export const UserBalanceSubscriptionResolver = {
+export const UserBalanceSubscriptionResolverFactory = (db: AbstractDbRepository) => ({
   subscribe: (_: any, { chainId, user }: { chainId: number; user: string }) => {
     log.debug({ msg: "client subscribing to balances", user, chainId });
     const sub = pubSub.subscribe(`UserBalance.${chainId}.${user}`);
@@ -58,9 +48,9 @@ export const UserBalanceSubscriptionResolver = {
       });
 
       try {
-        const lastValue = await UserBalanceModel.find({ chainId, user });
-        if (lastValue !== null) {
-          await push(lastValue.map((value) => UserBalanceModel.toGraphQL(value)));
+        const lastValue = await db.getBalances(chainId, user);
+        if (lastValue.length > 0) {
+          await push(lastValue); // TODO convert to graphql
         }
 
         for await (const value of sub) {
@@ -89,4 +79,4 @@ export const UserBalanceSubscriptionResolver = {
     });
   },
   resolve: (payload: any) => payload,
-};
+});

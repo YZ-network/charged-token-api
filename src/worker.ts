@@ -1,10 +1,9 @@
 import mongoose from "mongoose";
 import { WebSocket } from "ws";
-import { Config, EventHandlerStatus, ProviderStatus, WorkerStatus } from "./globals";
+import { Config, ProviderStatus, WorkerStatus } from "./globals";
 import { AbstractDbRepository } from "./loaders/AbstractDbRepository";
 import { Directory } from "./loaders/Directory";
 import { EventListener } from "./loaders/EventListener";
-import { EventModel } from "./models";
 import { subscribeToUserBalancesLoading } from "./subscriptions";
 import { Metrics, rootLogger } from "./util";
 import { AutoWebSocketProvider } from "./util/AutoWebSocketProvider";
@@ -230,7 +229,7 @@ export class ChainWorker {
     });
 
     try {
-      this.eventListener = new EventListener();
+      this.eventListener = new EventListener(this.db);
       this.directory = new Directory(this.eventListener, this.chainId, this.provider, this.directoryAddress, this.db);
       const blockNumber = await this.provider.getBlockNumber();
 
@@ -296,31 +295,7 @@ export class ChainWorker {
       this.pongTimeout = undefined;
     }
 
-    const pendingEvents = await EventModel.find({
-      chainId: this.chainId,
-      status: EventHandlerStatus.QUEUED,
-    });
-    const failedEvents = await EventModel.find({
-      chainId: this.chainId,
-      status: EventHandlerStatus.FAILURE,
-    });
-    if (pendingEvents.length > 0) {
-      log.warn({
-        msg: `Found ${pendingEvents.length} pending events ! will remove them`,
-        chainId: this.chainId,
-      });
-    }
-    if (failedEvents.length > 0) {
-      log.warn({
-        msg: `Found ${failedEvents.length} failed events ! will remove them`,
-        events: failedEvents.map((event) => event.toJSON()),
-        chainId: this.chainId,
-      });
-    }
-    await EventModel.deleteMany({
-      chainId: this.chainId,
-      status: { $in: [EventHandlerStatus.QUEUED, EventHandlerStatus.FAILURE] },
-    });
+    await this.db.deletePendingAndFailedEvents(this.chainId);
 
     this.providerStatus = ProviderStatus.DEAD;
     this.workerStatus = WorkerStatus.DEAD;

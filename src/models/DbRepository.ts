@@ -1,19 +1,18 @@
-import {
-  ChargedTokenModel,
-  DelegableToLTModel,
-  DirectoryModel,
-  EventModel,
-  IEvent,
-  IInterfaceProjectToken,
-  IUserBalance,
-  InterfaceProjectTokenModel,
-  UserBalanceModel,
-} from ".";
+import { IDirectory, IEvent, IInterfaceProjectToken, IUserBalance } from ".";
 import { EventHandlerStatus } from "../globals";
 import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
 import { DataType, IContract, IModel } from "../types";
+import { rootLogger } from "../util";
+import { ChargedTokenModel } from "./ChargedToken";
+import { DelegableToLTModel } from "./DelegableToLT";
+import { DirectoryModel } from "./Directory";
+import { EventModel } from "./Event";
+import { InterfaceProjectTokenModel } from "./InterfaceProjectToken";
+import { UserBalanceModel } from "./UserBalances";
 
 export class DbRepository extends AbstractDbRepository {
+  private readonly log = rootLogger.child({ name: "DbRepository" });
+
   async exists(dataType: DataType, chainId: number, address: string): Promise<boolean> {
     const model = this.getModelByDataType(dataType);
 
@@ -53,6 +52,16 @@ export class DbRepository extends AbstractDbRepository {
     );
   }
 
+  async isUserBalancesLoaded(chainId: number, user: string): Promise<boolean> {
+    const contractsCount = await ChargedTokenModel.count({ chainId });
+    const balancesCount = await UserBalanceModel.count({ chainId, user });
+    return contractsCount === balancesCount;
+  }
+
+  async countEvents(chainId: number): Promise<number> {
+    return await EventModel.count({ chainId });
+  }
+
   async get<T>(dataType: DataType, chainId: number, address: string): Promise<T | null> {
     const model = this.getModelByDataType(dataType);
 
@@ -64,6 +73,18 @@ export class DbRepository extends AbstractDbRepository {
     if (result === null) return null;
 
     return result.toObject();
+  }
+
+  async getAllMatching<T extends IContract>(dataType: DataType, filter: Partial<T> & Pick<T, "chainId">): Promise<T[]> {
+    const model = this.getModelByDataType(dataType);
+
+    const result = await model.find(filter);
+
+    return result.map((doc) => doc.toObject());
+  }
+
+  async getDirectory(chainId: number): Promise<IDirectory | null> {
+    return await DirectoryModel.findOne({ chainId });
   }
 
   async getInterfaceByChargedToken(chainId: number, ctAddress: string): Promise<IInterfaceProjectToken | null> {
@@ -109,7 +130,22 @@ export class DbRepository extends AbstractDbRepository {
 
     if (result === null) return [];
 
-    return result.map((doc) => doc.toObject());
+    return result.map((doc: any) => doc.toObject());
+  }
+
+  async getAllEvents(): Promise<IEvent[]> {
+    const result = await EventModel.find().sort({ blockNumber: "asc", txIndex: "asc", logIndex: "asc" });
+
+    return result.map((doc: any) => doc.toObject());
+  }
+
+  async getEventsPaginated(chainId: number, count: number, offset: number): Promise<IEvent[]> {
+    const result = await EventModel.find({ chainId })
+      .limit(count)
+      .skip(offset)
+      .sort({ blockNumber: "asc", txIndex: "asc", logIndex: "asc" });
+
+    return result.map((doc: any) => doc.toObject());
   }
 
   async save<T extends IContract>(dataType: DataType, data: T): Promise<void> {
@@ -186,6 +222,34 @@ export class DbRepository extends AbstractDbRepository {
     }
   }
 
+  async deletePendingAndFailedEvents(chainId: number): Promise<void> {
+    const pendingEvents = await EventModel.find({
+      chainId,
+      status: EventHandlerStatus.QUEUED,
+    });
+    const failedEvents = await EventModel.find({
+      chainId,
+      status: EventHandlerStatus.FAILURE,
+    });
+    if (pendingEvents.length > 0) {
+      this.log.warn({
+        msg: `Found ${pendingEvents.length} pending events ! will remove them`,
+        chainId,
+      });
+    }
+    if (failedEvents.length > 0) {
+      this.log.warn({
+        msg: `Found ${failedEvents.length} failed events ! will remove them`,
+        events: failedEvents.map((event) => event.toJSON()),
+        chainId,
+      });
+    }
+    await EventModel.deleteMany({
+      chainId,
+      status: { $in: [EventHandlerStatus.QUEUED, EventHandlerStatus.FAILURE] },
+    });
+  }
+
   private getModelByDataType(dataType: DataType): IModel<any> {
     switch (dataType) {
       case DataType.ChargedToken:
@@ -198,6 +262,8 @@ export class DbRepository extends AbstractDbRepository {
         return DelegableToLTModel;
       case DataType.UserBalance:
         return UserBalanceModel;
+      default:
+        throw new Error(`Unhandled data type : ${dataType}`);
     }
   }
 }

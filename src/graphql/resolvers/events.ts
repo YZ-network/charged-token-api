@@ -1,20 +1,18 @@
-import { EventModel } from "../../models";
+import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
 
-export const EventsQueryResolver = async (
-  _: any,
-  { chainId, offset, count }: { chainId: number; offset?: number; count?: number },
-) => {
-  if (offset === undefined) offset = 0;
-  if (count === undefined) count = 20;
+export const EventsQueryResolverFactory =
+  (db: AbstractDbRepository) =>
+  async (_: any, { chainId, offset, count }: { chainId: number; offset?: number; count?: number }) => {
+    if (offset === undefined) offset = 0;
+    if (count === undefined) count = 20;
 
-  const events = await EventModel.find({ chainId })
-    .limit(count)
-    .skip(offset)
-    .sort({ blockNumber: "asc", txIndex: "asc", logIndex: "asc" });
+    const events = await db.getEventsPaginated(chainId, count, offset);
 
-  return events.map((event) => EventModel.toGraphQL(event));
-};
+    return events; // TODO convert to graphql format
+  };
 
-export const EventsCountQueryResolver = async (_: any, { chainId }: { chainId: number }) => {
-  return await EventModel.count({ chainId });
-};
+export const EventsCountQueryResolverFactory =
+  (db: AbstractDbRepository) =>
+  async (_: any, { chainId }: { chainId: number }) => {
+    return await db.countEvents(chainId);
+  };

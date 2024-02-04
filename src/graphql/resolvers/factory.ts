@@ -1,32 +1,32 @@
 import { Repeater } from "graphql-yoga";
-import mongoose from "mongoose";
-import { IModel } from "../../types";
+import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
+import { DataType } from "../../types";
 import { rootLogger } from "../../util";
 import pubSub from "../pubsub";
 
 const log = rootLogger.child({ name: "resolverFactory" });
 
 export const ResolverFactory = {
-  findAll: <T>(model: IModel<T>) => {
+  findAll: (db: AbstractDbRepository, dataType: DataType) => {
     return async (_: any, { chainId }: { chainId: number }) => {
-      const results = await model.find({ chainId });
-      return results.map((result) => model.toGraphQL(result));
+      const results = await db.getAllMatching(dataType, { chainId });
+      return results; // TODO convert to graphql format
     };
   },
 
-  findByAddress: <T>(model: IModel<T>) => {
+  findByAddress: (db: AbstractDbRepository, dataType: DataType) => {
     return async (_: any, { chainId, address }: { chainId: number; address: string }) => {
-      const result = await model.findOne({ chainId, address });
+      const result = await db.get(dataType, chainId, address);
       if (result !== null) {
-        return model.toGraphQL(result);
+        return result; // TODO convert to Graphql format
       }
     };
   },
 
-  subscribeByName: <T>(modelName: string) => {
+  subscribeByName: <T>(db: AbstractDbRepository, dataType: DataType) => {
     return {
       subscribe: (_: any, { chainId }: { chainId: number }) => {
-        const channelName = `${modelName}.${chainId}`;
+        const channelName = `${dataType}.${chainId}`;
 
         log.debug({ msg: `client subscribing to ${channelName}`, chainId });
         const sub = pubSub.subscribe(channelName);
@@ -42,10 +42,9 @@ export const ResolverFactory = {
           });
 
           try {
-            const model = mongoose.model(modelName) as IModel<T>;
-            const lastValue = await model.findOne({ chainId });
+            const lastValue = await db.getAllMatching(dataType, { chainId });
             if (lastValue !== null) {
-              await push(model.toGraphQL(lastValue));
+              await push(lastValue);
             }
 
             for await (const value of sub) {
@@ -69,10 +68,10 @@ export const ResolverFactory = {
     };
   },
 
-  subscribeByNameAndAddress: <T>(modelName: string) => {
+  subscribeByNameAndAddress: <T>(db: AbstractDbRepository, dataType: DataType) => {
     return {
       subscribe: (_: any, { chainId, address }: { chainId: number; address: string }) => {
-        const channelName = `${modelName}.${chainId}.${address}`;
+        const channelName = `${dataType}.${chainId}.${address}`;
 
         log.debug({ msg: `client subscribing to ${channelName}`, chainId });
 
@@ -89,10 +88,9 @@ export const ResolverFactory = {
           });
 
           try {
-            const model = mongoose.model(modelName) as IModel<T>;
-            const lastValue = await model.findOne({ chainId, address });
+            const lastValue = await db.get(dataType, chainId, address);
             if (lastValue !== null) {
-              await push(model.toGraphQL(lastValue));
+              await push(lastValue);
             }
 
             for await (const value of sub) {

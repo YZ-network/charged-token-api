@@ -37,7 +37,6 @@ export type IToModel<T> = (data: T) => HydratedDocument<T>;
 export type IToGraphQL<T> = (doc: HydratedDocument<T>) => any;
 
 export type IModel<T> = Model<T> & {
-  toModel: IToModel<T>;
   toGraphQL: IToGraphQL<T>;
 };
 

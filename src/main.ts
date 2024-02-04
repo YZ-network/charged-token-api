@@ -3,9 +3,9 @@ import { createYoga } from "graphql-yoga";
 import { createServer } from "http";
 import mongoose from "mongoose";
 import { WebSocketServer } from "ws";
-import { useEventsExporter } from "./exporter";
+import { eventsExporterFactory } from "./exporter";
 import { Config, WorkerStatus } from "./globals";
-import { pubSub, schema } from "./graphql";
+import { pubSub, schemaFactory } from "./graphql";
 import { AbstractDbRepository } from "./loaders/AbstractDbRepository";
 import { DbRepository } from "./models/DbRepository";
 import { usePrometheus } from "./prometheus";
@@ -25,7 +25,7 @@ export class MainClass {
   readonly workers: ChainWorker[] = [];
 
   readonly yoga = createYoga({
-    schema,
+    schema: schemaFactory(this.db),
     graphiql: Config.api.enableGraphiql
       ? {
           subscriptionsProtocol: "WS",
@@ -66,7 +66,7 @@ export class MainClass {
       }),
       */
       usePrometheus(),
-      useEventsExporter(),
+      eventsExporterFactory(this.db)(),
     ],
   });
 

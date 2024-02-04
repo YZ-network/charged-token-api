@@ -1,7 +1,7 @@
 import mongoose, { type HydratedDocument } from "mongoose";
 import { type IErc20, type IModel } from "../types";
 
-export interface IChargedTokenConstants {
+interface IChargedTokenConstants {
   fractionInitialUnlockPerThousand: string;
   durationCliff: string;
   durationLinearVesting: string;
@@ -12,7 +12,7 @@ export interface IChargedTokenConstants {
   maxStakingTokenAmount: string;
 }
 
-export interface IChargedTokenStaking {
+interface IChargedTokenStaking {
   stakingStartDate: string;
   stakingDuration: string;
   stakingDateLastCheckpoint: string;
@@ -20,13 +20,13 @@ export interface IChargedTokenStaking {
   totalStakingRewards: string;
 }
 
-export interface IChargedTokenToggles {
+interface IChargedTokenToggles {
   areUserFunctionsDisabled: boolean;
   isInterfaceProjectTokenLocked: boolean;
   areAllocationsTerminated: boolean;
 }
 
-export interface IChargedTokenFundraising {
+interface IChargedTokenFundraising {
   fundraisingTokenSymbol: string;
   priceTokenPer1e18: string;
   fundraisingToken: string;
