@@ -1,11 +1,12 @@
 import { BigNumber, ethers, type EventFilter } from "ethers";
-import { type ClientSession, type FlattenMaps, type HydratedDocument } from "mongoose";
+import { type ClientSession, type HydratedDocument } from "mongoose";
 import { type Logger } from "pino";
 import { pubSub } from "../graphql";
-import { EventModel, UserBalanceModel, type IUserBalance } from "../models";
+import { type IUserBalance } from "../models";
 import topicsMap from "../topics";
-import { type IEventHandler, type IModel, type IOwnable } from "../types";
+import { DataType, type IOwnable } from "../types";
 import { rootLogger } from "../util";
+import { AbstractDbRepository } from "./AbstractDbRepository";
 import { type EventListener } from "./EventListener";
 
 /**
@@ -20,16 +21,17 @@ export abstract class AbstractLoader<T extends IOwnable> {
   readonly provider: ethers.providers.JsonRpcProvider;
   readonly address: string;
   protected readonly contract: any;
-  readonly model: IModel<T>;
+  readonly db: AbstractDbRepository;
   readonly log: Logger<{
     name: string;
   }>;
+  private readonly dataType: DataType;
 
   readonly instance: ethers.Contract;
   readonly iface: ethers.utils.Interface;
   initBlock: number = 0;
   lastUpdateBlock: number = 0;
-  lastState: FlattenMaps<T> | undefined;
+  lastState: T | undefined;
 
   readonly eventsListener: EventListener;
 
@@ -45,14 +47,29 @@ export abstract class AbstractLoader<T extends IOwnable> {
     provider: ethers.providers.JsonRpcProvider,
     address: string,
     contract: any,
-    model: IModel<T>,
+    db: AbstractDbRepository,
   ) {
     this.eventsListener = eventListener;
     this.chainId = chainId;
     this.provider = provider;
     this.address = address;
     this.contract = contract;
-    this.model = model;
+    this.db = db;
+
+    switch (this.constructor.name) {
+      case "FundraisingChargedToken":
+        this.dataType = DataType.ChargedToken;
+        break;
+      case "ChargedToken":
+      case "InterfaceProjectToken":
+      case "Directory":
+      case "DelegableToLT":
+      case "UserBalance":
+        this.dataType = this.constructor.name as DataType;
+        break;
+      default:
+        throw new Error(`Unable to detect expected dataType for ${this.constructor.name}`);
+    }
 
     this.instance = new ethers.Contract(address, contract.abi, provider);
     this.iface = new ethers.utils.Interface(contract.abi);
@@ -86,7 +103,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
 
       this.initBlock = existing.initBlock;
       this.lastUpdateBlock = existing.lastUpdateBlock;
-      this.lastState = this.model.toGraphQL(existing);
+      this.lastState = existing;
 
       const eventsStartBlock = Math.max(
         this.lastUpdateBlock, // last update block should be included in case of partial events handling
@@ -131,61 +148,26 @@ export abstract class AbstractLoader<T extends IOwnable> {
    */
   abstract load(blockNumber: number): Promise<T>;
 
-  /**
-   * Conversion from load method result to a mongoose document.
-   */
-  abstract toModel(data: T): HydratedDocument<T>;
-
   /** Checks for contract state in the database. */
   async exists(): Promise<boolean> {
-    return (
-      (await this.model.exists({
-        chainId: this.chainId,
-        address: this.address,
-      })) !== null
-    );
+    return await this.db.exists(this.dataType, this.chainId, this.address);
   }
 
   /** Returns contract state from the database or null. */
-  async get(session: ClientSession): Promise<HydratedDocument<T> | null> {
-    return await this.model.findOne(
-      {
-        chainId: this.chainId,
-        address: this.address,
-      },
-      undefined,
-      { session },
-    );
+  async get(session: ClientSession): Promise<T | null> {
+    return await this.db.get(this.dataType, this.chainId, this.address);
   }
 
-  async getBalance(
-    session: ClientSession,
-    address: string,
-    user: string,
-  ): Promise<HydratedDocument<IUserBalance> | null> {
-    return await UserBalanceModel.findOne(
-      {
-        address,
-        user,
-      },
-      undefined,
-      { session },
-    );
+  async getBalance(session: ClientSession, address: string, user: string): Promise<IUserBalance | null> {
+    return await this.db.getBalance(this.chainId, address, user);
   }
 
   async getBalancesByProjectToken(
     session: ClientSession,
     ptAddress: string,
     user: string,
-  ): Promise<Array<HydratedDocument<IUserBalance>> | null> {
-    return await UserBalanceModel.find(
-      {
-        ptAddress,
-        user,
-      },
-      undefined,
-      { session },
-    );
+  ): Promise<Array<IUserBalance>> {
+    return await this.db.getBalancesByProjectToken(this.chainId, ptAddress, user);
   }
 
   protected detectNegativeAmount(
@@ -251,13 +233,13 @@ export abstract class AbstractLoader<T extends IOwnable> {
       chainId: this.chainId,
     });
 
-    await UserBalanceModel.updateOne(
-      { address, user },
-      { ...balanceUpdates, lastUpdateBlock: blockNumber },
-      {
-        session,
-      },
-    );
+    await this.db.updateBalance({
+      ...balanceUpdates,
+      chainId: this.chainId,
+      address,
+      user,
+      lastUpdateBlock: blockNumber,
+    });
 
     if (balanceUpdates.balancePT !== undefined && ptAddress !== undefined) {
       this.log.info({
@@ -269,13 +251,13 @@ export abstract class AbstractLoader<T extends IOwnable> {
         chainId: this.chainId,
       });
 
-      await UserBalanceModel.updateMany(
-        { user, ptAddress, address: { $ne: address } },
-        { balancePT: balanceUpdates.balancePT, lastUpdateBlock: blockNumber },
-        {
-          session,
-        },
-      );
+      await this.db.updateOtherBalancesByProjectToken(address, {
+        chainId: this.chainId,
+        user,
+        ptAddress,
+        balancePT: balanceUpdates.balancePT,
+        lastUpdateBlock: blockNumber,
+      });
     }
 
     if (ptAddress === undefined) {
@@ -283,29 +265,27 @@ export abstract class AbstractLoader<T extends IOwnable> {
 
       this.log.trace({
         msg: "sending balance update :",
-        data: newBalance.toJSON(),
+        data: newBalance,
         contract: this.constructor.name,
         address: this.address,
         chainId: this.chainId,
       });
 
-      pubSub.publish(`UserBalance.${this.chainId}.${user}`, [UserBalanceModel.toGraphQL(newBalance)]);
+      pubSub.publish(`UserBalance.${this.chainId}.${user}`, [newBalance]); // TODO : convert balance to graphql format
     } else {
-      const updatedBalances = (await this.getBalancesByProjectToken(session, ptAddress, user)) as Array<
-        HydratedDocument<IUserBalance>
-      >;
+      const updatedBalances = await this.getBalancesByProjectToken(session, ptAddress, user);
 
       try {
         this.log.trace({
           msg: "sending multiple balance updates :",
-          data: updatedBalances.map((b) => b.toJSON()),
+          data: updatedBalances,
           contract: this.constructor.name,
           ptAddress,
           chainId: this.chainId,
         });
 
         for (const b of updatedBalances) {
-          pubSub.publish(`UserBalance.${this.chainId}.${user}`, [UserBalanceModel.toGraphQL(b)]);
+          pubSub.publish(`UserBalance.${this.chainId}.${user}`, [b]); // TODO : convert balance to graphql format
         }
       } catch (err) {
         this.log.error({
@@ -319,17 +299,18 @@ export abstract class AbstractLoader<T extends IOwnable> {
   }
 
   /** Saves or updates the document in database with the given data. */
-  async saveOrUpdate(session: ClientSession, data: Partial<T> | T, blockNumber: number): Promise<HydratedDocument<T>> {
+  async saveOrUpdate(session: ClientSession, data: Partial<T> | T, blockNumber: number): Promise<T> {
     this.checkUpdateAmounts(data);
 
     if (await this.exists()) {
-      await this.model.updateOne(
-        { chainId: this.chainId, address: this.address },
-        { ...data, lastUpdateBlock: blockNumber },
-        { session },
-      );
+      await this.db.update(this.dataType, {
+        ...data,
+        chainId: this.chainId,
+        address: this.address,
+        lastUpdateBlock: blockNumber,
+      });
     } else {
-      await this.toModel(data as T).save({ session });
+      await this.db.save(this.dataType, data as T);
     }
     this.lastUpdateBlock = blockNumber;
 
@@ -337,7 +318,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
     if (result === null) {
       throw new Error("Error connecting to database !");
     }
-    this.lastState = this.model.toGraphQL(result);
+    this.lastState = result;
 
     return result;
   }
@@ -441,13 +422,13 @@ export abstract class AbstractLoader<T extends IOwnable> {
     const filteredEvents: ethers.Event[] = [];
     for (const event of missedEvents) {
       if (
-        (await EventModel.exists({
-          chainId: this.chainId,
-          address: this.address,
-          blockNumber: event.blockNumber,
-          txIndex: event.transactionIndex,
-          logIndex: event.logIndex,
-        })) === null
+        !(await this.db.existsEvent(
+          this.chainId,
+          this.address,
+          event.blockNumber,
+          event.transactionIndex,
+          event.logIndex,
+        ))
       ) {
         filteredEvents.push(event);
       }
@@ -475,8 +456,12 @@ export abstract class AbstractLoader<T extends IOwnable> {
     return filteredEvents;
   }
 
-  async getJsonModel(session: ClientSession): Promise<FlattenMaps<T>> {
-    return (await this.get(session))!.toJSON();
+  async getJsonModel(session: ClientSession): Promise<T> {
+    const result = await this.get(session);
+    if (result === null) {
+      throw new Error("Document not found !");
+    }
+    return result;
   }
 
   async applyUpdateAndNotify(
@@ -505,10 +490,8 @@ export abstract class AbstractLoader<T extends IOwnable> {
       contract: this.constructor.name,
     });
 
-    const contractName = this.constructor.name === "FundraisingChargedToken" ? "ChargedToken" : this.constructor.name;
-
-    pubSub.publish(`${contractName}.${this.chainId}.${this.address}`, this.lastState);
-    pubSub.publish(`${contractName}.${this.chainId}`, this.lastState);
+    pubSub.publish(`${this.dataType}.${this.chainId}.${this.address}`, this.lastState);
+    pubSub.publish(`${this.dataType}.${this.chainId}`, this.lastState);
   }
 
   subscribeToEvents() {

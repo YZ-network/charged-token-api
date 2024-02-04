@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { WebSocket } from "ws";
 import { Config, EventHandlerStatus, ProviderStatus, WorkerStatus } from "./globals";
+import { AbstractDbRepository } from "./loaders/AbstractDbRepository";
 import { Directory } from "./loaders/Directory";
 import { EventListener } from "./loaders/EventListener";
 import { EventModel } from "./models";
@@ -29,6 +30,7 @@ export class ChainWorker {
   readonly rpc: string;
   readonly directoryAddress: string;
   readonly chainId: number;
+  readonly db: AbstractDbRepository;
 
   eventListener: EventListener | undefined;
   name: string | undefined;
@@ -47,11 +49,18 @@ export class ChainWorker {
   pongTimeout: NodeJS.Timeout | undefined;
   workerStatus: WorkerStatus = WorkerStatus.WAITING;
 
-  constructor(index: number, rpc: string, directoryAddress: string, chainId: number) {
+  constructor(
+    index: number,
+    rpc: string,
+    directoryAddress: string,
+    chainId: number,
+    dbRepository: AbstractDbRepository,
+  ) {
     this.index = index;
     this.rpc = rpc;
     this.directoryAddress = directoryAddress;
     this.chainId = chainId;
+    this.db = dbRepository;
 
     this.start();
   }
@@ -222,7 +231,7 @@ export class ChainWorker {
 
     try {
       this.eventListener = new EventListener();
-      this.directory = new Directory(this.eventListener, this.chainId, this.provider, this.directoryAddress);
+      this.directory = new Directory(this.eventListener, this.chainId, this.provider, this.directoryAddress, this.db);
       const blockNumber = await this.provider.getBlockNumber();
 
       log.info({

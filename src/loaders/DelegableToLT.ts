@@ -1,8 +1,9 @@
 import { BigNumber, type ethers } from "ethers";
 import { type ClientSession } from "mongoose";
 import { contracts } from "../contracts";
-import { DelegableToLTModel, type IDelegableToLT } from "../models";
+import { type IDelegableToLT } from "../models";
 import { EMPTY_ADDRESS } from "../types";
+import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
 import { type ChargedToken } from "./ChargedToken";
 import { type Directory } from "./Directory";
@@ -17,15 +18,12 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     address: string,
     directory: Directory,
     ct: ChargedToken,
+    dbRepository: AbstractDbRepository,
   ) {
-    super(directory.eventsListener, chainId, provider, address, contracts.DelegableToLT, DelegableToLTModel);
+    super(directory.eventsListener, chainId, provider, address, contracts.DelegableToLT, dbRepository);
 
     this.directory = directory;
     this.ct = ct;
-  }
-
-  toModel(data: IDelegableToLT) {
-    return (DelegableToLTModel as any).toModel(data);
   }
 
   protected checkUpdateAmounts(data: Partial<ChargedToken> | ChargedToken) {

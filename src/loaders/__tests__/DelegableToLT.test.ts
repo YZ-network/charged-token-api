@@ -2,11 +2,13 @@ import { BigNumber, ethers } from "ethers";
 import { ClientSession } from "mongodb";
 import { FlattenMaps } from "mongoose";
 import { IDelegableToLT } from "../../models";
-import { EMPTY_ADDRESS } from "../../types";
+import { DataType, EMPTY_ADDRESS } from "../../types";
+import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
 import { DelegableToLT } from "../DelegableToLT";
 import { Directory } from "../Directory";
 import { EventListener } from "../EventListener";
+import { MockDbRepository } from "../__mocks__/MockDbRepository";
 
 jest.mock("../../globals/config");
 jest.mock("../EventListener");
@@ -23,14 +25,26 @@ describe("DelegableToLT loader", () => {
   const NAME = "Test CT";
   const SYMBOL = "TCT";
 
-  test("Should initialize DelegableToLT by reading blockchain when not in db", async () => {
-    // initialization
-    const provider = new ethers.providers.JsonRpcProvider();
-    const directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS);
-    const ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader);
-    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader);
-    const session = new ClientSession();
+  let provider: ethers.providers.JsonRpcProvider;
+  let db: jest.Mocked<AbstractDbRepository>;
+  let eventsListener: EventListener;
+  let directoryLoader: Directory;
+  let ctLoader: ChargedToken;
+  let loader: DelegableToLT;
+  let session: ClientSession;
 
+  beforeEach(() => {
+    provider = new ethers.providers.JsonRpcProvider();
+    db = new MockDbRepository();
+    eventsListener = new EventListener(db, false);
+    directoryLoader = new Directory(eventsListener, CHAIN_ID, provider, ADDRESS, db);
+    ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader, db);
+    Object.defineProperty(ctLoader, "address", { value: ADDRESS });
+    loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader, db);
+    session = new ClientSession();
+  });
+
+  test("Should initialize DelegableToLT by reading blockchain when not in db", async () => {
     // checking constructor
     expect(loader.chainId).toBe(CHAIN_ID);
     expect(loader.provider).toBe(provider);
@@ -62,10 +76,7 @@ describe("DelegableToLT loader", () => {
       isListOfInterfaceProjectTokenComplete: false,
     };
 
-    const modelInstanceMock = { save: jest.fn() };
-    (loader.model as any).toModel.mockReturnValueOnce(modelInstanceMock);
-    (loader.model as any).exists.mockResolvedValueOnce(null);
-    (loader.model as any).toGraphQL.mockReturnValueOnce(graphqlModel);
+    db.get.mockResolvedValueOnce(null).mockResolvedValueOnce(graphqlModel);
 
     // mocking contract instance
     loader.instance.owner.mockResolvedValueOnce(OWNER);
@@ -85,19 +96,8 @@ describe("DelegableToLT loader", () => {
     expect(loader.lastUpdateBlock).toBe(BLOCK_NUMBER);
     expect(loader.lastState).toEqual(graphqlModel);
 
-    expect((loader.model as any).exists).toBeCalledTimes(1);
-    expect((loader.model as any).findOne).toHaveBeenNthCalledWith(
-      2,
-      {
-        chainId: CHAIN_ID,
-        address: ADDRESS,
-      },
-      undefined,
-      { session },
-    );
-    expect((loader.model as any).toModel).toBeCalledTimes(1);
-    expect((loader.model as any).toGraphQL).toBeCalledTimes(1);
-    expect(modelInstanceMock.save).toHaveBeenCalledTimes(1);
+    expect(db.get).toHaveBeenNthCalledWith(2, DataType.DelegableToLT, CHAIN_ID, ADDRESS);
+    expect(db.save).toHaveBeenCalledTimes(1);
 
     expect(loader.instance.owner).toBeCalledTimes(1);
     expect(loader.instance.name).toBeCalledTimes(1);
@@ -114,13 +114,6 @@ describe("DelegableToLT loader", () => {
   });
 
   test("Should use events to update existing DelegableToLT from db", async () => {
-    // initialization
-    const provider = new ethers.providers.JsonRpcProvider();
-    const directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS);
-    const ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader);
-    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader);
-    const session = new ClientSession();
-
     // mocking ethers
     const PREV_BLOCK_NUMBER = 15;
     const BLOCK_NUMBER = 20;
@@ -142,24 +135,7 @@ describe("DelegableToLT loader", () => {
       isListOfInterfaceProjectTokenComplete: false,
     };
 
-    const graphqlModel = {
-      chainId: CHAIN_ID,
-      initBlock: PREV_BLOCK_NUMBER,
-      lastUpdateBlock: PREV_BLOCK_NUMBER,
-      address: ADDRESS,
-      owner: OWNER,
-      name: NAME,
-      symbol: SYMBOL,
-      decimals: "18",
-      totalSupply: "1",
-      validatedInterfaceProjectToken: ["0xADDR"],
-      isListOfInterfaceProjectTokenComplete: false,
-    };
-
-    const modelInstanceMock = { save: jest.fn() };
-    (loader.model as any).toModel.mockReturnValueOnce(modelInstanceMock);
-    (loader.model as any).findOne.mockResolvedValueOnce(loadedModel);
-    (loader.model as any).toGraphQL.mockReturnValueOnce(graphqlModel);
+    db.get.mockResolvedValueOnce(loadedModel);
 
     // mocking contract instance
     (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
@@ -170,21 +146,10 @@ describe("DelegableToLT loader", () => {
     // expectations
     expect(loader.initBlock).toBe(PREV_BLOCK_NUMBER);
     expect(loader.lastUpdateBlock).toBe(PREV_BLOCK_NUMBER);
-    expect(loader.lastState).toEqual(graphqlModel);
+    expect(loader.lastState).toEqual(loadedModel);
 
-    expect((loader.model as any).exists).toBeCalledTimes(0);
-    expect((loader.model as any).findOne).toHaveBeenNthCalledWith(
-      1,
-      {
-        chainId: CHAIN_ID,
-        address: ADDRESS,
-      },
-      undefined,
-      { session },
-    );
-    expect((loader.model as any).toModel).toBeCalledTimes(0);
-    expect((loader.model as any).toGraphQL).toBeCalledTimes(1);
-    expect(modelInstanceMock.save).toHaveBeenCalledTimes(0);
+    expect(db.get).toHaveBeenNthCalledWith(1, DataType.DelegableToLT, CHAIN_ID, ADDRESS);
+    expect(db.save).toHaveBeenCalledTimes(0);
 
     expect(loader.instance.owner).toBeCalledTimes(0);
     expect(loader.instance.name).toBeCalledTimes(0);
@@ -196,17 +161,13 @@ describe("DelegableToLT loader", () => {
     expect(loader.instance.getValidatedInterfaceProjectToken).toBeCalledTimes(0);
     expect(loader.instance.queryFilter).toBeCalledTimes(1);
 
-    expect(loader.lastState).toEqual(graphqlModel);
+    expect(loader.lastState).toEqual(loadedModel);
 
     expect((session as any).startTransaction).toBeCalledTimes(1);
     expect((session as any).commitTransaction).toBeCalledTimes(1);
   });
 
   test("should load user balance from contract", async () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new EventListener();
-    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, { eventsListener } as any, undefined as any);
-
     loader.instance.balanceOf.mockResolvedValueOnce(BigNumber.from(10));
 
     const result = await loader.loadUserBalance("0xUSER");
@@ -217,11 +178,6 @@ describe("DelegableToLT loader", () => {
 
   // Event Handlers
   test("AddedInterfaceProjectToken", async () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new EventListener();
-    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, { eventsListener } as any, undefined as any);
-    const session = new ClientSession();
-
     const blockNumber = 15;
 
     const loadedModel = {
@@ -251,11 +207,6 @@ describe("DelegableToLT loader", () => {
   });
 
   test("ListOfValidatedInterfaceProjectTokenIsFinalized", async () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new EventListener();
-    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, { eventsListener } as any, undefined as any);
-    const session = new ClientSession();
-
     const blockNumber = 15;
 
     const applyUpdateAndNotify = jest.spyOn(loader, "applyUpdateAndNotify").mockResolvedValueOnce(undefined);
@@ -278,11 +229,6 @@ describe("DelegableToLT loader", () => {
   });
 
   test("InterfaceProjectTokenRemoved", async () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new EventListener();
-    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, { eventsListener } as any, undefined as any);
-    const session = new ClientSession();
-
     const blockNumber = 15;
 
     const loadedModel = {
@@ -313,26 +259,10 @@ describe("DelegableToLT loader", () => {
 
   // Transfer use cases
   test("Transfer: empty value should do nothing", async () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new EventListener();
-    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, { eventsListener } as any, undefined as any);
-    const session = new ClientSession();
-
     await loader.onTransferEvent(session, ["0xFROM", "0xTO", "0"], 15, "Transfer");
   });
 
   test("Transfer: p2p transfers should update both balances", async () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new EventListener();
-    const loader = new DelegableToLT(
-      CHAIN_ID,
-      provider,
-      ADDRESS,
-      { eventsListener } as any,
-      { address: ADDRESS } as any,
-    );
-    const session = new ClientSession();
-
     const blockNumber = 15;
 
     const fromBalance = { balancePT: "150" } as any;
@@ -370,17 +300,6 @@ describe("DelegableToLT loader", () => {
   });
 
   test("Transfer: mint should increase user balance and totalSupply", async () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new EventListener();
-    const loader = new DelegableToLT(
-      CHAIN_ID,
-      provider,
-      ADDRESS,
-      { eventsListener } as any,
-      { address: ADDRESS } as any,
-    );
-    const session = new ClientSession();
-
     const blockNumber = 15;
 
     const userBalance = { balancePT: "60" } as any;
@@ -408,17 +327,6 @@ describe("DelegableToLT loader", () => {
   });
 
   test("Transfer: burn should decrease user balance and totalSupply", async () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new EventListener();
-    const loader = new DelegableToLT(
-      CHAIN_ID,
-      provider,
-      ADDRESS,
-      { eventsListener } as any,
-      { address: ADDRESS } as any,
-    );
-    const session = new ClientSession();
-
     const blockNumber = 15;
 
     const userBalance = { balancePT: "60" } as any;
@@ -448,21 +356,11 @@ describe("DelegableToLT loader", () => {
   // extraneous events
 
   test("Approval", async () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new EventListener();
-    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, { eventsListener } as any, undefined as any);
-    const session = new ClientSession();
-
     // does nothing
     await loader.onApprovalEvent(session, [], 15, "Approval");
   });
 
   test("AddedAllTimeValidatedInterfaceProjectToken", async () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new EventListener();
-    const loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, { eventsListener } as any, undefined as any);
-    const session = new ClientSession();
-
     // does nothing
     await loader.onAddedAllTimeValidatedInterfaceProjectTokenEvent(
       session,

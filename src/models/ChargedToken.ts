@@ -97,12 +97,6 @@ const chargedTokenSchema = new mongoose.Schema<IChargedToken, IModel<IChargedTok
   isFundraisingActive: Boolean,
 });
 
-chargedTokenSchema.static("toModel", function (data: IChargedToken): HydratedDocument<IChargedToken> {
-  const model = new this();
-  Object.assign(model, data);
-  return model;
-});
-
 chargedTokenSchema.static("toGraphQL", function (doc: HydratedDocument<IChargedToken>): any {
   return doc.toJSON();
 });

@@ -1,7 +1,8 @@
 import { BigNumber, type ethers } from "ethers";
 import { type ClientSession } from "mongoose";
 import { contracts } from "../contracts";
-import { InterfaceProjectTokenModel, UserBalanceModel, type IInterfaceProjectToken } from "../models";
+import { type IInterfaceProjectToken } from "../models";
+import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
 import { type ChargedToken } from "./ChargedToken";
 import { DelegableToLT } from "./DelegableToLT";
@@ -24,15 +25,9 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     address: string,
     directory: Directory,
     ct: ChargedToken,
+    dbRepository: AbstractDbRepository,
   ) {
-    super(
-      directory.eventsListener,
-      chainId,
-      provider,
-      address,
-      contracts.InterfaceProjectToken,
-      InterfaceProjectTokenModel,
-    );
+    super(directory.eventsListener, chainId, provider, address, contracts.InterfaceProjectToken, dbRepository);
     this.directory = directory;
     this.ct = ct;
   }
@@ -47,6 +42,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         this.lastState!.projectToken,
         this.directory,
         this.ct,
+        this.db,
       );
       this.skipProjectUpdates = false;
 
@@ -75,10 +71,6 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         msg: `Retrieved existing Project Token instance ${this.lastState!.projectToken}`,
       });
     }
-  }
-
-  toModel(data: IInterfaceProjectToken) {
-    return (InterfaceProjectTokenModel as any).toModel(data);
   }
 
   async load(blockNumber: number) {
@@ -137,9 +129,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       chainId: this.chainId,
     });
 
-    const balancesToUpdate = await UserBalanceModel.find({ address }, null, {
-      session,
-    });
+    const balancesToUpdate = await this.db.getBalances(this.chainId, address);
     this.log.info({
       msg: "user balances to update !",
       count: balancesToUpdate.length,

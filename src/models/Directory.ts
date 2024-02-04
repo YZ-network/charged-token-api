@@ -27,12 +27,6 @@ const directorySchema = new Schema<IDirectory, IModel<IDirectory>>({
   areUserFunctionsDisabled: Boolean,
 });
 
-directorySchema.static("toModel", function (data: IDirectory): HydratedDocument<IDirectory> {
-  const model = new this();
-  Object.assign(model, data);
-  return model;
-});
-
 directorySchema.static("toGraphQL", function (doc: HydratedDocument<IDirectory>): any {
   const result = doc.toJSON();
   return {

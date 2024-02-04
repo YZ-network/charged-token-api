@@ -2,8 +2,8 @@ import { type ethers } from "ethers";
 import mongoose, { type ClientSession } from "mongoose";
 import { type Logger } from "pino";
 import { EventHandlerStatus, getBlockDate } from "../globals";
-import { EventModel } from "../models";
 import { rootLogger } from "../util";
+import { AbstractDbRepository } from "./AbstractDbRepository";
 import { type AbstractLoader } from "./AbstractLoader";
 
 type EventQueue = Array<{
@@ -17,6 +17,7 @@ type EventQueue = Array<{
 
 export class EventListener {
   private readonly _queue: EventQueue = [];
+  private readonly db: AbstractDbRepository;
 
   readonly log: Logger = rootLogger.child({ name: "EventListener" });
   private readonly _timer: NodeJS.Timeout | undefined;
@@ -44,7 +45,9 @@ export class EventListener {
     return this._timer;
   }
 
-  constructor(startLoop = true) {
+  constructor(db: AbstractDbRepository, startLoop = true) {
+    this.db = db;
+
     if (startLoop) {
       this._timer = setInterval(() => {
         if (!this._executingEventHandlers) {
@@ -80,13 +83,7 @@ export class EventListener {
     });
 
     if (
-      (await EventModel.exists({
-        chainId: loader.chainId,
-        address: loader.address,
-        blockNumber: log.blockNumber,
-        txIndex: log.transactionIndex,
-        logIndex: log.logIndex,
-      })) !== null
+      await this.db.existsEvent(loader.chainId, loader.address, log.blockNumber, log.transactionIndex, log.logIndex)
     ) {
       this.log.warn({
         msg: "Tried to queue same event twice !",
@@ -103,7 +100,7 @@ export class EventListener {
 
     this.pushEventAndSort(loader, eventName, log);
 
-    await EventModel.create({
+    await this.db.saveEvent({
       status: EventHandlerStatus.QUEUED,
       chainId: loader.chainId,
       address: log.address,
@@ -184,13 +181,13 @@ export class EventListener {
       });
 
       if (
-        (await EventModel.exists({
-          chainId: loader.chainId,
-          address: loader.address,
-          blockNumber: log.blockNumber,
-          txIndex: log.transactionIndex,
-          logIndex: log.logIndex,
-        })) === null
+        !(await this.db.existsEvent(
+          loader.chainId,
+          loader.address,
+          log.blockNumber,
+          log.transactionIndex,
+          log.logIndex,
+        ))
       ) {
         this.log.warn({
           msg: "Tried to handle event before saving it in database !",
@@ -269,7 +266,7 @@ export class EventListener {
     chainId: number,
     status: EventHandlerStatus,
   ) {
-    await EventModel.updateOne(
+    await this.db.updateEventStatus(
       {
         chainId,
         address: log.address,
@@ -277,10 +274,7 @@ export class EventListener {
         txIndex: log.transactionIndex,
         logIndex: log.logIndex,
       },
-      {
-        status,
-      },
-      { session },
+      status,
     );
   }
 }

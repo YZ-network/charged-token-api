@@ -23,14 +23,6 @@ describe("DelegableToLTModel", () => {
     };
   }
 
-  test("should convert business object to mongo model", () => {
-    const bo: IDelegableToLT = sampleData();
-
-    const model = DelegableToLTModel.toModel(bo);
-
-    expect(model.toJSON()).toMatchObject(bo);
-  });
-
   test("should convert mongo model to business object in graphql format", () => {
     const sample = sampleData();
     const model = new DelegableToLTModel(sample);

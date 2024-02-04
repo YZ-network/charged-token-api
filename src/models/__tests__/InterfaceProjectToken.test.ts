@@ -21,14 +21,6 @@ describe("InterfaceProjectTokenModel", () => {
     };
   }
 
-  test("should convert business object to mongo model", () => {
-    const bo: IInterfaceProjectToken = sampleData();
-
-    const model = InterfaceProjectTokenModel.toModel(bo);
-
-    expect(model.toJSON()).toMatchObject(bo);
-  });
-
   test("should convert mongo model to business object in graphql format", () => {
     const sample = sampleData();
     const model = new InterfaceProjectTokenModel(sample);

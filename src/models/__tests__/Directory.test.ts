@@ -20,14 +20,6 @@ describe("DirectoryModel", () => {
     };
   }
 
-  test("should convert business object to mongo model", () => {
-    const bo: IDirectory = sampleData();
-
-    const model = DirectoryModel.toModel(bo);
-
-    expect(model.toJSON()).toMatchObject(bo);
-  });
-
   test("should convert mongo model to business object in graphql format", () => {
     const sample = sampleData();
     const result = {

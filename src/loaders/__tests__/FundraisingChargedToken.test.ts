@@ -2,9 +2,12 @@ import { BigNumber, ethers } from "ethers";
 import { ClientSession } from "mongodb";
 import { pubSub } from "../../graphql";
 import { type IChargedToken } from "../../models";
+import { DataType } from "../../types";
+import { AbstractDbRepository } from "../AbstractDbRepository";
 import { Directory } from "../Directory";
 import { EventListener } from "../EventListener";
 import { FundraisingChargedToken } from "../FundraisingChargedToken";
+import { MockDbRepository } from "../__mocks__/MockDbRepository";
 
 jest.mock("../../globals/config");
 jest.mock("../EventListener");
@@ -22,6 +25,20 @@ describe("FundraisingChargedToken loader", () => {
   const SYMBOL = "TCT";
   const INTERFACE_ADDR = "0xIFACE";
   const BLOCK_NUMBER = 15;
+
+  let provider: ethers.providers.JsonRpcProvider;
+  let db: jest.Mocked<AbstractDbRepository>;
+  let directoryLoader: Directory;
+  let loader: FundraisingChargedToken;
+  let session: ClientSession;
+
+  beforeEach(() => {
+    provider = new ethers.providers.JsonRpcProvider();
+    db = new MockDbRepository();
+    directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS, db);
+    loader = new FundraisingChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader, db);
+    session = new ClientSession();
+  });
 
   function sampleData(): IChargedToken {
     return {
@@ -101,12 +118,6 @@ describe("FundraisingChargedToken loader", () => {
   }
 
   test("Should initialize FundraisingChargedToken by reading blockchain when not in db", async () => {
-    // initialization
-    const provider = new ethers.providers.JsonRpcProvider();
-    const directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS);
-    const loader = new FundraisingChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader);
-    const session = new ClientSession();
-
     // checking constructor
     expect(loader.chainId).toBe(CHAIN_ID);
     expect(loader.provider).toBe(provider);
@@ -124,10 +135,7 @@ describe("FundraisingChargedToken loader", () => {
     // mocking mongo model
     const graphqlModel = sampleData();
 
-    const modelInstanceMock = { save: jest.fn() };
-    (loader.model as any).toModel.mockReturnValueOnce(modelInstanceMock);
-    (loader.model as any).exists.mockResolvedValueOnce(null);
-    (loader.model as any).toGraphQL.mockReturnValueOnce(graphqlModel);
+    db.get.mockResolvedValueOnce(null).mockResolvedValueOnce(graphqlModel);
 
     // mocking contract instance
     prepareContractMock(loader);
@@ -140,19 +148,8 @@ describe("FundraisingChargedToken loader", () => {
     expect(loader.lastUpdateBlock).toBe(BLOCK_NUMBER);
     expect(loader.lastState).toEqual(graphqlModel);
 
-    expect((loader.model as any).exists).toBeCalledTimes(1);
-    expect((loader.model as any).findOne).toHaveBeenNthCalledWith(
-      2,
-      {
-        chainId: CHAIN_ID,
-        address: ADDRESS,
-      },
-      undefined,
-      { session },
-    );
-    expect((loader.model as any).toModel).toBeCalledTimes(1);
-    expect((loader.model as any).toGraphQL).toBeCalledTimes(1);
-    expect(modelInstanceMock.save).toHaveBeenCalledTimes(1);
+    expect(db.get).toHaveBeenNthCalledWith(2, DataType.ChargedToken, CHAIN_ID, ADDRESS);
+    expect(db.save).toHaveBeenCalledTimes(1);
 
     expect(loader.interface).toBeDefined();
     expect(loader.interface?.init).toBeCalledTimes(1);
@@ -178,16 +175,10 @@ describe("FundraisingChargedToken loader", () => {
 
   // Event handlers
   test("FundraisingConditionsSet", async () => {
-    // initialization
-    const provider = new ethers.providers.JsonRpcProvider();
-    const directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS);
-    const loader = new FundraisingChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader);
-    const session = new ClientSession();
-
     const loadedModel = sampleData();
 
-    (loader.model as any).exists.mockResolvedValueOnce("not_null");
-    (loader.model as any).toGraphQL.mockReturnValueOnce(loadedModel);
+    db.exists.mockResolvedValueOnce(true);
+    db.get.mockResolvedValueOnce(loadedModel);
 
     await loader.onFundraisingConditionsSetEvent(
       session,
@@ -196,48 +187,36 @@ describe("FundraisingChargedToken loader", () => {
       "FundraisingConditionsSet",
     );
 
-    expect((loader.model as any).exists).toBeCalledTimes(1);
-    expect((loader.model as any).findOne).toBeCalledTimes(1);
-    expect((loader.model as any).updateOne).toHaveBeenCalledWith(
-      { chainId: CHAIN_ID, address: ADDRESS },
-      {
-        lastUpdateBlock: BLOCK_NUMBER,
-        fundraisingToken: "0xfundlowering",
-        fundraisingTokenSymbol: "YYY",
-        priceTokenPer1e18: "55",
-      },
-      { session },
-    );
+    expect(db.get).toBeCalledTimes(1);
+    expect(db.update).toHaveBeenCalledWith(DataType.ChargedToken, {
+      chainId: CHAIN_ID,
+      address: ADDRESS,
+      lastUpdateBlock: BLOCK_NUMBER,
+      fundraisingToken: "0xfundlowering",
+      fundraisingTokenSymbol: "YYY",
+      priceTokenPer1e18: "55",
+    });
     expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}.${ADDRESS}`, loadedModel);
     expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}`, loadedModel);
   });
 
   test("FundraisingStatusChanged", async () => {
-    // initialization
-    const provider = new ethers.providers.JsonRpcProvider();
-    const directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS);
-    const loader = new FundraisingChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader);
-    const session = new ClientSession();
-
     const loadedModel = sampleData();
 
-    (loader.model as any).exists.mockResolvedValueOnce("not_null");
-    (loader.model as any).toGraphQL.mockReturnValueOnce(loadedModel);
+    db.exists.mockResolvedValueOnce(true);
+    db.get.mockResolvedValueOnce(loadedModel);
     (loader.instance as any).isFundraisingActive.mockResolvedValueOnce(true);
 
     await loader.onFundraisingStatusChangedEvent(session, [], BLOCK_NUMBER, "FundraisingStatusChanged");
 
     expect((loader.instance as any).isFundraisingActive).toBeCalledTimes(1);
-    expect((loader.model as any).exists).toBeCalledTimes(1);
-    expect((loader.model as any).findOne).toBeCalledTimes(1);
-    expect((loader.model as any).updateOne).toHaveBeenCalledWith(
-      { chainId: CHAIN_ID, address: ADDRESS },
-      {
-        lastUpdateBlock: BLOCK_NUMBER,
-        isFundraisingActive: true,
-      },
-      { session },
-    );
+    expect(db.get).toBeCalledTimes(1);
+    expect(db.update).toHaveBeenCalledWith(DataType.ChargedToken, {
+      chainId: CHAIN_ID,
+      address: ADDRESS,
+      lastUpdateBlock: BLOCK_NUMBER,
+      isFundraisingActive: true,
+    });
     expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}.${ADDRESS}`, loadedModel);
     expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}`, loadedModel);
   });
@@ -245,12 +224,6 @@ describe("FundraisingChargedToken loader", () => {
   // extraneous events
 
   test("LTAllocatedThroughSale", async () => {
-    // initialization
-    const provider = new ethers.providers.JsonRpcProvider();
-    const directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS);
-    const loader = new FundraisingChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader);
-    const session = new ClientSession();
-
     // does nothing
     await loader.onLTAllocatedThroughSaleEvent(session, [], BLOCK_NUMBER, "LTAllocatedThroughSale");
   });

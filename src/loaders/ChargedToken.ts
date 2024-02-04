@@ -1,9 +1,10 @@
 import { BigNumber, type ethers } from "ethers";
 import { type ClientSession } from "mongoose";
 import { contracts } from "../contracts";
-import { ChargedTokenModel, type IChargedToken } from "../models";
+import { type IChargedToken } from "../models";
 import { type IUserBalance } from "../models/UserBalances";
 import { EMPTY_ADDRESS } from "../types";
+import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
 import { type Directory } from "./Directory";
 import { InterfaceProjectToken } from "./InterfaceProjectToken";
@@ -12,8 +13,14 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   interface: InterfaceProjectToken | undefined;
   protected readonly directory: Directory;
 
-  constructor(chainId: number, provider: ethers.providers.JsonRpcProvider, address: string, directory: Directory) {
-    super(directory.eventsListener, chainId, provider, address, contracts.LiquidityToken, ChargedTokenModel);
+  constructor(
+    chainId: number,
+    provider: ethers.providers.JsonRpcProvider,
+    address: string,
+    directory: Directory,
+    dbRepository: AbstractDbRepository,
+  ) {
+    super(directory.eventsListener, chainId, provider, address, contracts.LiquidityToken, dbRepository);
     this.directory = directory;
   }
 
@@ -27,14 +34,11 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         this.lastState!.interfaceProjectToken,
         this.directory,
         this,
+        this.db,
       );
 
       await this.interface.init(session, blockNumber, createTransaction);
     }
-  }
-
-  toModel(data: IChargedToken) {
-    return (ChargedTokenModel as any).toModel(data);
   }
 
   protected checkUpdateAmounts(data: Partial<ChargedToken> | ChargedToken) {
@@ -288,6 +292,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       interfaceProjectToken,
       this.directory,
       this,
+      this.db,
     );
     await this.interface.init(session, blockNumber, false);
     this.interface.subscribeToEvents();

@@ -2,10 +2,12 @@ import { ethers } from "ethers";
 import { ClientSession } from "mongodb";
 import mongoose from "mongoose";
 import { pubSub } from "../../graphql";
-import { ChargedTokenModel, DirectoryModel, EventModel, UserBalanceModel } from "../../models";
+import { DataType } from "../../types";
+import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
 import { Directory } from "../Directory";
 import { EventListener } from "../EventListener";
+import { MockDbRepository } from "../__mocks__/MockDbRepository";
 
 jest.mock("../../globals/config");
 jest.mock("../../topics");
@@ -17,60 +19,35 @@ describe("AbstractLoader: common loaders features", () => {
   const CHAIN_ID = 1337;
   const ADDRESS = "0xADDRESS";
 
-  /*
-  afterEach(() => {
-    jest.clearAllMocks();
-    (EventModel as any).exists.mockReset();
-  });
-  */
+  let provider: ethers.providers.JsonRpcProvider;
+  let eventsListener: EventListener;
+  let db: jest.Mocked<AbstractDbRepository>;
+  let directoryLoader: Directory;
+  let ctLoader: ChargedToken;
+  let session: ClientSession;
 
-  it("should call model toModel method, depending on the contract implementation", () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new EventListener();
-    const directoryLoader = new Directory(eventsListener, CHAIN_ID, provider, ADDRESS);
-    const ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader);
-
-    expect(DirectoryModel.toModel).not.toBeCalled();
-    expect(ChargedTokenModel.toModel).not.toBeCalled();
-
-    (DirectoryModel as any).toModel.mockClear();
-    (ChargedTokenModel as any).toModel.mockClear();
-    directoryLoader.toModel({} as any);
-
-    expect(DirectoryModel.toModel).toBeCalled();
-    expect(ChargedTokenModel.toModel).not.toBeCalled();
-
-    (DirectoryModel as any).toModel.mockClear();
-    (ChargedTokenModel as any).toModel.mockClear();
-    ctLoader.toModel({} as any);
-
-    expect(DirectoryModel.toModel).not.toBeCalled();
-    expect(ChargedTokenModel.toModel).toBeCalled();
+  beforeEach(() => {
+    provider = new ethers.providers.JsonRpcProvider();
+    db = new MockDbRepository();
+    eventsListener = new EventListener(db, false);
+    directoryLoader = new Directory(eventsListener, CHAIN_ID, provider, ADDRESS, db);
+    ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader, db);
+    session = new ClientSession();
   });
 
   it("should load balances by project token address", async () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new EventListener();
-    const loader = new Directory(eventsListener, CHAIN_ID, provider, ADDRESS);
-    const session = new ClientSession();
+    await directoryLoader.getBalancesByProjectToken(session, "0xPT", "0xUSER");
 
-    await loader.getBalancesByProjectToken(session, "0xPT", "0xUSER");
-
-    expect(UserBalanceModel.find).toBeCalledWith({ ptAddress: "0xPT", user: "0xUSER" }, undefined, { session });
+    expect(db.getBalancesByProjectToken).toBeCalledWith(CHAIN_ID, "0xPT", "0xUSER");
   });
 
   it("should detect balances updates that trigger negative amounts", async () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new EventListener();
-    const loader = new Directory(eventsListener, CHAIN_ID, provider, ADDRESS);
-    const session = new ClientSession();
-
     const ERROR_MSG = "Invalid update detected : negative amounts in user balance";
 
     const blockNumber = 15;
 
     await expect(
-      loader.updateBalanceAndNotify(
+      directoryLoader.updateBalanceAndNotify(
         session,
         ADDRESS,
         "0xUSER",
@@ -82,7 +59,7 @@ describe("AbstractLoader: common loaders features", () => {
     ).rejects.toThrowError(ERROR_MSG);
 
     await expect(
-      loader.updateBalanceAndNotify(
+      directoryLoader.updateBalanceAndNotify(
         session,
         ADDRESS,
         "0xUSER",
@@ -94,7 +71,7 @@ describe("AbstractLoader: common loaders features", () => {
     ).rejects.toThrowError(ERROR_MSG);
 
     await expect(
-      loader.updateBalanceAndNotify(
+      directoryLoader.updateBalanceAndNotify(
         session,
         ADDRESS,
         "0xUSER",
@@ -106,7 +83,7 @@ describe("AbstractLoader: common loaders features", () => {
     ).rejects.toThrowError(ERROR_MSG);
 
     await expect(
-      loader.updateBalanceAndNotify(
+      directoryLoader.updateBalanceAndNotify(
         session,
         ADDRESS,
         "0xUSER",
@@ -118,7 +95,7 @@ describe("AbstractLoader: common loaders features", () => {
     ).rejects.toThrowError(ERROR_MSG);
 
     await expect(
-      loader.updateBalanceAndNotify(
+      directoryLoader.updateBalanceAndNotify(
         session,
         ADDRESS,
         "0xUSER",
@@ -130,7 +107,7 @@ describe("AbstractLoader: common loaders features", () => {
     ).rejects.toThrowError(ERROR_MSG);
 
     await expect(
-      loader.updateBalanceAndNotify(
+      directoryLoader.updateBalanceAndNotify(
         session,
         ADDRESS,
         "0xUSER",
@@ -143,20 +120,14 @@ describe("AbstractLoader: common loaders features", () => {
   });
 
   it("should update user balances and notify", async () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new EventListener();
-    const loader = new Directory(eventsListener, CHAIN_ID, provider, ADDRESS);
-    const session = new ClientSession();
-
     const blockNumber = 20;
 
     const jsonBalance = { balance: "15" } as any;
-    const balanceUpdate = { ...jsonBalance, toJSON: jest.fn(() => jsonBalance) } as any;
+    const balanceUpdate = { ...jsonBalance } as any;
 
-    const getBalance = jest.spyOn(loader, "getBalance").mockResolvedValue(balanceUpdate);
-    (UserBalanceModel as any).toGraphQL.mockReturnValue(jsonBalance);
+    const getBalance = jest.spyOn(directoryLoader, "getBalance").mockResolvedValue(balanceUpdate);
 
-    await loader.updateBalanceAndNotify(
+    await directoryLoader.updateBalanceAndNotify(
       session,
       ADDRESS,
       "0xUSER",
@@ -166,54 +137,57 @@ describe("AbstractLoader: common loaders features", () => {
       "SampleEvent",
     );
 
-    expect(UserBalanceModel.updateOne).toBeCalledWith(
-      { address: ADDRESS, user: "0xUSER" },
-      { ...balanceUpdate, lastUpdateBlock: blockNumber },
-      { session },
-    );
+    expect(db.updateBalance).toBeCalledWith({
+      ...balanceUpdate,
+      chainId: CHAIN_ID,
+      address: ADDRESS,
+      user: "0xUSER",
+      lastUpdateBlock: blockNumber,
+    });
     expect(getBalance).toBeCalledWith(session, ADDRESS, "0xUSER");
-    expect(UserBalanceModel.toGraphQL).toBeCalledWith(balanceUpdate);
     expect(pubSub.publish).toBeCalledWith("UserBalance.1337.0xUSER", [jsonBalance]);
   });
 
   it("should propagate changes to the PT balance and notify", async () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new EventListener();
-    const loader = new Directory(eventsListener, CHAIN_ID, provider, ADDRESS);
-    const session = new ClientSession();
-
     const blockNumber = 20;
 
     const jsonBalance = { balancePT: "15" } as any;
-    const balanceUpdate = { ...jsonBalance, toJSON: jest.fn(() => jsonBalance) } as any;
+    const balanceUpdate = { ...jsonBalance } as any;
 
-    const getBalancesByPT = jest.spyOn(loader, "getBalancesByProjectToken").mockResolvedValue([balanceUpdate]);
-    (UserBalanceModel as any).toGraphQL.mockReturnValue(jsonBalance);
+    const getBalancesByPT = jest.spyOn(directoryLoader, "getBalancesByProjectToken").mockResolvedValue([balanceUpdate]);
 
-    await loader.updateBalanceAndNotify(session, ADDRESS, "0xUSER", balanceUpdate, blockNumber, "0xPT", "SampleEvent");
-
-    expect(UserBalanceModel.updateOne).toBeCalledWith(
-      { address: ADDRESS, user: "0xUSER" },
-      { ...balanceUpdate, lastUpdateBlock: blockNumber },
-      { session },
+    await directoryLoader.updateBalanceAndNotify(
+      session,
+      ADDRESS,
+      "0xUSER",
+      balanceUpdate,
+      blockNumber,
+      "0xPT",
+      "SampleEvent",
     );
-    expect(UserBalanceModel.updateMany).toBeCalledWith(
-      { user: "0xUSER", ptAddress: "0xPT", address: { $ne: ADDRESS } },
-      { ...jsonBalance, lastUpdateBlock: blockNumber },
-      { session },
-    );
+
+    expect(db.updateBalance).toBeCalledWith({
+      ...balanceUpdate,
+      chainId: CHAIN_ID,
+      address: ADDRESS,
+      user: "0xUSER",
+      lastUpdateBlock: blockNumber,
+    });
+    expect(db.updateOtherBalancesByProjectToken).toBeCalledWith(ADDRESS, {
+      ...jsonBalance,
+      chainId: CHAIN_ID,
+      user: "0xUSER",
+      ptAddress: "0xPT",
+      lastUpdateBlock: blockNumber,
+    });
     expect(getBalancesByPT).toBeCalledWith(session, "0xPT", "0xUSER");
-    expect(UserBalanceModel.toGraphQL).toBeCalledWith(balanceUpdate);
     expect(pubSub.publish).toBeCalledWith("UserBalance.1337.0xUSER", [jsonBalance]);
   });
 
   it("should add loaded past events to the queue and execute them", async () => {
     const { EventListener: RealEventListener } = jest.requireActual("../EventListener");
-
-    const provider = new ethers.providers.JsonRpcProvider();
-    const eventsListener = new RealEventListener(false);
-    const loader = new Directory(eventsListener, CHAIN_ID, provider, ADDRESS);
-    const session = new ClientSession();
+    const eventsListener = new RealEventListener(db, false);
+    const loader = new Directory(eventsListener, CHAIN_ID, provider, ADDRESS, db);
 
     const blockNumber = 20;
 
@@ -223,8 +197,7 @@ describe("AbstractLoader: common loaders features", () => {
       lastUpdateBlock: 15,
       directory: [],
     };
-    (DirectoryModel as any).findOne.mockResolvedValueOnce(loadedModel);
-    (DirectoryModel as any).toGraphQL.mockImplementation((value: any) => value);
+    db.get.mockResolvedValue(loadedModel);
 
     const passedEvents = [
       {
@@ -280,36 +253,37 @@ describe("AbstractLoader: common loaders features", () => {
       },
     ];
     const allEvents = [...passedEvents, ...missedEvents];
-    (loader.instance as any).queryFilter.mockResolvedValueOnce(allEvents);
-
-    (EventModel as any).exists.mockResolvedValue(null).mockResolvedValueOnce(true).mockResolvedValueOnce(true);
-    (EventModel as any).create.mockResolvedValue(null);
+    (loader.instance as any).queryFilter.mockResolvedValue(allEvents);
 
     (provider as any).getBlock.mockImplementation(async (blockNumber: number) => {
       return { timestamp: blockNumber * 86400 };
     });
 
     (loader.iface as any).parseLog.mockImplementation((value: any) => value);
+    db.existsEvent
+      .mockResolvedValue(false)
+      // first 2 events are passed
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true);
 
     await loader.init(session, blockNumber);
 
-    expect(DirectoryModel.findOne).toBeCalledWith({ chainId: CHAIN_ID, address: ADDRESS }, undefined, { session });
-    expect(DirectoryModel.toGraphQL).toBeCalledWith(loadedModel);
+    expect(db.get).toBeCalledWith(DataType.Directory, CHAIN_ID, ADDRESS);
     expect(loader.instance.queryFilter).toBeCalledWith({ address: ADDRESS }, loadedModel.lastUpdateBlock);
 
-    expect(EventModel.exists).toBeCalledTimes(missedEvents.length + allEvents.length);
+    expect(db.existsEvent).toBeCalledTimes(allEvents.length + missedEvents.length);
 
     for (const event of allEvents) {
-      expect(EventModel.exists).toBeCalledWith({
-        chainId: CHAIN_ID,
-        address: ADDRESS,
-        blockNumber: event.blockNumber,
-        txIndex: event.transactionIndex,
-        logIndex: event.logIndex,
-      });
+      expect(db.existsEvent).toBeCalledWith(
+        CHAIN_ID,
+        ADDRESS,
+        event.blockNumber,
+        event.transactionIndex,
+        event.logIndex,
+      );
     }
 
-    expect(EventModel.create).toBeCalledTimes(missedEvents.length);
+    expect(db.saveEvent).toBeCalledTimes(missedEvents.length);
     expect(eventsListener.queue.length).toBe(missedEvents.length);
     expect(eventsListener.queue.map((event: any) => event.eventName)).toEqual([
       "EventName3",
@@ -324,8 +298,8 @@ describe("AbstractLoader: common loaders features", () => {
 
     (mongoose as any).startSession.mockResolvedValue(eventsSession);
 
-    (EventModel as any).exists.mockClear();
-    (EventModel as any).exists.mockResolvedValue(true);
+    db.existsEvent.mockClear();
+    db.existsEvent.mockResolvedValue(true);
 
     jest.spyOn(loader, "onEvent").mockResolvedValue(undefined);
 
@@ -333,35 +307,35 @@ describe("AbstractLoader: common loaders features", () => {
     await eventsListener.executePendingLogs();
 
     expect(mongoose.startSession).toBeCalledTimes(1);
-    expect(EventModel.exists).toBeCalledTimes(4);
+    expect(db.existsEvent).toBeCalledTimes(4);
     expect(loader.onEvent).toBeCalledTimes(3);
     expect(eventsListener.queue.length).toBe(2);
     expect(eventsSession.startTransaction).toBeCalledTimes(3);
     expect(eventsSession.commitTransaction).toBeCalledTimes(3);
     expect(eventsSession.abortTransaction).toBeCalledTimes(0);
     expect(eventsSession.endSession).toBeCalledTimes(1);
-    expect(EventModel.updateOne).toBeCalledTimes(3);
+    expect(db.updateEventStatus).toBeCalledTimes(3);
 
     (mongoose as any).startSession.mockClear();
-    (EventModel as any).exists.mockClear();
+    db.existsEvent.mockClear();
     (loader as any).onEvent.mockClear();
     (eventsSession as any).startTransaction.mockClear();
     (eventsSession as any).commitTransaction.mockClear();
     (eventsSession as any).abortTransaction.mockClear();
     (eventsSession as any).endSession.mockClear();
-    (EventModel as any).updateOne.mockClear();
+    db.updateEventStatus.mockClear();
 
     // first execution processes all events for block 17
     await eventsListener.executePendingLogs();
 
     expect(mongoose.startSession).toBeCalledTimes(1);
-    expect(EventModel.exists).toBeCalledTimes(2);
+    expect(db.existsEvent).toBeCalledTimes(2);
     expect(loader.onEvent).toBeCalledTimes(2);
     expect(eventsListener.queue.length).toBe(0);
     expect(eventsSession.startTransaction).toBeCalledTimes(2);
     expect(eventsSession.commitTransaction).toBeCalledTimes(2);
     expect(eventsSession.abortTransaction).toBeCalledTimes(0);
     expect(eventsSession.endSession).toBeCalledTimes(1);
-    expect(EventModel.updateOne).toBeCalledTimes(2);
+    expect(db.updateEventStatus).toBeCalledTimes(2);
   });
 });

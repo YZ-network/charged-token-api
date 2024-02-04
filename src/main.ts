@@ -6,6 +6,8 @@ import { WebSocketServer } from "ws";
 import { useEventsExporter } from "./exporter";
 import { Config, WorkerStatus } from "./globals";
 import { pubSub, schema } from "./graphql";
+import { AbstractDbRepository } from "./loaders/AbstractDbRepository";
+import { DbRepository } from "./models/DbRepository";
 import { usePrometheus } from "./prometheus";
 import { rootLogger } from "./util";
 import { ChainHealth, ChainWorker } from "./worker";
@@ -19,6 +21,7 @@ export class MainClass {
   keepAlive: NodeJS.Timeout | undefined;
   healthTimer: NodeJS.Timeout | undefined;
 
+  readonly db: AbstractDbRepository = new DbRepository();
   readonly workers: ChainWorker[] = [];
 
   readonly yoga = createYoga({
@@ -171,7 +174,7 @@ export class MainClass {
       chainId,
     });
 
-    this.workers.push(new ChainWorker(index, rpc, directory, chainId));
+    this.workers.push(new ChainWorker(index, rpc, directory, chainId, this.db));
   }
 }
 

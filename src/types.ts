@@ -41,4 +41,13 @@ export type IModel<T> = Model<T> & {
   toGraphQL: IToGraphQL<T>;
 };
 
+export enum DataType {
+  ChargedToken = "ChargedToken",
+  Directory = "Directory",
+  InterfaceProjectToken = "InterfaceProjectToken",
+  DelegableToLT = "DelegableToLT",
+  UserBalance = "UserBalance",
+  Event = "Event",
+}
+
 export const EMPTY_ADDRESS = "0x0000000000000000000000000000000000000000";

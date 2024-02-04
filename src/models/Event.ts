@@ -36,12 +36,6 @@ const eventSchema = new Schema<IEvent, IModel<IEvent>>({
 
 eventSchema.index({ chainId: 1, address: 1, blockNumber: 1, txIndex: 1, logIndex: 1 }, { unique: true });
 
-eventSchema.static("toModel", function (data: IEvent): HydratedDocument<IEvent> {
-  const model = new this();
-  Object.assign(model, data);
-  return model;
-});
-
 eventSchema.static("toGraphQL", function (doc: HydratedDocument<IEvent>): any {
   return doc.toJSON();
 });

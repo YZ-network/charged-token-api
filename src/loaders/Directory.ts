@@ -2,16 +2,9 @@ import { ethers } from "ethers";
 import { type ClientSession } from "mongodb";
 import { contracts } from "../contracts";
 import { pubSub } from "../graphql";
-import {
-  ChargedTokenModel,
-  DelegableToLTModel,
-  DirectoryModel,
-  InterfaceProjectTokenModel,
-  UserBalanceModel,
-  type IDirectory,
-  type IUserBalance,
-} from "../models";
-import { EMPTY_ADDRESS } from "../types";
+import { type IDirectory, type IUserBalance } from "../models";
+import { DataType, EMPTY_ADDRESS } from "../types";
+import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
 import { type EventListener } from "./EventListener";
@@ -26,8 +19,9 @@ export class Directory extends AbstractLoader<IDirectory> {
     chainId: number,
     provider: ethers.providers.JsonRpcProvider,
     address: string,
+    dbRepository: AbstractDbRepository,
   ) {
-    super(eventListener, chainId, provider, address, contracts.ContractsDirectory, DirectoryModel);
+    super(eventListener, chainId, provider, address, contracts.ContractsDirectory, dbRepository);
   }
 
   async init(session: ClientSession, blockNumber: number, createTransaction?: boolean) {
@@ -52,7 +46,7 @@ export class Directory extends AbstractLoader<IDirectory> {
         contract: this.contract.name,
         address,
       });
-      return new FundraisingChargedToken(this.chainId, this.provider, address, this);
+      return new FundraisingChargedToken(this.chainId, this.provider, address, this, this.db);
     } catch (err) {
       this.log.info({
         msg: "Detected old Charged Token Contract",
@@ -60,12 +54,8 @@ export class Directory extends AbstractLoader<IDirectory> {
         contract: this.contract.name,
         address,
       });
-      return new ChargedToken(this.chainId, this.provider, address, this);
+      return new ChargedToken(this.chainId, this.provider, address, this, this.db);
     }
-  }
-
-  toModel(data: IDirectory) {
-    return (DirectoryModel as any).toModel(data);
   }
 
   async load(blockNumber: number): Promise<IDirectory> {
@@ -139,14 +129,14 @@ export class Directory extends AbstractLoader<IDirectory> {
         : [await this.ct[address].loadUserBalances(user, blockNumber)];
 
     for (const entry of results) {
-      if (await this.existUserBalances(user, entry.address)) {
+      if (await this.db.existsBalance(this.chainId, entry.address, user)) {
         this.log.info({
           msg: `updating CT balance for ${user}`,
           chainId: this.chainId,
           address: entry.address,
           balance: entry,
         });
-        await UserBalanceModel.updateOne({ chainId: this.chainId, user, address: entry.address }, entry, { session });
+        await this.db.updateBalance({ ...entry, chainId: this.chainId, user, address: entry.address });
       } else if (this.ct[entry.address] !== undefined) {
         const iface = this.ct[entry.address].interface;
         const ptAddress = iface?.projectToken !== undefined ? iface.projectToken.address : "";
@@ -158,18 +148,11 @@ export class Directory extends AbstractLoader<IDirectory> {
           address: entry.address,
           ptAddress,
         });
-        await UserBalanceModel.toModel(entry).save({ session });
+        await this.db.saveBalance(entry);
       }
     }
 
-    const saved = await UserBalanceModel.find(
-      {
-        chainId: this.chainId,
-        user,
-      },
-      undefined,
-      { session },
-    ).exec();
+    const saved = await this.db.getBalances(this.chainId, user);
 
     if (saved !== null) {
       this.log.info({
@@ -179,10 +162,7 @@ export class Directory extends AbstractLoader<IDirectory> {
         address: this.address,
       });
 
-      pubSub.publish(
-        `UserBalance.${this.chainId}.${user}`,
-        saved.map((balance) => UserBalanceModel.toGraphQL(balance)),
-      );
+      pubSub.publish(`UserBalance.${this.chainId}.${user}`, saved); // TODO convert to graphql on the notification side
     } else {
       this.log.warn({
         msg: `Error while reloading balances after save for user ${user}`,
@@ -201,16 +181,6 @@ export class Directory extends AbstractLoader<IDirectory> {
     });
 
     return results;
-  }
-
-  async existUserBalances(user: string, address: string): Promise<boolean> {
-    return (
-      (await UserBalanceModel.exists({
-        chainId: this.chainId,
-        user,
-        address,
-      })) !== null
-    );
   }
 
   async destroy() {
@@ -308,23 +278,10 @@ export class Directory extends AbstractLoader<IDirectory> {
     await this.ct[contract].destroy();
 
     delete this.ct[contract];
-    await ChargedTokenModel.deleteOne(
-      {
-        chainId: this.chainId,
-        address: contract,
-      },
-      { session },
-    );
+    this.db.delete(DataType.ChargedToken, this.chainId, contract);
     balanceAddressList.push(contract);
 
-    const iface = await InterfaceProjectTokenModel.findOne(
-      {
-        chainId: this.chainId,
-        liquidityToken: contract,
-      },
-      undefined,
-      { session },
-    );
+    const iface = await this.db.getInterfaceByChargedToken(this.chainId, contract);
     if (iface !== null) {
       this.log.info({
         msg: "Removing interface from database",
@@ -333,20 +290,11 @@ export class Directory extends AbstractLoader<IDirectory> {
       });
 
       balanceAddressList.push(iface.address);
-      await InterfaceProjectTokenModel.deleteOne(
-        {
-          chainId: this.chainId,
-          address: iface.address,
-        },
-        { session },
-      );
+      await this.db.delete(DataType.InterfaceProjectToken, this.chainId, iface.address);
       if (
         iface.projectToken !== EMPTY_ADDRESS &&
         InterfaceProjectToken.projectUsageCount[iface.projectToken] === undefined &&
-        (await DelegableToLTModel.count({
-          chainId: this.chainId,
-          address: iface.projectToken,
-        })) === 1
+        (await this.db.exists(DataType.DelegableToLT, this.chainId, iface.projectToken))
       ) {
         this.log.info({
           msg: "Removing project token from database",
@@ -355,13 +303,7 @@ export class Directory extends AbstractLoader<IDirectory> {
           usageCount: InterfaceProjectToken.projectUsageCount[iface.projectToken],
         });
 
-        await DelegableToLTModel.deleteOne(
-          {
-            chainId: this.chainId,
-            address: iface.projectToken,
-          },
-          { session },
-        );
+        await this.db.delete(DataType.DelegableToLT, this.chainId, iface.projectToken);
         balanceAddressList.push(iface.projectToken);
       }
     }
@@ -372,13 +314,7 @@ export class Directory extends AbstractLoader<IDirectory> {
       balanceAddressList,
     });
 
-    await UserBalanceModel.deleteMany(
-      {
-        chainId: this.chainId,
-        address: { $in: balanceAddressList },
-      },
-      { session },
-    );
+    await this.db.delete(DataType.UserBalance, this.chainId, balanceAddressList);
 
     await this.applyUpdateAndNotify(session, update, blockNumber, eventName);
   }

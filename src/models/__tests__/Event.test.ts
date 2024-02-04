@@ -22,14 +22,6 @@ describe("EventModel", () => {
     };
   }
 
-  test("should convert business object to mongo model", () => {
-    const bo: IEvent = sampleData();
-
-    const model = EventModel.toModel(bo);
-
-    expect(model.toJSON()).toMatchObject(bo);
-  });
-
   test("should convert mongo model to business object in graphql format", () => {
     const sample = sampleData();
     const model = new EventModel(sample);
