@@ -34,7 +34,7 @@ describe("FundraisingChargedToken loader", () => {
 
   beforeEach(() => {
     provider = new ethers.providers.JsonRpcProvider();
-    db = new MockDbRepository();
+    db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
     directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS, db);
     loader = new FundraisingChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader, db);
     session = new ClientSession();

@@ -10,7 +10,7 @@ describe("Directory query resolver", () => {
   let resolver: DirectoryQueryResolver;
 
   beforeEach(() => {
-    db = new MockDbRepository();
+    db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
     resolver = DirectoryQueryResolverFactory(db);
   });
 

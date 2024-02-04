@@ -14,7 +14,7 @@ describe("Events query resolver", () => {
   let queryResolver: EventsQueryResolver;
 
   beforeEach(() => {
-    db = new MockDbRepository();
+    db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
     countResolver = EventsCountQueryResolverFactory(db);
     queryResolver = EventsQueryResolverFactory(db);
   });

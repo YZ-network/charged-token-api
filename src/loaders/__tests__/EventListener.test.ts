@@ -1,7 +1,6 @@
 import { ClientSession } from "mongodb";
 import mongoose from "mongoose";
 import { EventHandlerStatus } from "../../globals";
-import { EventModel } from "../../models";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { type AbstractLoader } from "../AbstractLoader";
 import { EventListener } from "../EventListener";
@@ -14,7 +13,7 @@ describe("EventListener", () => {
   let db: jest.Mocked<AbstractDbRepository>;
 
   beforeEach(() => {
-    db = new MockDbRepository();
+    db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
   });
 
   it("should start looking for event queue to execute and dispose on destroy", () => {
@@ -119,8 +118,6 @@ describe("EventListener", () => {
     expect(listener.queue.length).toBe(0);
 
     listener.destroy();
-
-    (EventModel as any).exists.mockReset();
   });
 
   async function waitForEventsLoopToComplete(listener: EventListener) {

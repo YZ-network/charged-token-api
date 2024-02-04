@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { pubSub } from "../../graphql";
 import { Directory } from "../../loaders/Directory";
 import { type EventListener } from "../../loaders/EventListener";
+import { MockDbRepository } from "../../loaders/__mocks__/MockDbRepository";
 import { type AutoWebSocketProvider } from "../../util";
 import subscribeToUserBalancesLoading from "../subscribeToUserBalances";
 
@@ -47,6 +48,7 @@ describe("User balances subscriptions", () => {
       1337,
       undefined as unknown as AutoWebSocketProvider,
       "0xDIRECTORY",
+      new MockDbRepository(),
     );
     Object.defineProperty(directory, "chainId", { value: 1337 });
     Object.defineProperty(directory, "provider", { value: { getBlockNumber } });
@@ -87,6 +89,7 @@ describe("User balances subscriptions", () => {
       1337,
       undefined as unknown as AutoWebSocketProvider,
       "0xDIRECTORY",
+      new MockDbRepository(),
     );
     Object.defineProperty(directory, "chainId", { value: 1337 });
     Object.defineProperty(directory, "provider", { value: { getBlockNumber } });

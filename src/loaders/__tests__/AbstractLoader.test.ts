@@ -28,7 +28,7 @@ describe("AbstractLoader: common loaders features", () => {
 
   beforeEach(() => {
     provider = new ethers.providers.JsonRpcProvider();
-    db = new MockDbRepository();
+    db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
     eventsListener = new EventListener(db, false);
     directoryLoader = new Directory(eventsListener, CHAIN_ID, provider, ADDRESS, db);
     ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader, db);

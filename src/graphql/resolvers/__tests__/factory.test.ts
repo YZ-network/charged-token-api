@@ -12,7 +12,7 @@ describe("Generic query resolver factory", () => {
   let db: jest.Mocked<AbstractDbRepository>;
 
   beforeEach(() => {
-    db = new MockDbRepository();
+    db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
   });
 
   it("should query for all items by chain id and convert results to graphQL format", async () => {

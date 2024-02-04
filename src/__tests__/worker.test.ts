@@ -22,7 +22,7 @@ describe("ChainWorker", () => {
   let db: jest.Mocked<AbstractDbRepository>;
 
   beforeEach(() => {
-    db = new MockDbRepository();
+    db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
   });
 
   afterEach(() => {
@@ -247,8 +247,6 @@ describe("ChainWorker", () => {
 
   test("should manage provider error event creating directory", async () => {
     (AutoWebSocketProvider as any).mockReturnValueOnce(mockProviderBase());
-
-    db.deletePendingAndFailedEvents.mockResolvedValueOnce([]);
 
     const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID, db);
 

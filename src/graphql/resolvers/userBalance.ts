@@ -1,9 +1,15 @@
 import { Repeater } from "graphql-yoga";
 import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
+import { IUserBalance } from "../../models";
 import { rootLogger } from "../../util";
 import pubSub from "../pubsub";
 
 const log = rootLogger.child({ name: "userBalance" });
+
+export type UserBalanceQueryResolver = (
+  _: any,
+  { chainId, user, address }: { chainId: number; user: string; address?: string },
+) => Promise<IUserBalance | IUserBalance[]>;
 
 export const UserBalanceQueryResolverFactory =
   (db: AbstractDbRepository) =>

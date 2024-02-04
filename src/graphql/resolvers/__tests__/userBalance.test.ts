@@ -22,7 +22,7 @@ describe("User balance query resolver", () => {
   let resolver: UserBalanceQueryResolver;
 
   beforeEach(() => {
-    db = new MockDbRepository();
+    db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
     resolver = UserBalanceQueryResolverFactory(db);
   });
 

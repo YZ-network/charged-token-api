@@ -40,7 +40,7 @@ describe("InterfaceProjectToken loader", () => {
     Object.defineProperty(InterfaceProjectToken, "projectUsageCount", { value: {} });
 
     provider = new ethers.providers.JsonRpcProvider();
-    db = new MockDbRepository();
+    db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
     directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS, db);
     ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader, db);
     loader = new InterfaceProjectToken(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader, db);

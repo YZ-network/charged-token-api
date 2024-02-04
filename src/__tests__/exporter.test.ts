@@ -21,7 +21,7 @@ describe("Events exporter", () => {
   let db: jest.Mocked<AbstractDbRepository>;
 
   beforeEach(() => {
-    db = new MockDbRepository();
+    db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
   });
 
   it("should return events as csv file", async () => {
