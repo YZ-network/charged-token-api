@@ -41,4 +41,6 @@ const resolvers = {
   },
 };
 
-export default resolvers;
+const resolversFactory = jest.fn(() => resolvers);
+
+export default resolversFactory;

@@ -11,7 +11,7 @@ export const UserBalanceQueryResolverFactory =
     log.debug({ msg: "checking existing balances", chainId, user, address });
 
     if (address !== undefined) {
-      if ((await db.existsBalance(chainId, address, user)) !== null) {
+      if (await db.existsBalance(chainId, address, user)) {
         const balance = await db.getBalance(chainId, address, user);
         return balance!; //TODO convert to graphql
       }

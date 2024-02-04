@@ -1,11 +1,14 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { GraphQLSchema } from "graphql";
-import schema from "../schema";
+import { MockDbRepository } from "../../loaders/__mocks__/MockDbRepository";
+import schemaFactory from "../schema";
 
 jest.mock("../resolvers");
 
 describe("GraphQL Schema", () => {
   it("should create schema with all needed queries and subscriptions", () => {
+    const schema = schemaFactory(new MockDbRepository());
+
     expect(schema).toBeInstanceOf(GraphQLSchema);
 
     const typeMap = schema.getTypeMap();

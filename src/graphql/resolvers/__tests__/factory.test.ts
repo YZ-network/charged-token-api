@@ -28,7 +28,7 @@ describe("Generic query resolver factory", () => {
     const result = await findAllResolver(undefined, { chainId });
 
     expect(result).toStrictEqual(loadedModels);
-    expect(db.getAllMatching).toBeCalledWith(DataType.ChargedToken, chainId);
+    expect(db.getAllMatching).toBeCalledWith(DataType.ChargedToken, { chainId });
   });
 
   it("should query one item by chain id and address", async () => {
@@ -73,7 +73,7 @@ describe("Generic query resolver factory", () => {
 
     (pubSub as any).subscribe.mockReturnValueOnce(subscription);
 
-    db.get.mockResolvedValueOnce("zeroValue");
+    db.getAllMatching.mockResolvedValueOnce("zeroValue" as unknown as IContract[]);
 
     const repeater = subscribeByNameResolver(undefined, { chainId });
 

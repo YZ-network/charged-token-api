@@ -1,14 +1,12 @@
 import { AbstractDbRepository } from "../../../loaders/AbstractDbRepository";
 import { MockDbRepository } from "../../../loaders/__mocks__/MockDbRepository";
-import { EventModel } from "../../../models";
+import { IEvent } from "../../../models";
 import {
   EventsCountQueryResolver,
   EventsCountQueryResolverFactory,
   EventsQueryResolver,
   EventsQueryResolverFactory,
 } from "../events";
-
-jest.mock("../../../models");
 
 describe("Events query resolver", () => {
   let db: jest.Mocked<AbstractDbRepository>;
@@ -24,63 +22,34 @@ describe("Events query resolver", () => {
   it("should query for events count by chain id", async () => {
     const chainId = 129;
 
-    (EventModel as any).count.mockResolvedValueOnce(50);
+    db.countEvents.mockResolvedValueOnce(50);
 
     const result = await countResolver(undefined, { chainId });
 
     expect(result).toBe(50);
-    expect(EventModel.count).toBeCalledWith({ chainId });
+    expect(db.countEvents).toBeCalledWith(chainId);
   });
 
   it("should query for events by chain id and return results", async () => {
     const chainId = 129;
 
-    const events = [{ eventName: "A" }, { eventName: "B" }];
-    const sortMock = {
-      sort: jest.fn(async () => events),
-    };
-    const skipMock = {
-      skip: jest.fn(() => sortMock),
-    };
-    const limitMock = {
-      limit: jest.fn(() => skipMock),
-    };
-    (EventModel as any).find.mockReturnValueOnce(limitMock);
-    (EventModel as any).toGraphQL.mockImplementation((value: any) => value);
+    const events = [{ eventName: "A" }, { eventName: "B" }] as unknown[] as IEvent[];
+    db.getEventsPaginated.mockResolvedValueOnce(events);
 
     const result = await queryResolver(undefined, { chainId });
 
     expect(result).toStrictEqual(events);
-    expect(EventModel.find).toBeCalledWith({ chainId });
-    expect(EventModel.toGraphQL).toBeCalledTimes(events.length);
-    expect(limitMock.limit).toBeCalledWith(20);
-    expect(skipMock.skip).toBeCalledWith(0);
-    expect(sortMock.sort).toBeCalledWith({
-      blockNumber: "asc",
-      txIndex: "asc",
-      logIndex: "asc",
-    });
+    expect(db.getEventsPaginated).toBeCalledWith(chainId, 20, 0);
   });
 
   it("should use query parameters for pagination", async () => {
     const chainId = 129;
 
-    const events = [{ eventName: "A" }, { eventName: "B" }];
-    const sortMock = {
-      sort: jest.fn(async () => events),
-    };
-    const skipMock = {
-      skip: jest.fn(() => sortMock),
-    };
-    const limitMock = {
-      limit: jest.fn(() => skipMock),
-    };
-    (EventModel as any).find.mockReturnValueOnce(limitMock);
+    const events = [{ eventName: "A" }, { eventName: "B" }] as unknown[] as IEvent[];
+    db.getEventsPaginated.mockResolvedValueOnce(events);
 
     await queryResolver(undefined, { chainId, offset: 15, count: 30 });
 
-    expect(EventModel.find).toBeCalledWith({ chainId });
-    expect(limitMock.limit).toBeCalledWith(30);
-    expect(skipMock.skip).toBeCalledWith(15);
+    expect(db.getEventsPaginated).toBeCalledWith(chainId, 30, 15);
   });
 });

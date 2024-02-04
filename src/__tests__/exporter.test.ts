@@ -3,7 +3,7 @@ import { eventsExporterFactory } from "../exporter";
 import { EventHandlerStatus } from "../globals";
 import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
 import { MockDbRepository } from "../loaders/__mocks__/MockDbRepository";
-import { EventModel } from "../models";
+import { IEvent } from "../models";
 
 jest.mock("../models");
 
@@ -54,9 +54,8 @@ describe("Events exporter", () => {
         txHash: "0xtxHash2",
         topics: [],
       },
-    ];
-    const sortMock = { sort: jest.fn(async () => events) };
-    (EventModel as any).find.mockReturnValueOnce(sortMock);
+    ] as IEvent[];
+    db.getAllEvents.mockResolvedValueOnce(events);
 
     const { onRequest: requestHandler } = eventsExporterFactory(db)();
 
@@ -71,12 +70,7 @@ describe("Events exporter", () => {
       endResponse,
     } as unknown as OnRequestEventPayload<object>);
 
-    expect(EventModel.find).toBeCalledTimes(1);
-    expect(sortMock.sort).toBeCalledWith({
-      blockNumber: "asc",
-      txIndex: "asc",
-      logIndex: "asc",
-    });
+    expect(db.getAllEvents).toBeCalledTimes(1);
 
     expect(response).toBeDefined();
     expect(endResponse).toBeCalledWith(response);

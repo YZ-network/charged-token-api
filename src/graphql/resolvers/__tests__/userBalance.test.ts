@@ -62,8 +62,8 @@ describe("User balance query resolver", () => {
     const result = await resolver(undefined, { chainId, user, address });
 
     expect(result).toStrictEqual(loadedBalance);
-    expect(db.existsBalance).toBeCalledWith(chainId, user, address);
-    expect(db.getBalance).toBeCalledWith(chainId, user, address);
+    expect(db.existsBalance).toBeCalledWith(chainId, address, user);
+    expect(db.getBalance).toBeCalledWith(chainId, address, user);
   });
 
   it("should load balances from blockchain if not found when address is provided", async () => {
@@ -72,7 +72,7 @@ describe("User balance query resolver", () => {
     const result = await resolver(undefined, { chainId, user, address });
 
     expect(result).toStrictEqual([]);
-    expect(db.existsBalance).toBeCalledWith(chainId, user, address);
+    expect(db.existsBalance).toBeCalledWith(chainId, address, user);
     expect(pubSub.publish).toBeCalledWith(`UserBalance.${chainId}/load`, { user, address });
   });
 

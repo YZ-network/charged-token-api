@@ -34,7 +34,7 @@ describe("Directory query resolver", () => {
     } as unknown as IDirectory;
     db.getDirectory.mockResolvedValueOnce(loadedModel);
 
-    const result = await DirectoryQueryResolver(undefined, { chainId });
+    const result = await resolver(undefined, { chainId });
 
     expect(result).toBe(loadedModel);
     expect(db.getDirectory).toBeCalledWith(chainId);
