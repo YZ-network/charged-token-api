@@ -1,18 +1,28 @@
-import { DirectoryModel } from "../../../models";
-import { DirectoryQueryResolver } from "../directory";
+import { AbstractDbRepository } from "../../../loaders/AbstractDbRepository";
+import { MockDbRepository } from "../../../loaders/__mocks__/MockDbRepository";
+import { IDirectory } from "../../../models";
+import { DirectoryQueryResolver, DirectoryQueryResolverFactory } from "../directory";
 
 jest.mock("../../../models");
 
 describe("Directory query resolver", () => {
+  let db: jest.Mocked<AbstractDbRepository>;
+  let resolver: DirectoryQueryResolver;
+
+  beforeEach(() => {
+    db = new MockDbRepository();
+    resolver = DirectoryQueryResolverFactory(db);
+  });
+
   it("should query for a directory by chain id and return null when not found", async () => {
     const chainId = 129;
 
-    (DirectoryModel as any).findOne.mockResolvedValueOnce(null);
+    db.getDirectory.mockResolvedValueOnce(null);
 
-    const result = await DirectoryQueryResolver(undefined, { chainId });
+    const result = await resolver(undefined, { chainId });
 
     expect(result).toBe(null);
-    expect(DirectoryModel.findOne).toBeCalledWith({ chainId });
+    expect(db.getDirectory).toBeCalledWith(chainId);
   });
 
   it("should query for a directory by chain id and return", async () => {
@@ -21,14 +31,12 @@ describe("Directory query resolver", () => {
     const loadedModel = {
       chainId,
       directory: "0xDIRECTORY",
-    };
-    (DirectoryModel as any).findOne.mockResolvedValueOnce(loadedModel);
-    (DirectoryModel as any).toGraphQL.mockReturnValueOnce(loadedModel);
+    } as unknown as IDirectory;
+    db.getDirectory.mockResolvedValueOnce(loadedModel);
 
     const result = await DirectoryQueryResolver(undefined, { chainId });
 
     expect(result).toBe(loadedModel);
-    expect(DirectoryModel.findOne).toBeCalledWith({ chainId });
-    expect(DirectoryModel.toGraphQL).toBeCalledWith(loadedModel);
+    expect(db.getDirectory).toBeCalledWith(chainId);
   });
 });

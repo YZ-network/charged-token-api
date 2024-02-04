@@ -1,7 +1,13 @@
 import { Repeater } from "graphql-yoga";
-import { ChargedTokenModel, UserBalanceModel } from "../../../models";
+import { AbstractDbRepository } from "../../../loaders/AbstractDbRepository";
+import { MockDbRepository } from "../../../loaders/__mocks__/MockDbRepository";
+import { IUserBalance } from "../../../models";
 import pubSub from "../../pubsub";
-import { UserBalanceQueryResolver, UserBalanceSubscriptionResolver } from "../userBalance";
+import {
+  UserBalanceQueryResolver,
+  UserBalanceQueryResolverFactory,
+  UserBalanceSubscriptionResolverFactory,
+} from "../userBalance";
 
 jest.mock("../../../globals/config");
 jest.mock("../../pubsub");
@@ -12,66 +18,66 @@ describe("User balance query resolver", () => {
   const user = "0xUSER";
   const address = "0xADDRESS";
 
+  let db: jest.Mocked<AbstractDbRepository>;
+  let resolver: UserBalanceQueryResolver;
+
+  beforeEach(() => {
+    db = new MockDbRepository();
+    resolver = UserBalanceQueryResolverFactory(db);
+  });
+
   it("should return cached balances by chain id and user", async () => {
     const loadedBalances = [
       { chainId, user, address: "0xCT1" },
       { chainId, user, address: "0xCT2" },
       { chainId, user, address: "0xCT3" },
-    ];
+    ] as IUserBalance[];
 
-    (ChargedTokenModel as any).count.mockResolvedValueOnce(3);
-    (UserBalanceModel as any).count.mockResolvedValueOnce(3);
-    (UserBalanceModel as any).find.mockResolvedValueOnce(loadedBalances);
-    (UserBalanceModel as any).toGraphQL.mockImplementation((value: any) => value);
+    db.isUserBalancesLoaded.mockResolvedValueOnce(true);
+    db.getBalances.mockResolvedValueOnce(loadedBalances);
 
-    const result = await UserBalanceQueryResolver(undefined, { chainId, user });
+    const result = await resolver(undefined, { chainId, user });
 
     expect(result).toStrictEqual(loadedBalances);
-    expect(ChargedTokenModel.count).toBeCalledWith({ chainId });
-    expect(UserBalanceModel.count).toBeCalledWith({ chainId, user });
-    expect(UserBalanceModel.find).toBeCalledWith({ chainId, user });
-    expect(UserBalanceModel.toGraphQL).toBeCalledTimes(3);
+    expect(db.isUserBalancesLoaded).toBeCalledWith(chainId, user);
+    expect(db.getBalances).toBeCalledWith(chainId, user);
   });
 
   it("should notify for balances loading from blockchain if cached balances don't match contracts count", async () => {
-    (ChargedTokenModel as any).count.mockResolvedValueOnce(3);
-    (UserBalanceModel as any).count.mockResolvedValueOnce(2);
+    db.isUserBalancesLoaded.mockResolvedValueOnce(false);
 
-    const result = await UserBalanceQueryResolver(undefined, { chainId, user });
+    const result = await resolver(undefined, { chainId, user });
 
     expect(result).toStrictEqual([]);
-    expect(ChargedTokenModel.count).toBeCalledWith({ chainId });
-    expect(UserBalanceModel.count).toBeCalledWith({ chainId, user });
+    expect(db.isUserBalancesLoaded).toBeCalledWith(chainId, user);
     expect(pubSub.publish).toBeCalledWith(`UserBalance.${chainId}/load`, { user });
   });
 
   it("should return specific cached balances when address is provided", async () => {
-    const loadedBalance = { chainId, user, address: "0xCT1" };
+    const loadedBalance = { chainId, user, address: "0xCT1" } as IUserBalance;
 
-    (UserBalanceModel as any).exists.mockResolvedValueOnce({});
-    (UserBalanceModel as any).findOne.mockResolvedValueOnce(loadedBalance);
-    (UserBalanceModel as any).toGraphQL.mockImplementation((value: any) => value);
+    db.existsBalance.mockResolvedValueOnce(true);
+    db.getBalance.mockResolvedValueOnce(loadedBalance);
 
-    const result = await UserBalanceQueryResolver(undefined, { chainId, user, address });
+    const result = await resolver(undefined, { chainId, user, address });
 
     expect(result).toStrictEqual(loadedBalance);
-    expect(UserBalanceModel.exists).toBeCalledWith({ chainId, user, address });
-    expect(UserBalanceModel.findOne).toBeCalledWith({ chainId, user, address });
-    expect(UserBalanceModel.toGraphQL).toBeCalledTimes(1);
+    expect(db.existsBalance).toBeCalledWith(chainId, user, address);
+    expect(db.getBalance).toBeCalledWith(chainId, user, address);
   });
 
   it("should load balances from blockchain if not found when address is provided", async () => {
-    (UserBalanceModel as any).exists.mockResolvedValueOnce(null);
+    db.existsBalance.mockResolvedValueOnce(false);
 
-    const result = await UserBalanceQueryResolver(undefined, { chainId, user, address });
+    const result = await resolver(undefined, { chainId, user, address });
 
     expect(result).toStrictEqual([]);
-    expect(UserBalanceModel.exists).toBeCalledWith({ chainId, user, address });
+    expect(db.existsBalance).toBeCalledWith(chainId, user, address);
     expect(pubSub.publish).toBeCalledWith(`UserBalance.${chainId}/load`, { user, address });
   });
 
   it("should subscribe to user balances updatess", async () => {
-    const { subscribe: subscribeByUserAndAddrResolver, resolve } = UserBalanceSubscriptionResolver;
+    const { subscribe: subscribeByUserAndAddrResolver, resolve } = UserBalanceSubscriptionResolverFactory(db);
 
     expect(resolve("test")).toBe("test");
 
@@ -84,8 +90,7 @@ describe("User balance query resolver", () => {
 
     (pubSub as any).subscribe.mockReturnValueOnce(subscription);
 
-    (UserBalanceModel as any).find.mockResolvedValueOnce(["zeroValue"]);
-    (UserBalanceModel as any).toGraphQL.mockImplementation((value: any) => value);
+    db.getBalances.mockResolvedValueOnce(["zeroValue"] as unknown[] as IUserBalance[]);
 
     const repeater = subscribeByUserAndAddrResolver(undefined, { chainId, user });
 
@@ -99,7 +104,6 @@ describe("User balance query resolver", () => {
     expect(await repeater.next()).toEqual({ value: "thirdValue", done: false });
     expect(await repeater.return()).toEqual({ done: true });
 
-    expect(UserBalanceModel.find).toBeCalledWith({ chainId, user });
-    expect(UserBalanceModel.toGraphQL).toBeCalledTimes(1);
+    expect(db.getBalances).toBeCalledWith(chainId, user);
   });
 });

@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 import { ProviderStatus, WorkerStatus } from "../globals";
+import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
 import { Directory } from "../loaders/Directory";
-import { EventModel } from "../models";
+import { MockDbRepository } from "../loaders/__mocks__/MockDbRepository";
 import { subscribeToUserBalancesLoading } from "../subscriptions";
 import { AutoWebSocketProvider, Metrics } from "../util";
 import { ChainWorker } from "../worker";
@@ -17,6 +18,16 @@ describe("ChainWorker", () => {
   const RPC = "ws://127.0.0.1:8545";
   const DIRECTORY = "0xDIRECTORY";
   const CHAIN_ID = 1337;
+
+  let db: jest.Mocked<AbstractDbRepository>;
+
+  beforeEach(() => {
+    db = new MockDbRepository();
+  });
+
+  afterEach(() => {
+    Metrics.reset();
+  });
 
   function mockProviderBase() {
     const mockHandlers: Record<string, any> = {};
@@ -107,10 +118,6 @@ describe("ChainWorker", () => {
     clearTimeout(timeout);
   }
 
-  afterEach(() => {
-    Metrics.reset();
-  });
-
   test("should start and try connecting upon creation", async () => {
     (AutoWebSocketProvider as any).mockImplementationOnce(() => {
       const base = mockProviderBase();
@@ -124,9 +131,9 @@ describe("ChainWorker", () => {
       };
     });
 
-    (EventModel as any).find.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    db.getAllEvents.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
-    const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID);
+    const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID, db);
 
     expect(worker.provider).toBeDefined();
     expect(worker.provider?.on).toHaveBeenNthCalledWith(1, "error", expect.anything());
@@ -151,13 +158,12 @@ describe("ChainWorker", () => {
   test("should initialize directory upon connection", async () => {
     (AutoWebSocketProvider as any).mockReturnValueOnce(mockProviderBase());
 
-    (EventModel as any).find.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     const mockSession = {
       endSession: jest.fn(),
     };
     (mongoose as any).startSession.mockResolvedValueOnce(mockSession);
 
-    const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID);
+    const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID, db);
     await waitForWorkerToStart(worker);
 
     expect(worker.status()).toEqual({
@@ -206,10 +212,7 @@ describe("ChainWorker", () => {
       };
     });
 
-    (EventModel as any).find.mockResolvedValue([]);
-    (EventModel as any).deleteMany.mockResolvedValueOnce([]);
-
-    const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID);
+    const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID, db);
 
     expect(worker.provider).toBeDefined();
     expect(worker.provider?.on).toHaveBeenNthCalledWith(1, "error", expect.anything());
@@ -239,17 +242,15 @@ describe("ChainWorker", () => {
     expect(worker.pingInterval).toBeUndefined();
     expect(worker.pongTimeout).toBeUndefined();
 
-    expect((EventModel as any).find).toBeCalledTimes(2);
-    expect((EventModel as any).deleteMany).toBeCalledTimes(1);
+    expect(db.deletePendingAndFailedEvents).toBeCalledTimes(1);
   });
 
   test("should manage provider error event creating directory", async () => {
     (AutoWebSocketProvider as any).mockReturnValueOnce(mockProviderBase());
 
-    (EventModel as any).find.mockResolvedValue([]);
-    (EventModel as any).deleteMany.mockResolvedValueOnce([]);
+    db.deletePendingAndFailedEvents.mockResolvedValueOnce([]);
 
-    const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID);
+    const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID, db);
 
     expect(worker.provider).toBeDefined();
     expect(worker.provider?.on).toHaveBeenNthCalledWith(1, "error", expect.anything());
@@ -283,14 +284,11 @@ describe("ChainWorker", () => {
     expect(worker.pingInterval).toBeUndefined();
     expect(worker.pongTimeout).toBeUndefined();
 
-    expect((EventModel as any).find).toBeCalledTimes(2);
-    expect((EventModel as any).deleteMany).toBeCalledTimes(1);
+    expect(db.deletePendingAndFailedEvents).toBeCalledTimes(1);
   });
 
   test("should catch worker errors and stop", async () => {
     (AutoWebSocketProvider as any).mockReturnValueOnce(mockProviderBase());
-
-    (EventModel as any).find.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
     (Directory as any).mockImplementationOnce(() => {
       return {
@@ -304,7 +302,7 @@ describe("ChainWorker", () => {
       };
     });
 
-    const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID);
+    const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID, db);
     await waitForWorkerToStart(worker);
     await waitForWsToConnect(worker);
 

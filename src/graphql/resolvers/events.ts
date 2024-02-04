@@ -1,5 +1,10 @@
 import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
 
+export type EventsQueryResolver = (
+  _: any,
+  { chainId, offset, count }: { chainId: number; offset?: number; count?: number },
+) => Promise<any[]>;
+
 export const EventsQueryResolverFactory =
   (db: AbstractDbRepository) =>
   async (_: any, { chainId, offset, count }: { chainId: number; offset?: number; count?: number }) => {
@@ -10,6 +15,8 @@ export const EventsQueryResolverFactory =
 
     return events; // TODO convert to graphql format
   };
+
+export type EventsCountQueryResolver = (_: any, { chainId }: { chainId: number }) => Promise<number>;
 
 export const EventsCountQueryResolverFactory =
   (db: AbstractDbRepository) =>

@@ -6,6 +6,28 @@ import pubSub from "../pubsub";
 
 const log = rootLogger.child({ name: "resolverFactory" });
 
+export interface ResolverFactory {
+  findAll: (
+    db: AbstractDbRepository,
+    dataType: DataType,
+  ) => (_: any, { chainId }: { chainId: number }) => Promise<any[]>;
+  findByAddress: (
+    db: AbstractDbRepository,
+    dataType: DataType,
+  ) => (_: any, { chainId, address }: { chainId: number; address: string }) => Promise<any>;
+  subscribeByName: <T>(
+    db: AbstractDbRepository,
+    dataType: DataType,
+  ) => { subscribe: (_: any, { chainId }: { chainId: number }) => Repeater<T>; resolve: (payload: any) => any };
+  subscribeByNameAndAddress: <T>(
+    db: AbstractDbRepository,
+    dataType: DataType,
+  ) => {
+    subscribe: (_: any, { chainId, address }: { chainId: number; address: string }) => Repeater<T>;
+    resolve: (payload: any) => any;
+  };
+}
+
 export const ResolverFactory = {
   findAll: (db: AbstractDbRepository, dataType: DataType) => {
     return async (_: any, { chainId }: { chainId: number }) => {

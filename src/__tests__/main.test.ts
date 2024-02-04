@@ -14,11 +14,11 @@ jest.mock("../exporter");
 jest.mock("../worker");
 
 describe("Main class", () => {
-  test("Networks config check", () => {
+  it("Networks config check", () => {
     expect(Config.networks.length).toBeGreaterThan(0);
   });
 
-  test("Constructor initialization", () => {
+  it("Constructor initialization", () => {
     const main = new MainClass();
 
     expect(main.bindAddress).toBeDefined();
@@ -31,13 +31,13 @@ describe("Main class", () => {
     expect(main.keepAlive).toBeUndefined();
   });
 
-  test("should return empty health check initially", () => {
+  it("should return empty health check initially", () => {
     const main = new MainClass();
 
     expect(main.health()).toEqual([]);
   });
 
-  test("init function should connect ws server to graphql api", () => {
+  it("init function should connect ws server to graphql api", () => {
     const main = new MainClass();
 
     expect(main.wsServer.listenerCount("error")).toBe(0);
@@ -50,7 +50,7 @@ describe("Main class", () => {
     expect(main.wsServer.listenerCount("connection")).toBe(1);
   });
 
-  test("start function should connect to mongodb before starting api", async () => {
+  it("start function should connect to mongodb before starting api", async () => {
     const main = new MainClass();
 
     const sockets = new Set<Socket>();
@@ -108,7 +108,7 @@ describe("Main class", () => {
     await closeServerAndWait(main, sockets);
   });
 
-  test("failure after start should dispose of timers", async () => {
+  it("failure after start should dispose of timers", async () => {
     const main = new MainClass();
 
     (mongoose as any).connect.mockImplementationOnce(async () => {
@@ -125,7 +125,7 @@ describe("Main class", () => {
     expect(main.healthTimer).toBeUndefined();
   });
 
-  test("dead worker should be respawned automatically", async () => {
+  it("dead worker should be respawned automatically", async () => {
     const main = new MainClass();
 
     const sockets = new Set<Socket>();

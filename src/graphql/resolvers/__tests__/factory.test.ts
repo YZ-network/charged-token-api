@@ -1,6 +1,7 @@
 import { Repeater } from "graphql-yoga";
-import mongoose from "mongoose";
-import { ChargedTokenModel, DelegableToLTModel, InterfaceProjectTokenModel } from "../../../models";
+import { AbstractDbRepository } from "../../../loaders/AbstractDbRepository";
+import { MockDbRepository } from "../../../loaders/__mocks__/MockDbRepository";
+import { DataType, IContract } from "../../../types";
 import pubSub from "../../pubsub";
 import { ResolverFactory } from "../factory";
 
@@ -8,61 +9,58 @@ jest.mock("../../pubsub.ts");
 jest.mock("../../../models");
 
 describe("Generic query resolver factory", () => {
+  let db: jest.Mocked<AbstractDbRepository>;
+
+  beforeEach(() => {
+    db = new MockDbRepository();
+  });
+
   it("should query for all items by chain id and convert results to graphQL format", async () => {
     const chainId = 129;
-    const model = ChargedTokenModel;
-    const findAllResolver = ResolverFactory.findAll(model);
+    const findAllResolver = ResolverFactory.findAll(db, DataType.ChargedToken);
 
     const loadedModels = [
       { chainId, address: "0xCT1" },
       { chainId, address: "0xCT2" },
-    ];
-    (model as any).find.mockResolvedValueOnce(loadedModels);
-    (model as any).toGraphQL.mockImplementation((value: any) => value);
+    ] as IContract[];
+    db.getAllMatching.mockResolvedValueOnce(loadedModels);
 
     const result = await findAllResolver(undefined, { chainId });
 
     expect(result).toStrictEqual(loadedModels);
-    expect(model.find).toBeCalledWith({ chainId });
-    expect(model.toGraphQL).toBeCalledTimes(loadedModels.length);
+    expect(db.getAllMatching).toBeCalledWith(DataType.ChargedToken, chainId);
   });
 
   it("should query one item by chain id and address", async () => {
     const chainId = 129;
-    const model = InterfaceProjectTokenModel;
-    const findByAddressResolver = ResolverFactory.findByAddress(model);
+    const findByAddressResolver = ResolverFactory.findByAddress(db, DataType.InterfaceProjectToken);
 
     const address = "0xIFACE1";
-    const loadedModel = { chainId, address };
-    (model as any).findOne.mockResolvedValueOnce(loadedModel);
-    (model as any).toGraphQL.mockImplementation((value: any) => value);
+    const loadedModel = { chainId, address } as IContract;
+    db.get.mockResolvedValueOnce(loadedModel);
 
     const result = await findByAddressResolver(undefined, { chainId, address });
 
     expect(result).toStrictEqual(loadedModel);
-    expect(model.findOne).toBeCalledWith({ chainId, address });
-    expect(model.toGraphQL).toBeCalledWith(loadedModel);
+    expect(db.get).toBeCalledWith(DataType.InterfaceProjectToken, chainId, address);
   });
 
   it("should return nothing if item is not found", async () => {
     const chainId = 129;
-    const model = DelegableToLTModel;
-    const findByAddressResolver = ResolverFactory.findByAddress(model);
+    const findByAddressResolver = ResolverFactory.findByAddress(db, DataType.DelegableToLT);
 
     const address = "0xIFACE1";
-    (model as any).findOne.mockResolvedValueOnce(null);
+    db.get.mockResolvedValueOnce(null);
 
     const result = await findByAddressResolver(undefined, { chainId, address });
 
     expect(result).toBeUndefined();
-    expect(model.findOne).toBeCalledWith({ chainId, address });
-    expect(model.toGraphQL).not.toBeCalled();
+    expect(db.get).toBeCalledWith(DataType.DelegableToLT, chainId, address);
   });
 
   it("should susbscribe to channel by model name", async () => {
     const chainId = 129;
-    const model = "SampleModel";
-    const { subscribe: subscribeByNameResolver, resolve } = ResolverFactory.subscribeByName(model);
+    const { subscribe: subscribeByNameResolver, resolve } = ResolverFactory.subscribeByName(db, DataType.ChargedToken);
 
     expect(resolve("test")).toBe("test");
 
@@ -75,16 +73,13 @@ describe("Generic query resolver factory", () => {
 
     (pubSub as any).subscribe.mockReturnValueOnce(subscription);
 
-    const modelMock = ChargedTokenModel;
-    (mongoose as any).model.mockReturnValue(modelMock);
-    (modelMock as any).findOne.mockResolvedValueOnce("zeroValue");
-    (modelMock as any).toGraphQL.mockImplementationOnce((value: any) => value);
+    db.get.mockResolvedValueOnce("zeroValue");
 
     const repeater = subscribeByNameResolver(undefined, { chainId });
 
     expect(repeater).toBeDefined();
     expect(repeater).toBeInstanceOf(Repeater);
-    expect(pubSub.subscribe).toBeCalledWith(`${model}.${chainId}`);
+    expect(pubSub.subscribe).toBeCalledWith(`${DataType.ChargedToken}.${chainId}`);
 
     expect(await repeater.next()).toEqual({ value: "zeroValue", done: false });
     expect(await repeater.next()).toEqual({ value: "firstValue", done: false });
@@ -92,16 +87,16 @@ describe("Generic query resolver factory", () => {
     expect(await repeater.next()).toEqual({ value: "thirdValue", done: false });
     expect(await repeater.return()).toEqual({ done: true });
 
-    expect(mongoose.model).toBeCalledWith(model);
-    expect(modelMock.findOne).toBeCalledWith({ chainId });
-    expect(modelMock.toGraphQL).toBeCalledTimes(1);
+    expect(db.getAllMatching).toBeCalledWith(DataType.ChargedToken, { chainId });
   });
 
   it("should susbscribe to channel by model name and contract address", async () => {
     const chainId = 129;
-    const model = "SampleModel";
     const address = "0xCT";
-    const { subscribe: subscribeByNameAndAddrResolver, resolve } = ResolverFactory.subscribeByNameAndAddress(model);
+    const { subscribe: subscribeByNameAndAddrResolver, resolve } = ResolverFactory.subscribeByNameAndAddress(
+      db,
+      DataType.ChargedToken,
+    );
 
     expect(resolve("test")).toBe("test");
 
@@ -114,16 +109,13 @@ describe("Generic query resolver factory", () => {
 
     (pubSub as any).subscribe.mockReturnValueOnce(subscription);
 
-    const modelMock = ChargedTokenModel;
-    (mongoose as any).model.mockReturnValue(modelMock);
-    (modelMock as any).findOne.mockResolvedValueOnce("zeroValue");
-    (modelMock as any).toGraphQL.mockImplementationOnce((value: any) => value);
+    db.get.mockResolvedValueOnce("zeroValue");
 
     const repeater = subscribeByNameAndAddrResolver(undefined, { chainId, address });
 
     expect(repeater).toBeDefined();
     expect(repeater).toBeInstanceOf(Repeater);
-    expect(pubSub.subscribe).toBeCalledWith(`${model}.${chainId}.${address}`);
+    expect(pubSub.subscribe).toBeCalledWith(`${DataType.ChargedToken}.${chainId}.${address}`);
 
     expect(await repeater.next()).toEqual({ value: "zeroValue", done: false });
     expect(await repeater.next()).toEqual({ value: "firstValue", done: false });
@@ -131,8 +123,6 @@ describe("Generic query resolver factory", () => {
     expect(await repeater.next()).toEqual({ value: "thirdValue", done: false });
     expect(await repeater.return()).toEqual({ done: true });
 
-    expect(mongoose.model).toBeCalledWith(model);
-    expect(modelMock.findOne).toBeCalledWith({ chainId, address });
-    expect(modelMock.toGraphQL).toBeCalledTimes(1);
+    expect(db.get).toBeCalledWith(DataType.ChargedToken, chainId, address);
   });
 });

@@ -1,6 +1,8 @@
 import { OnRequestEventPayload } from "@whatwg-node/server";
-import { useEventsExporter } from "../exporter";
+import { eventsExporterFactory } from "../exporter";
 import { EventHandlerStatus } from "../globals";
+import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
+import { MockDbRepository } from "../loaders/__mocks__/MockDbRepository";
 import { EventModel } from "../models";
 
 jest.mock("../models");
@@ -16,6 +18,12 @@ async function streamToString(stream: ReadableStream<Uint8Array>): Promise<strin
 }
 
 describe("Events exporter", () => {
+  let db: jest.Mocked<AbstractDbRepository>;
+
+  beforeEach(() => {
+    db = new MockDbRepository();
+  });
+
   it("should return events as csv file", async () => {
     const events = [
       {
@@ -50,7 +58,7 @@ describe("Events exporter", () => {
     const sortMock = { sort: jest.fn(async () => events) };
     (EventModel as any).find.mockReturnValueOnce(sortMock);
 
-    const { onRequest: requestHandler } = useEventsExporter();
+    const { onRequest: requestHandler } = eventsExporterFactory(db)();
 
     let response: Response | undefined;
     const endResponse = jest.fn((realResponse) => (response = realResponse));
