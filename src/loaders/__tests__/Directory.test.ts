@@ -243,7 +243,7 @@ describe("Directory loader", () => {
     loader.subscribeToEvents();
 
     // expectations
-    expect(blockchain.subscribeToEvents).toHaveBeenNthCalledWith(1, DataType.ChargedToken, ADDRESS);
+    expect(blockchain.subscribeToEvents).toHaveBeenNthCalledWith(1, DataType.Directory, ADDRESS, expect.anything());
 
     expect(ct.subscribeToEvents).toBeCalledTimes(1);
   });
@@ -366,7 +366,7 @@ describe("Directory loader", () => {
     // handler under test
     await loader.onAddedLTContractEvent(session, [CONTRACT], BLOCK_NUMBER, "AddedLTContract");
 
-    expect(blockchain.getProjectRelatedToLT).toHaveBeenNthCalledWith(1, CONTRACT);
+    expect(blockchain.getProjectRelatedToLT).toHaveBeenNthCalledWith(1, ADDRESS, CONTRACT);
 
     // new charged token init and subscribe
     expect(loader.ct[CONTRACT]).toBeDefined();

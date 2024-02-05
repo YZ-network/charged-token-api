@@ -199,7 +199,12 @@ describe("InterfaceProjectToken loader", () => {
     expect(loader.skipProjectUpdates).toBe(false);
     expect(loader.projectToken?.init).toBeCalledTimes(1);
     expect(loader.projectToken?.subscribeToEvents).toBeCalledTimes(1);
-    expect(blockchain.subscribeToEvents).toHaveBeenNthCalledWith(1, DataType.InterfaceProjectToken, ADDRESS);
+    expect(blockchain.subscribeToEvents).toHaveBeenNthCalledWith(
+      1,
+      DataType.InterfaceProjectToken,
+      ADDRESS,
+      expect.anything(),
+    );
     expect(InterfaceProjectToken.projectInstances[PT_ADDRESS]).toBe(loader.projectToken);
     expect(InterfaceProjectToken.projectUsageCount[PT_ADDRESS]).toBe(0);
     expect(InterfaceProjectToken.subscribedProjects).toContain(PT_ADDRESS);
@@ -243,8 +248,12 @@ describe("InterfaceProjectToken loader", () => {
     expect(loader.skipProjectUpdates).toBe(true);
     expect(loader.projectToken?.init).not.toBeCalled();
     expect(loader.projectToken?.subscribeToEvents).not.toBeCalled();
-    expect(blockchain.subscribeToEvents).toHaveBeenNthCalledWith(1, DataType.InterfaceProjectToken, ADDRESS);
-    expect(blockchain.subscribeToEvents).toHaveBeenNthCalledWith(2, DataType.DelegableToLT, PT_ADDRESS);
+    expect(blockchain.subscribeToEvents).toHaveBeenNthCalledWith(
+      1,
+      DataType.InterfaceProjectToken,
+      ADDRESS,
+      expect.anything(),
+    );
     expect(loader.projectToken).toBe(ptLoader);
     expect(InterfaceProjectToken.projectInstances[PT_ADDRESS]).toBe(ptLoader);
     expect(InterfaceProjectToken.projectUsageCount[PT_ADDRESS]).toBe(1);
@@ -253,8 +262,8 @@ describe("InterfaceProjectToken loader", () => {
 
   test("should update all matching balances with project token address and PT balance", async () => {
     const balancesToUpdate = [
-      { address: "0xCT", user: "0xUSER1" },
-      { address: "0xCT", user: "0xUSER2" },
+      { address: "0xCT", user: "0xUSER1", ptAddress: "0xPT" },
+      { address: "0xCT", user: "0xUSER2", ptAddress: "0xPT" },
     ] as IUserBalance[];
     db.getBalances.mockResolvedValueOnce(balancesToUpdate);
 

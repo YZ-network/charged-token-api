@@ -68,6 +68,9 @@ const Contract = jest.fn().mockImplementation(() => {
 const Interface = jest.fn().mockImplementation(() => {
   return {
     parseLog: jest.fn(),
+    encodeFilterTopics: jest.fn(() => {
+      throw new Error("Not implemented");
+    }),
   };
 });
 

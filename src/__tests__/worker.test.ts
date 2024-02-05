@@ -7,6 +7,7 @@ import { subscribeToUserBalancesLoading } from "../subscriptions";
 import { AutoWebSocketProvider, Metrics } from "../util";
 import { ChainWorker } from "../worker";
 
+jest.mock("../topics");
 jest.mock("../globals/config");
 jest.mock("../util/AutoWebSocketProvider");
 jest.mock("../loaders/EventListener");

@@ -200,7 +200,14 @@ describe("ChargedToken loader", () => {
 
     expect(actualBalances).toEqual(expectedBalances);
 
-    expect(blockchain.loadUserBalances).toHaveBeenNthCalledWith(1, user);
+    expect(blockchain.loadUserBalances).toHaveBeenNthCalledWith(
+      1,
+      ACTUAL_BLOCK_NUMBER,
+      user,
+      ADDRESS,
+      undefined,
+      undefined,
+    );
   });
 
   test("Should load PT balances when available", async () => {
@@ -230,7 +237,14 @@ describe("ChargedToken loader", () => {
 
     expect(actualBalances).toEqual(expectedBalances);
 
-    expect(blockchain.loadUserBalances).toHaveBeenNthCalledWith(1, user);
+    expect(blockchain.loadUserBalances).toHaveBeenNthCalledWith(
+      1,
+      ACTUAL_BLOCK_NUMBER,
+      user,
+      ADDRESS,
+      undefined,
+      expectedBalances.ptAddress,
+    );
   });
 
   test("Should propagate events subscription", async () => {
