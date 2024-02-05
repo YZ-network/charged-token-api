@@ -1,4 +1,4 @@
-import mongoose, { type HydratedDocument } from "mongoose";
+import mongoose from "mongoose";
 import { type IModel, type IOwnable } from "../types";
 
 export interface IInterfaceProjectToken extends IOwnable {
@@ -23,10 +23,6 @@ const interfaceProjectTokenSchema = new mongoose.Schema<IInterfaceProjectToken, 
   dateLaunch: String,
   dateEndCliff: String,
   claimFeesPerThousandForPT: String,
-});
-
-interfaceProjectTokenSchema.static("toGraphQL", function (doc: HydratedDocument<IInterfaceProjectToken>): any {
-  return doc.toJSON();
 });
 
 export const InterfaceProjectTokenModel = mongoose.model<IInterfaceProjectToken, IModel<IInterfaceProjectToken>>(

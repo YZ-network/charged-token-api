@@ -1,4 +1,4 @@
-import mongoose, { type HydratedDocument } from "mongoose";
+import mongoose from "mongoose";
 import { EventHandlerStatus } from "../globals";
 import { type IModel } from "../types";
 
@@ -35,9 +35,5 @@ const eventSchema = new Schema<IEvent, IModel<IEvent>>({
 });
 
 eventSchema.index({ chainId: 1, address: 1, blockNumber: 1, txIndex: 1, logIndex: 1 }, { unique: true });
-
-eventSchema.static("toGraphQL", function (doc: HydratedDocument<IEvent>): any {
-  return doc.toJSON();
-});
 
 export const EventModel = mongoose.model<IEvent, IModel<IEvent>>("Event", eventSchema);

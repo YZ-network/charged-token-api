@@ -31,12 +31,14 @@ describe("Directory query resolver", () => {
     const loadedModel = {
       chainId,
       directory: "0xDIRECTORY",
+      projectRelatedToLT: {},
+      whitelist: {},
     } as unknown as IDirectory;
     db.getDirectory.mockResolvedValueOnce(loadedModel);
 
     const result = await resolver(undefined, { chainId });
 
-    expect(result).toBe(loadedModel);
+    expect(result).toStrictEqual({ ...loadedModel, projectRelatedToLT: [], whitelist: [] });
     expect(db.getDirectory).toBeCalledWith(chainId);
   });
 });

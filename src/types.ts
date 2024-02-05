@@ -36,9 +36,7 @@ export type IToModel<T> = (data: T) => HydratedDocument<T>;
 
 export type IToGraphQL<T> = (doc: HydratedDocument<T>) => any;
 
-export type IModel<T> = Model<T> & {
-  toGraphQL: IToGraphQL<T>;
-};
+export type IModel<T> = Model<T>;
 
 export enum DataType {
   ChargedToken = "ChargedToken",

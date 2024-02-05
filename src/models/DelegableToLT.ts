@@ -1,4 +1,4 @@
-import mongoose, { type HydratedDocument } from "mongoose";
+import mongoose from "mongoose";
 import { type IErc20, type IModel } from "../types";
 
 export interface IDelegableToLT extends IErc20 {
@@ -22,10 +22,6 @@ const delegableToLTSchema = new mongoose.Schema<IDelegableToLT, IModel<IDelegabl
   // other
   validatedInterfaceProjectToken: [String],
   isListOfInterfaceProjectTokenComplete: Boolean,
-});
-
-delegableToLTSchema.static("toGraphQL", function (doc: HydratedDocument<IDelegableToLT>): any {
-  return doc.toJSON();
 });
 
 export const DelegableToLTModel = mongoose.model<IDelegableToLT, IModel<IDelegableToLT>>(

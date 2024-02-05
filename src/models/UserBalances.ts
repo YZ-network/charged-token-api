@@ -1,4 +1,4 @@
-import mongoose, { type HydratedDocument } from "mongoose";
+import mongoose from "mongoose";
 import { type IModel } from "../types";
 
 export interface IChargedTokenBalance {
@@ -32,10 +32,6 @@ const userBalanceSchema = new mongoose.Schema<IUserBalance, IModel<IUserBalance>
   dateOfPartiallyCharged: { type: String, default: "0" },
   claimedRewardPerShare1e18: { type: String, default: "0" },
   valueProjectTokenToFullRecharge: { type: String, default: "0" },
-});
-
-userBalanceSchema.static("toGraphQL", function (doc: HydratedDocument<IUserBalance>): any {
-  return doc.toJSON();
 });
 
 export const UserBalanceModel = mongoose.model<IUserBalance, IModel<IUserBalance>>("UserBalance", userBalanceSchema);

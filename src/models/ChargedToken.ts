@@ -1,4 +1,4 @@
-import mongoose, { type HydratedDocument } from "mongoose";
+import mongoose from "mongoose";
 import { type IErc20, type IModel } from "../types";
 
 interface IChargedTokenConstants {
@@ -95,10 +95,6 @@ const chargedTokenSchema = new mongoose.Schema<IChargedToken, IModel<IChargedTok
   priceTokenPer1e18: String,
   fundraisingToken: String,
   isFundraisingActive: Boolean,
-});
-
-chargedTokenSchema.static("toGraphQL", function (doc: HydratedDocument<IChargedToken>): any {
-  return doc.toJSON();
 });
 
 export const ChargedTokenModel = mongoose.model<IChargedToken, IModel<IChargedToken>>(

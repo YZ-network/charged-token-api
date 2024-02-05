@@ -1,5 +1,4 @@
-import mongoose, { type HydratedDocument } from "mongoose";
-import { recordToEntryList } from "../globals";
+import mongoose from "mongoose";
 import { type IModel, type IOwnable } from "../types";
 
 export interface IDirectory extends IOwnable {
@@ -25,15 +24,6 @@ const directorySchema = new Schema<IDirectory, IModel<IDirectory>>({
   projectRelatedToLT: { type: Map, of: String },
   whitelist: { type: Map, of: String },
   areUserFunctionsDisabled: Boolean,
-});
-
-directorySchema.static("toGraphQL", function (doc: HydratedDocument<IDirectory>): any {
-  const result = doc.toJSON();
-  return {
-    ...result,
-    projectRelatedToLT: recordToEntryList(result.projectRelatedToLT),
-    whitelist: recordToEntryList(result.whitelist),
-  };
 });
 
 export const DirectoryModel = mongoose.model<IDirectory, IModel<IDirectory>>("Directory", directorySchema);
