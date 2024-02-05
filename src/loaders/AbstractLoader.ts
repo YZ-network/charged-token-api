@@ -29,8 +29,6 @@ export abstract class AbstractLoader<T extends IOwnable> {
 
   readonly instance: ethers.Contract;
   readonly iface: ethers.utils.Interface;
-  initBlock: number = 0;
-  lastUpdateBlock: number = 0;
   lastState: T | undefined;
 
   readonly eventsListener: EventListener;
@@ -101,23 +99,20 @@ export abstract class AbstractLoader<T extends IOwnable> {
         lastUpdateBlock: existing.lastUpdateBlock,
       });
 
-      this.initBlock = existing.initBlock;
-      this.lastUpdateBlock = existing.lastUpdateBlock;
       this.lastState = existing;
 
       const eventsStartBlock = Math.max(
-        this.lastUpdateBlock, // last update block should be included in case of partial events handling
-        this.initBlock + 1, // init block must be skipped because it was a full loading
+        existing.lastUpdateBlock, // last update block should be included in case of partial events handling
         blockNumber - 100, // otherwise, limit the number of past blocks to query
       );
 
-      if (eventsStartBlock > this.lastUpdateBlock) {
+      if (eventsStartBlock > existing.lastUpdateBlock) {
         this.log.warn({
           msg: "Skipped blocks for events syncing",
           contract: this.constructor.name,
           address: this.address,
           chainId: this.chainId,
-          lastUpdateBlock: this.lastUpdateBlock,
+          lastUpdateBlock: existing.lastUpdateBlock,
           eventsStartBlock,
         });
       }
@@ -131,8 +126,6 @@ export abstract class AbstractLoader<T extends IOwnable> {
         chainId: this.chainId,
       });
       await this.saveOrUpdate(session, await this.load(blockNumber), blockNumber);
-
-      this.initBlock = blockNumber;
 
       const contractName = this.constructor.name === "FundraisingChargedToken" ? "ChargedToken" : this.constructor.name;
 
@@ -271,7 +264,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
         chainId: this.chainId,
       });
 
-      pubSub.publish(`UserBalance.${this.chainId}.${user}`, [newBalance]); // TODO : convert balance to graphql format
+      pubSub.publish(`UserBalance.${this.chainId}.${user}`, [newBalance]);
     } else {
       const updatedBalances = await this.getBalancesByProjectToken(session, ptAddress, user);
 
@@ -285,7 +278,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
         });
 
         for (const b of updatedBalances) {
-          pubSub.publish(`UserBalance.${this.chainId}.${user}`, [b]); // TODO : convert balance to graphql format
+          pubSub.publish(`UserBalance.${this.chainId}.${user}`, [b]);
         }
       } catch (err) {
         this.log.error({
@@ -312,7 +305,6 @@ export abstract class AbstractLoader<T extends IOwnable> {
     } else {
       await this.db.save(this.dataType, data as T);
     }
-    this.lastUpdateBlock = blockNumber;
 
     const result = await this.get(session);
     if (result === null) {
@@ -500,7 +492,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
     };
 
     this.instance.on(eventFilter, (log: ethers.providers.Log) => {
-      if (log.blockNumber <= this.initBlock) {
+      if (log.blockNumber <= (this.lastState?.lastUpdateBlock || 0)) {
         this.log.warn({
           msg: "Skipping event from init block",
           event: log,

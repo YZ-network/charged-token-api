@@ -65,15 +65,15 @@ describe("Generic query resolver factory", () => {
     expect(resolve("test")).toBe("test");
 
     const subscription = new Repeater(async (push, stop) => {
-      await push("firstValue");
-      await push("secondValue");
-      await push("thirdValue");
+      await push({ address: "0x1" });
+      await push({ address: "0x2" });
+      await push({ address: "0x3" });
       stop();
     });
 
     (pubSub as any).subscribe.mockReturnValueOnce(subscription);
 
-    db.getAllMatching.mockResolvedValueOnce("zeroValue" as unknown as IContract[]);
+    db.getAllMatching.mockResolvedValueOnce([{ address: "0x0" }] as IContract[]);
 
     const repeater = subscribeByNameResolver(undefined, { chainId });
 
@@ -81,10 +81,10 @@ describe("Generic query resolver factory", () => {
     expect(repeater).toBeInstanceOf(Repeater);
     expect(pubSub.subscribe).toBeCalledWith(`${DataType.ChargedToken}.${chainId}`);
 
-    expect(await repeater.next()).toEqual({ value: "zeroValue", done: false });
-    expect(await repeater.next()).toEqual({ value: "firstValue", done: false });
-    expect(await repeater.next()).toEqual({ value: "secondValue", done: false });
-    expect(await repeater.next()).toEqual({ value: "thirdValue", done: false });
+    expect(await repeater.next()).toEqual({ value: [{ address: "0x0" }], done: false });
+    expect(await repeater.next()).toEqual({ value: { address: "0x1" }, done: false });
+    expect(await repeater.next()).toEqual({ value: { address: "0x2" }, done: false });
+    expect(await repeater.next()).toEqual({ value: { address: "0x3" }, done: false });
     expect(await repeater.return()).toEqual({ done: true });
 
     expect(db.getAllMatching).toBeCalledWith(DataType.ChargedToken, { chainId });
@@ -101,15 +101,15 @@ describe("Generic query resolver factory", () => {
     expect(resolve("test")).toBe("test");
 
     const subscription = new Repeater(async (push, stop) => {
-      await push("firstValue");
-      await push("secondValue");
-      await push("thirdValue");
+      await push({ address: "0x0", supply: "1" });
+      await push({ address: "0x0", supply: "2" });
+      await push({ address: "0x0", supply: "3" });
       stop();
     });
 
     (pubSub as any).subscribe.mockReturnValueOnce(subscription);
 
-    db.get.mockResolvedValueOnce("zeroValue");
+    db.get.mockResolvedValueOnce({ address: "0x0", supply: "0" });
 
     const repeater = subscribeByNameAndAddrResolver(undefined, { chainId, address });
 
@@ -117,10 +117,10 @@ describe("Generic query resolver factory", () => {
     expect(repeater).toBeInstanceOf(Repeater);
     expect(pubSub.subscribe).toBeCalledWith(`${DataType.ChargedToken}.${chainId}.${address}`);
 
-    expect(await repeater.next()).toEqual({ value: "zeroValue", done: false });
-    expect(await repeater.next()).toEqual({ value: "firstValue", done: false });
-    expect(await repeater.next()).toEqual({ value: "secondValue", done: false });
-    expect(await repeater.next()).toEqual({ value: "thirdValue", done: false });
+    expect(await repeater.next()).toEqual({ value: { address: "0x0", supply: "0" }, done: false });
+    expect(await repeater.next()).toEqual({ value: { address: "0x0", supply: "1" }, done: false });
+    expect(await repeater.next()).toEqual({ value: { address: "0x0", supply: "2" }, done: false });
+    expect(await repeater.next()).toEqual({ value: { address: "0x0", supply: "3" }, done: false });
     expect(await repeater.return()).toEqual({ done: true });
 
     expect(db.get).toBeCalledWith(DataType.ChargedToken, chainId, address);

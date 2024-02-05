@@ -70,8 +70,6 @@ describe("InterfaceProjectToken loader", () => {
     expect(loader.directory).toBe(directoryLoader);
     expect(loader.ct).toBe(ctLoader);
     expect(loader.address).toBe(ADDRESS);
-    expect(loader.initBlock).toBe(0);
-    expect(loader.lastUpdateBlock).toBe(0);
     expect(loader.lastState).toEqual(undefined);
 
     // mocking ethers
@@ -105,8 +103,6 @@ describe("InterfaceProjectToken loader", () => {
     await loader.init(session, BLOCK_NUMBER, true);
 
     // expectations
-    expect(loader.initBlock).toBe(BLOCK_NUMBER);
-    expect(loader.lastUpdateBlock).toBe(BLOCK_NUMBER);
     expect(loader.lastState).toEqual(graphqlModel);
 
     expect(db.get).toBeCalledTimes(2);
@@ -158,8 +154,6 @@ describe("InterfaceProjectToken loader", () => {
     await loader.init(session, BLOCK_NUMBER, true);
 
     // expectations
-    expect(loader.initBlock).toBe(PREV_BLOCK_NUMBER);
-    expect(loader.lastUpdateBlock).toBe(PREV_BLOCK_NUMBER);
     expect(loader.lastState).toEqual(loadedModel);
 
     expect(db.get).toHaveBeenNthCalledWith(1, DataType.InterfaceProjectToken, CHAIN_ID, ADDRESS);

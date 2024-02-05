@@ -9,7 +9,6 @@ export interface IDelegableToLT extends IErc20 {
 const delegableToLTSchema = new mongoose.Schema<IDelegableToLT, IModel<IDelegableToLT>>({
   // contract
   chainId: { type: Number, required: true },
-  initBlock: { type: Number, required: true },
   lastUpdateBlock: { type: Number, required: true },
   address: { type: String, required: true },
   // ownable

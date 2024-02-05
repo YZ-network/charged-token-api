@@ -47,7 +47,6 @@ describe("ChargedToken loader", () => {
   function sampleData(): IChargedToken {
     return {
       chainId: CHAIN_ID,
-      initBlock: BLOCK_NUMBER,
       lastUpdateBlock: BLOCK_NUMBER,
       address: ADDRESS,
       owner: OWNER,
@@ -123,8 +122,6 @@ describe("ChargedToken loader", () => {
     expect(loader.provider).toBe(provider);
     expect(loader.eventsListener).toBe(directoryLoader.eventsListener);
     expect(loader.address).toBe(ADDRESS);
-    expect(loader.initBlock).toBe(0);
-    expect(loader.lastUpdateBlock).toBe(0);
     expect(loader.lastState).toEqual(undefined);
 
     // mocking ethers
@@ -146,8 +143,6 @@ describe("ChargedToken loader", () => {
     await loader.init(session, BLOCK_NUMBER, true);
 
     // expectations
-    expect(loader.initBlock).toBe(BLOCK_NUMBER);
-    expect(loader.lastUpdateBlock).toBe(BLOCK_NUMBER);
     expect(loader.lastState).toEqual(graphqlModel);
 
     expect(db.exists).toBeCalledTimes(1);
@@ -207,8 +202,6 @@ describe("ChargedToken loader", () => {
     await loader.init(session, ACTUAL_BLOCK_NUMBER, true);
 
     // expectations
-    expect(loader.initBlock).toBe(BLOCK_NUMBER);
-    expect(loader.lastUpdateBlock).toBe(BLOCK_NUMBER);
     expect(loader.lastState).toEqual(loadedModel);
 
     expect(db.exists).toBeCalledTimes(0);

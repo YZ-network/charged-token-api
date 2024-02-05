@@ -75,8 +75,6 @@ describe("Directory loader", () => {
     expect(loader.provider).toBe(provider);
     expect(loader.eventsListener).toBe(eventListener);
     expect(loader.address).toBe(ADDRESS);
-    expect(loader.initBlock).toBe(0);
-    expect(loader.lastUpdateBlock).toBe(0);
     expect(loader.lastState).toEqual(undefined);
 
     // mocking ethers
@@ -97,8 +95,6 @@ describe("Directory loader", () => {
     await loader.init(session, BLOCK_NUMBER, true);
 
     // expectations
-    expect(loader.initBlock).toBe(BLOCK_NUMBER);
-    expect(loader.lastUpdateBlock).toBe(BLOCK_NUMBER);
     expect(loader.lastState).toEqual(graphqlModel);
 
     expect(db.exists).toBeCalledTimes(1);
@@ -146,8 +142,6 @@ describe("Directory loader", () => {
     await loader.init(session, BLOCK_NUMBER, true);
 
     // expectations
-    expect(loader.initBlock).toBe(PREV_BLOCK_NUMBER);
-    expect(loader.lastUpdateBlock).toBe(PREV_BLOCK_NUMBER);
     expect(loader.lastState).toEqual(loadedModel);
 
     expect(db.exists).toBeCalledTimes(0);

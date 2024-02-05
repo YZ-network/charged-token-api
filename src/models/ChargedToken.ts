@@ -52,7 +52,6 @@ export interface IChargedToken
 const chargedTokenSchema = new mongoose.Schema<IChargedToken, IModel<IChargedToken>>({
   // contract
   chainId: { type: Number, required: true },
-  initBlock: { type: Number, required: true },
   lastUpdateBlock: { type: Number, required: true },
   address: { type: String, required: true },
   // ownable

@@ -1,7 +1,8 @@
 import { Repeater } from "graphql-yoga";
+import { toGraphQL } from "../../globals";
 import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
 import pubSub from "../../pubsub";
-import { DataType } from "../../types";
+import { DataType, IContract } from "../../types";
 import { rootLogger } from "../../util";
 
 const log = rootLogger.child({ name: "resolverFactory" });
@@ -32,7 +33,7 @@ export const ResolverFactory = {
   findAll: (db: AbstractDbRepository, dataType: DataType) => {
     return async (_: any, { chainId }: { chainId: number }) => {
       const results = await db.getAllMatching(dataType, { chainId });
-      return results; // TODO convert to graphql format
+      return results;
     };
   },
 
@@ -40,7 +41,7 @@ export const ResolverFactory = {
     return async (_: any, { chainId, address }: { chainId: number; address: string }) => {
       const result = await db.get(dataType, chainId, address);
       if (result !== null) {
-        return result; // TODO convert to Graphql format
+        return result;
       }
     };
   },
@@ -66,11 +67,11 @@ export const ResolverFactory = {
           try {
             const lastValue = await db.getAllMatching(dataType, { chainId });
             if (lastValue !== null) {
-              await push(lastValue);
+              await push(toGraphQL(lastValue));
             }
 
             for await (const value of sub) {
-              await push(value);
+              await push(toGraphQL(value));
             }
             log.debug({
               msg: `client subscription to ${channelName} ended`,
@@ -110,13 +111,13 @@ export const ResolverFactory = {
           });
 
           try {
-            const lastValue = await db.get(dataType, chainId, address);
+            const lastValue = await db.get<IContract>(dataType, chainId, address);
             if (lastValue !== null) {
-              await push(lastValue);
+              await push(toGraphQL(lastValue));
             }
 
             for await (const value of sub) {
-              await push(value);
+              await push(toGraphQL(value));
             }
             log.debug({
               msg: `client subscription to ${channelName} ended`,

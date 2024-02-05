@@ -7,6 +7,7 @@ import { MainClass } from "../main";
 import { ChainWorker } from "../worker";
 
 jest.unmock("ws");
+jest.unmock("ethers");
 
 jest.mock("../globals/config");
 jest.mock("../graphql");

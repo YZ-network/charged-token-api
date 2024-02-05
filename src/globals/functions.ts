@@ -7,6 +7,21 @@ export function recordToEntryList(record: Record<string, string>): Array<{ key: 
   }));
 }
 
+export function toGraphQL(record: Record<string, any> | Record<string, any>[]): Record<string, any> {
+  if (record instanceof Array) {
+    return record.map((obj) => toGraphQL(obj));
+  }
+
+  const copy = { ...record };
+  for (const key in record) {
+    if (typeof record[key] === "object") {
+      copy[key] = recordToEntryList(record[key]);
+    }
+  }
+
+  return copy;
+}
+
 function getBlockDateWrapper(): (blockNumber: number, provider: ethers.providers.JsonRpcProvider) => Promise<string> {
   const blockDates: Record<number, string> = {};
 

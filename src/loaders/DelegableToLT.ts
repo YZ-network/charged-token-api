@@ -53,7 +53,6 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     return {
       // contract
       chainId: this.chainId,
-      initBlock: blockNumber,
       lastUpdateBlock: blockNumber,
       address: this.address,
       // ownable

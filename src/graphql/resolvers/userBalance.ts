@@ -19,11 +19,11 @@ export const UserBalanceQueryResolverFactory =
     if (address !== undefined) {
       if (await db.existsBalance(chainId, address, user)) {
         const balance = await db.getBalance(chainId, address, user);
-        return balance!; //TODO convert to graphql
+        return balance!;
       }
     } else if (await db.isUserBalancesLoaded(chainId, user)) {
       log.debug(`returning cached balances for ${chainId} ${user}`);
-      return await db.getBalances(chainId, user); // TODO convert to graphql
+      return await db.getBalances(chainId, user);
     }
 
     log.info({
@@ -56,7 +56,7 @@ export const UserBalanceSubscriptionResolverFactory = (db: AbstractDbRepository)
       try {
         const lastValue = await db.getBalances(chainId, user);
         if (lastValue.length > 0) {
-          await push(lastValue); // TODO convert to graphql
+          await push(lastValue);
         }
 
         for await (const value of sub) {

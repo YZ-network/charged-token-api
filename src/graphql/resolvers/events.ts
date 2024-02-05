@@ -13,7 +13,7 @@ export const EventsQueryResolverFactory =
 
     const events = await db.getEventsPaginated(chainId, count, offset);
 
-    return events; // TODO convert to graphql format
+    return events;
   };
 
 export type EventsCountQueryResolver = (_: any, { chainId }: { chainId: number }) => Promise<number>;

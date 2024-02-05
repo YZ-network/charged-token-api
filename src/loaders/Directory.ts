@@ -91,7 +91,6 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     return {
       chainId: this.chainId,
-      initBlock: blockNumber,
       lastUpdateBlock: blockNumber,
       address: this.address,
       owner: await ins.owner(),
@@ -162,7 +161,7 @@ export class Directory extends AbstractLoader<IDirectory> {
         address: this.address,
       });
 
-      pubSub.publish(`UserBalance.${this.chainId}.${user}`, saved); // TODO convert to graphql on the notification side
+      pubSub.publish(`UserBalance.${this.chainId}.${user}`, saved);
     } else {
       this.log.warn({
         msg: `Error while reloading balances after save for user ${user}`,

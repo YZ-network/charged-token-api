@@ -1,6 +1,6 @@
 import { IDirectory, IEvent, IInterfaceProjectToken, IUserBalance } from ".";
 import { EventHandlerStatus } from "../globals";
-import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
+import { AbstractDbRepository } from "../loaders";
 import { DataType, IContract, IModel } from "../types";
 import { rootLogger } from "../util";
 import { ChargedTokenModel } from "./ChargedToken";

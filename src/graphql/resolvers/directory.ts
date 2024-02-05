@@ -1,4 +1,4 @@
-import { recordToEntryList } from "../../globals";
+import { toGraphQL } from "../../globals";
 import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
 
 export type DirectoryQueryResolver = (_: any, { chainId }: { chainId: number }) => Promise<any>;
@@ -12,9 +12,5 @@ export const DirectoryQueryResolverFactory =
       return null;
     }
 
-    return {
-      ...directory,
-      projectRelatedToLT: recordToEntryList(directory.projectRelatedToLT),
-      whitelist: recordToEntryList(directory.whitelist),
-    };
+    return toGraphQL(directory);
   };
