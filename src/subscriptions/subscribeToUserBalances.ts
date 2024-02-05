@@ -1,11 +1,15 @@
 import mongoose from "mongoose";
+import { AbstractBlockchainRepository } from "../loaders";
 import { type Directory } from "../loaders/Directory";
 import pubSub from "../pubsub";
 import { rootLogger } from "../util";
 
 const log = rootLogger.child({ name: "subscribeToUserBalancesLoading" });
 
-export async function subscribeToUserBalancesLoading(directory: Directory): Promise<void> {
+export async function subscribeToUserBalancesLoading(
+  directory: Directory,
+  blockchain: AbstractBlockchainRepository,
+): Promise<void> {
   const channelName = `UserBalance.${directory.chainId}/load`;
 
   const sub = pubSub.subscribe(channelName);
@@ -20,7 +24,7 @@ export async function subscribeToUserBalancesLoading(directory: Directory): Prom
       msg: `Got user balances reload message for ${user}@${address}`,
       chainId: directory.chainId,
     });
-    const blockNumber = await directory.provider.getBlockNumber();
+    const blockNumber = await blockchain.getBlockNumber();
     try {
       const session = await mongoose.startSession();
       await session.withTransaction(async () => {

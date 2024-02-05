@@ -1,10 +1,10 @@
 import { ClientSession } from "mongodb";
 import mongoose from "mongoose";
+import { AbstractBlockchainRepository, AbstractDbRepository } from "../../loaders";
 import { Directory } from "../../loaders/Directory";
-import { type EventListener } from "../../loaders/EventListener";
+import { MockBlockchainRepository } from "../../loaders/__mocks__/MockBlockchainRepository";
 import { MockDbRepository } from "../../loaders/__mocks__/MockDbRepository";
 import pubSub from "../../pubsub";
-import { type AutoWebSocketProvider } from "../../util";
 import subscribeToUserBalancesLoading from "../subscribeToUserBalances";
 
 jest.mock("../../globals/config");
@@ -13,6 +13,14 @@ jest.mock("../../loaders/Directory");
 
 describe("User balances subscriptions", () => {
   let generatorCount = 0;
+
+  let db: jest.Mocked<AbstractDbRepository>;
+  let blockchain: jest.Mocked<AbstractBlockchainRepository>;
+
+  beforeEach(() => {
+    db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
+    blockchain = new MockBlockchainRepository() as jest.Mocked<AbstractBlockchainRepository>;
+  });
 
   async function waitForGeneratorToComplete(count: number) {
     return new Promise((resolve, reject) => {
@@ -43,13 +51,7 @@ describe("User balances subscriptions", () => {
     }
 
     const getBlockNumber = jest.fn();
-    const directory = new Directory(
-      undefined as unknown as EventListener,
-      1337,
-      undefined as unknown as AutoWebSocketProvider,
-      "0xDIRECTORY",
-      new MockDbRepository(),
-    );
+    const directory = new Directory(1337, blockchain, "0xDIRECTORY", db);
     Object.defineProperty(directory, "chainId", { value: 1337 });
     Object.defineProperty(directory, "provider", { value: { getBlockNumber } });
 
@@ -63,7 +65,7 @@ describe("User balances subscriptions", () => {
     (mongoose as any).startSession.mockResolvedValue(mockSession);
     (mockSession as any).withTransaction.mockImplementation(async (fn: () => Promise<void>) => await fn());
 
-    await subscribeToUserBalancesLoading(directory);
+    await subscribeToUserBalancesLoading(directory, blockchain);
     await waitForGeneratorToComplete(3);
 
     expect(getBlockNumber).toBeCalledTimes(3);
@@ -84,17 +86,11 @@ describe("User balances subscriptions", () => {
     }
 
     const getBlockNumber = jest.fn();
-    const directory = new Directory(
-      undefined as unknown as EventListener,
-      1337,
-      undefined as unknown as AutoWebSocketProvider,
-      "0xDIRECTORY",
-      new MockDbRepository(),
-    );
+    const directory = new Directory(1337, blockchain, "0xDIRECTORY", db);
     Object.defineProperty(directory, "chainId", { value: 1337 });
     Object.defineProperty(directory, "provider", { value: { getBlockNumber } });
 
-    getBlockNumber.mockImplementation(async () => 15);
+    blockchain.getBlockNumber.mockResolvedValueOnce(15);
 
     const generatorInstance = generator();
 
@@ -104,7 +100,7 @@ describe("User balances subscriptions", () => {
       throw new Error("triggered error");
     });
 
-    await subscribeToUserBalancesLoading(directory);
+    await subscribeToUserBalancesLoading(directory, blockchain);
     await waitForGeneratorToComplete(1);
 
     expect(getBlockNumber).toBeCalledTimes(1);

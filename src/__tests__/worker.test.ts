@@ -178,7 +178,7 @@ describe("ChainWorker", () => {
       restartCount: 0,
     });
 
-    expect(worker.eventListener).toBeDefined();
+    expect(worker.blockchain).toBeDefined();
     expect(worker.directory).toBeDefined();
     expect(mongoose.startSession).toBeCalledTimes(1);
     expect(worker.directory?.init).toBeCalledTimes(1);
@@ -236,7 +236,7 @@ describe("ChainWorker", () => {
     expect(provider?.destroy).toBeCalledTimes(1);
     expect(worker.directory).toBeUndefined();
     expect(worker.provider).toBeUndefined();
-    expect(worker.eventListener).toBeUndefined();
+    expect(worker.blockchain).toBeUndefined();
     expect(worker.worker).toBeUndefined();
     expect(worker.wsWatch).toBeUndefined();
     expect(worker.pingInterval).toBeUndefined();
@@ -276,7 +276,7 @@ describe("ChainWorker", () => {
     expect(provider?.destroy).toBeCalledTimes(1);
     expect(worker.directory).toBeUndefined();
     expect(worker.provider).toBeUndefined();
-    expect(worker.eventListener).toBeUndefined();
+    expect(worker.blockchain).toBeUndefined();
     expect(worker.worker).toBeUndefined();
     expect(worker.wsWatch).toBeUndefined();
     expect(worker.pingInterval).toBeUndefined();

@@ -13,11 +13,13 @@ type EventQueue = Array<{
   ev: number;
   log: ethers.providers.Log;
   loader: AbstractLoader<any>;
+  iface: ethers.utils.Interface;
 }>;
 
 export class EventListener {
   private readonly _queue: EventQueue = [];
   private readonly db: AbstractDbRepository;
+  private readonly provider: ethers.providers.JsonRpcProvider;
 
   readonly log: Logger = rootLogger.child({ name: "EventListener" });
   private readonly _timer: NodeJS.Timeout | undefined;
@@ -45,8 +47,9 @@ export class EventListener {
     return this._timer;
   }
 
-  constructor(db: AbstractDbRepository, startLoop = true) {
+  constructor(db: AbstractDbRepository, provider: ethers.providers.JsonRpcProvider, startLoop = true) {
     this.db = db;
+    this.provider = provider;
 
     if (startLoop) {
       this._timer = setInterval(() => {
@@ -64,8 +67,13 @@ export class EventListener {
     }
   }
 
-  async queueLog(eventName: string, log: ethers.providers.Log, loader: AbstractLoader<any>) {
-    const decodedLog = loader.iface.parseLog(log);
+  async queueLog(
+    eventName: string,
+    log: ethers.providers.Log,
+    loader: AbstractLoader<any>,
+    iface: ethers.utils.Interface,
+  ) {
+    const decodedLog = iface.parseLog(log);
     const args = [...decodedLog.args.values()].map((arg) => arg.toString());
 
     this.log.info({
@@ -98,14 +106,14 @@ export class EventListener {
       return;
     }
 
-    this.pushEventAndSort(loader, eventName, log);
+    this.pushEventAndSort(loader, iface, eventName, log);
 
     await this.db.saveEvent({
       status: EventHandlerStatus.QUEUED,
       chainId: loader.chainId,
       address: log.address,
       blockNumber: log.blockNumber,
-      blockDate: await getBlockDate(log.blockNumber, loader.provider),
+      blockDate: await getBlockDate(log.blockNumber, this.provider),
       txHash: log.transactionHash,
       txIndex: log.transactionIndex,
       logIndex: log.logIndex,
@@ -118,6 +126,7 @@ export class EventListener {
 
   private pushEventAndSort(
     loader: AbstractLoader<any>,
+    iface: ethers.utils.Interface,
     eventName: string,
     log: ethers.providers.Log,
     requeued: boolean = false,
@@ -144,6 +153,7 @@ export class EventListener {
       tx: log.transactionIndex,
       ev: log.logIndex,
       loader,
+      iface,
     });
     this._eventsAdded = true;
 
@@ -166,7 +176,7 @@ export class EventListener {
 
     let lastBlockNumber = 0;
     while (this.queue.length > 0) {
-      const [{ eventName, log, loader }] = this._queue.splice(0, 1);
+      const [{ eventName, log, loader, iface }] = this._queue.splice(0, 1);
 
       this.log.info({
         msg: "Popped event from queue",
@@ -201,7 +211,7 @@ export class EventListener {
           txHash: log.transactionHash,
         });
 
-        this.pushEventAndSort(loader, eventName, log, true);
+        this.pushEventAndSort(loader, iface, eventName, log, true);
         break;
       }
 
@@ -214,13 +224,13 @@ export class EventListener {
           lastBlockNumber,
         });
 
-        this.pushEventAndSort(loader, eventName, log, true);
+        this.pushEventAndSort(loader, iface, eventName, log, true);
         break;
       }
 
       lastBlockNumber = log.blockNumber;
 
-      const decodedLog = loader.iface.parseLog(log);
+      const decodedLog = iface.parseLog(log);
       const args = [...decodedLog.args.values()];
 
       try {
@@ -246,7 +256,7 @@ export class EventListener {
         await session.abortTransaction();
 
         // automatically requeue the failing event
-        this.pushEventAndSort(loader, eventName, log, true);
+        this.pushEventAndSort(loader, iface, eventName, log, true);
 
         break;
       }

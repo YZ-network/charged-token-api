@@ -1,13 +1,12 @@
-import { BigNumber, ethers, type EventFilter } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { type ClientSession, type HydratedDocument } from "mongoose";
 import { type Logger } from "pino";
 import { type IUserBalance } from "../models";
 import pubSub from "../pubsub";
-import topicsMap from "../topics";
 import { DataType, IEventHandler, type IOwnable } from "../types";
 import { rootLogger } from "../util";
+import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { AbstractDbRepository } from "./AbstractDbRepository";
-import { type EventListener } from "./EventListener";
 
 /**
  * Generic contract loader. Used for loading initial contracts state, keeping
@@ -18,20 +17,16 @@ import { type EventListener } from "./EventListener";
  */
 export abstract class AbstractLoader<T extends IOwnable> {
   readonly chainId: number;
-  readonly provider: ethers.providers.JsonRpcProvider;
   readonly address: string;
-  protected readonly contract: any;
+  protected readonly dataType: DataType;
   readonly db: AbstractDbRepository;
   readonly log: Logger<{
     name: string;
   }>;
-  private readonly dataType: DataType;
 
-  readonly instance: ethers.Contract;
-  readonly iface: ethers.utils.Interface;
+  protected readonly blockchain: AbstractBlockchainRepository;
+
   lastState: T | undefined;
-
-  readonly eventsListener: EventListener;
 
   /**
    * @param provider ether provider.
@@ -40,37 +35,17 @@ export abstract class AbstractLoader<T extends IOwnable> {
    * @param model mongoose model for this contract.
    */
   protected constructor(
-    eventListener: EventListener,
     chainId: number,
-    provider: ethers.providers.JsonRpcProvider,
+    blockchain: AbstractBlockchainRepository,
     address: string,
-    contract: any,
     db: AbstractDbRepository,
+    dataType: DataType,
   ) {
-    this.eventsListener = eventListener;
     this.chainId = chainId;
-    this.provider = provider;
+    this.blockchain = blockchain;
     this.address = address;
-    this.contract = contract;
     this.db = db;
-
-    switch (this.constructor.name) {
-      case "FundraisingChargedToken":
-        this.dataType = DataType.ChargedToken;
-        break;
-      case "ChargedToken":
-      case "InterfaceProjectToken":
-      case "Directory":
-      case "DelegableToLT":
-      case "UserBalance":
-        this.dataType = this.constructor.name as DataType;
-        break;
-      default:
-        throw new Error(`Unable to detect expected dataType for ${this.constructor.name}`);
-    }
-
-    this.instance = new ethers.Contract(address, contract.abi, provider);
-    this.iface = new ethers.utils.Interface(contract.abi);
+    this.dataType = dataType;
 
     this.log = rootLogger.child({
       chainId,
@@ -117,7 +92,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
         });
       }
 
-      await this.loadAndSyncEvents(eventsStartBlock, session);
+      await this.blockchain.loadAndSyncEvents(this.dataType, this.address, eventsStartBlock, this);
     } else {
       this.log.info({
         msg: "First time loading",
@@ -315,139 +290,6 @@ export abstract class AbstractLoader<T extends IOwnable> {
     return result;
   }
 
-  private async loadAndSyncEvents(fromBlock: number, session: ClientSession) {
-    let missedEvents: ethers.Event[] = [];
-
-    let eventsFetchRetryCount = 0;
-    while (eventsFetchRetryCount < 3) {
-      try {
-        missedEvents = await this.getFilteredMissedEvents(fromBlock, session);
-        break;
-      } catch (err) {
-        this.log.warn({
-          msg: `Could not retrieve events from block ${fromBlock}`,
-          err,
-          contract: this.constructor.name,
-          address: this.address,
-          chainId: this.chainId,
-        });
-        eventsFetchRetryCount++;
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
-    }
-
-    if (eventsFetchRetryCount >= 3) {
-      this.log.error({
-        msg: `Error retrieving events from block ${fromBlock} after 3 tries`,
-        contract: this.constructor.name,
-        address: this.address,
-        chainId: this.chainId,
-      });
-      return;
-    }
-
-    if (missedEvents.length === 0) return;
-
-    for (const event of missedEvents) {
-      const name = event.event;
-
-      if (name === undefined) {
-        this.log.warn({
-          msg: "found unnamed event :",
-          event,
-          contract: this.constructor.name,
-          address: this.address,
-          chainId: this.chainId,
-        });
-      } else {
-        this.log.info({
-          msg: "delegating event processing",
-          contract: this.constructor.name,
-          address: this.address,
-          chainId: this.chainId,
-        });
-
-        await this.eventsListener.queueLog(name, event, this);
-      }
-    }
-  }
-
-  private async getFilteredMissedEvents(fromBlock: number, session: ClientSession): Promise<ethers.Event[]> {
-    const eventFilter: EventFilter = {
-      address: this.address,
-    };
-
-    this.log.info({
-      msg: `Querying missed events from block ${fromBlock}`,
-      contract: this.constructor.name,
-      address: this.address,
-      chainId: this.chainId,
-    });
-
-    const missedEvents = await this.instance.queryFilter(eventFilter, fromBlock);
-
-    if (missedEvents === null) {
-      this.log.warn({
-        msg: `Events querying returned null since block ${fromBlock}`,
-        contract: this.constructor.name,
-        address: this.address,
-        chainId: this.chainId,
-      });
-      return [];
-    } else if (missedEvents.length === 0) {
-      this.log.info({
-        msg: "No events missed",
-        contract: this.constructor.name,
-        address: this.address,
-        chainId: this.chainId,
-      });
-      return [];
-    }
-
-    this.log.info({
-      msg: `Found ${missedEvents.length} potentially missed events`,
-      contract: this.constructor.name,
-      address: this.address,
-      chainId: this.chainId,
-    });
-
-    const filteredEvents: ethers.Event[] = [];
-    for (const event of missedEvents) {
-      if (
-        !(await this.db.existsEvent(
-          this.chainId,
-          this.address,
-          event.blockNumber,
-          event.transactionIndex,
-          event.logIndex,
-        ))
-      ) {
-        filteredEvents.push(event);
-      }
-    }
-
-    if (missedEvents.length > filteredEvents.length) {
-      this.log.info({
-        msg: `Skipped ${missedEvents.length - filteredEvents.length} events already played`,
-        contract: this.constructor.name,
-        address: this.address,
-        chainId: this.chainId,
-      });
-    }
-
-    if (filteredEvents.length > 0) {
-      this.log.info({
-        msg: `Found ${filteredEvents.length} really missed events`,
-        // missedEvents,
-        contract: this.constructor.name,
-        address: this.address,
-        chainId: this.chainId,
-      });
-    }
-
-    return filteredEvents;
-  }
-
   async getJsonModel(session: ClientSession): Promise<T> {
     const result = await this.get(session);
     if (result === null) {
@@ -487,45 +329,14 @@ export abstract class AbstractLoader<T extends IOwnable> {
   }
 
   subscribeToEvents() {
-    const eventFilter: EventFilter = {
-      address: this.address,
-    };
-
-    this.instance.on(eventFilter, (log: ethers.providers.Log) => {
-      if (log.blockNumber <= (this.lastState?.lastUpdateBlock || 0)) {
-        this.log.warn({
-          msg: "Skipping event from init block",
-          event: log,
-          contract: this.constructor.name,
-          address: this.address,
-          chainId: this.chainId,
-        });
-        return;
-      }
-
-      const eventName = topicsMap[this.constructor.name][log.topics[0]];
-      this.eventsListener.queueLog(eventName, log, this).catch((err) => {
-        this.log.error({
-          msg: `error queuing event ${eventName}`,
-          err,
-          log,
-          contract: this.constructor.name,
-          address: this.address,
-          chainId: this.chainId,
-        });
-      });
-    });
+    this.blockchain.subscribeToEvents(this.dataType, this.address, this);
 
     this.log.info({
       msg: "Subscribed to all events",
-      contract: this.constructor.name,
+      contract: this.dataType,
       address: this.address,
       chainId: this.chainId,
     });
-  }
-
-  async destroy() {
-    this.instance.removeAllListeners();
   }
 
   async onEvent(

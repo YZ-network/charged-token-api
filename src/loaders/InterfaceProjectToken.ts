@@ -1,7 +1,8 @@
-import { BigNumber, type ethers } from "ethers";
+import { BigNumber } from "ethers";
 import { type ClientSession } from "mongoose";
-import { contracts } from "../contracts";
 import { type IInterfaceProjectToken } from "../models";
+import { DataType } from "../types";
+import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
 import { type ChargedToken } from "./ChargedToken";
@@ -21,13 +22,13 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
 
   constructor(
     chainId: number,
-    provider: ethers.providers.JsonRpcProvider,
+    blockchain: AbstractBlockchainRepository,
     address: string,
     directory: Directory,
     ct: ChargedToken,
     dbRepository: AbstractDbRepository,
   ) {
-    super(directory.eventsListener, chainId, provider, address, contracts.InterfaceProjectToken, dbRepository);
+    super(chainId, blockchain, address, dbRepository, DataType.InterfaceProjectToken);
     this.directory = directory;
     this.ct = ct;
   }
@@ -38,7 +39,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     if (!InterfaceProjectToken.subscribedProjects.includes(this.lastState!.projectToken)) {
       this.projectToken = new DelegableToLT(
         this.chainId,
-        this.provider,
+        this.blockchain,
         this.lastState!.projectToken,
         this.directory,
         this.ct,
@@ -77,41 +78,11 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     this.log.debug({
       msg: "Reading entire interface project token",
       chainId: this.chainId,
-      contract: this.contract.name,
+      contract: this.dataType,
       address: this.address,
     });
 
-    const ins = this.instance;
-
-    return {
-      // contract
-      chainId: this.chainId,
-      lastUpdateBlock: blockNumber,
-      address: this.address,
-      // ownable
-      owner: await ins.owner(),
-      // other
-      liquidityToken: await ins.liquidityToken(),
-      projectToken: await ins.projectToken(),
-      dateLaunch: (await ins.dateLaunch()).toString(),
-      dateEndCliff: (await ins.dateEndCliff()).toString(),
-      claimFeesPerThousandForPT: (await ins.claimFeesPerThousandForPT()).toString(),
-    };
-  }
-
-  async loadUserBalancePT(user: string): Promise<string> {
-    this.log.debug({
-      msg: `Loading user PT balance from interface for ${user}`,
-      chainId: this.chainId,
-      contract: this.contract.name,
-      address: this.address,
-    });
-
-    return this.projectToken === undefined ? "0" : await this.projectToken.loadUserBalance(user);
-  }
-
-  async loadValueProjectTokenToFullRecharge(user: string): Promise<string> {
-    return (await this.instance.valueProjectTokenToFullRecharge(user)).toString();
+    return await this.blockchain.loadInterfaceProjectToken(this.address, blockNumber);
   }
 
   async setProjectTokenAddressOnBalances(
@@ -139,7 +110,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
 
     for (const balance of balancesToUpdate) {
       if (userPTBalances[balance.user] === undefined) {
-        userPTBalances[balance.user] = await this.loadUserBalancePT(balance.user);
+        userPTBalances[balance.user] = await this.blockchain.getUserBalancePT(balance.ptAddress, balance.user);
         this.log.info({
           msg: "loaded user PT balance",
           user: balance.user,
@@ -185,7 +156,6 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
           usageCount: InterfaceProjectToken.projectUsageCount[this.projectToken.address],
           chainId: this.chainId,
         });
-        await this.projectToken.destroy();
         delete InterfaceProjectToken.projectInstances[this.projectToken.address];
         delete InterfaceProjectToken.projectUsageCount[this.projectToken.address];
         InterfaceProjectToken.subscribedProjects.splice(
@@ -202,7 +172,6 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         InterfaceProjectToken.projectUsageCount[this.projectToken.address]--;
       }
     }
-    await super.destroy();
   }
 
   async onStartSetEvent(
@@ -244,7 +213,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         .add(BigNumber.from(valueIncreased))
         .toString();
 
-      const { dateOfPartiallyCharged } = await this.ct.instance.userLiquiToken(user);
+      const { dateOfPartiallyCharged } = await this.blockchain.getUserLiquiToken(this.ct.address, user);
 
       await this.updateBalanceAndNotify(
         session,

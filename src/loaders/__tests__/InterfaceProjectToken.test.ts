@@ -3,12 +3,13 @@ import { ClientSession } from "mongodb";
 import { IUserBalance } from "../../models";
 import pubSub from "../../pubsub";
 import { DataType, EMPTY_ADDRESS } from "../../types";
+import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
 import { DelegableToLT } from "../DelegableToLT";
 import { Directory } from "../Directory";
-import { type EventListener } from "../EventListener";
 import { InterfaceProjectToken } from "../InterfaceProjectToken";
+import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
 
 jest.mock("../../globals/config");
@@ -27,7 +28,7 @@ describe("InterfaceProjectToken loader", () => {
   const BLOCK_NUMBER = 15;
   const PT_ADDRESS = "0xPT";
 
-  let provider: ethers.providers.JsonRpcProvider;
+  let blockchain: jest.Mocked<AbstractBlockchainRepository>;
   let db: jest.Mocked<AbstractDbRepository>;
   let directoryLoader: Directory;
   let ctLoader: ChargedToken;
@@ -39,11 +40,11 @@ describe("InterfaceProjectToken loader", () => {
     Object.defineProperty(InterfaceProjectToken, "projectInstances", { value: {} });
     Object.defineProperty(InterfaceProjectToken, "projectUsageCount", { value: {} });
 
-    provider = new ethers.providers.JsonRpcProvider();
+    blockchain = new MockBlockchainRepository() as jest.Mocked<AbstractBlockchainRepository>;
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
-    directoryLoader = new Directory(undefined as unknown as EventListener, CHAIN_ID, provider, ADDRESS, db);
-    ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader, db);
-    loader = new InterfaceProjectToken(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader, db);
+    directoryLoader = new Directory(CHAIN_ID, blockchain, ADDRESS, db);
+    ctLoader = new ChargedToken(CHAIN_ID, blockchain, ADDRESS, directoryLoader, db);
+    loader = new InterfaceProjectToken(CHAIN_ID, blockchain, ADDRESS, directoryLoader, ctLoader, db);
     session = new ClientSession();
   });
 
@@ -65,15 +66,13 @@ describe("InterfaceProjectToken loader", () => {
   test("Should initialize InterfaceProjectToken by reading blockchain when not in db", async () => {
     // checking constructor
     expect(loader.chainId).toBe(CHAIN_ID);
-    expect(loader.provider).toBe(provider);
-    expect(loader.eventsListener).toBe(directoryLoader.eventsListener);
     expect(loader.directory).toBe(directoryLoader);
     expect(loader.ct).toBe(ctLoader);
     expect(loader.address).toBe(ADDRESS);
     expect(loader.lastState).toEqual(undefined);
 
     // mocking ethers
-    (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
+    blockchain.getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
     const graphqlModel = {
@@ -92,12 +91,17 @@ describe("InterfaceProjectToken loader", () => {
     db.get.mockResolvedValueOnce(null).mockResolvedValueOnce(graphqlModel);
 
     // mocking contract instance
-    loader.instance.owner.mockResolvedValueOnce(OWNER);
-    loader.instance.liquidityToken.mockResolvedValueOnce("0xLT");
-    loader.instance.projectToken.mockResolvedValueOnce(EMPTY_ADDRESS);
-    loader.instance.dateLaunch.mockResolvedValueOnce(BigNumber.from(1));
-    loader.instance.dateEndCliff.mockResolvedValueOnce(BigNumber.from(2));
-    loader.instance.claimFeesPerThousandForPT.mockResolvedValueOnce(BigNumber.from(3));
+    blockchain.loadInterfaceProjectToken.mockResolvedValueOnce({
+      chainId: CHAIN_ID,
+      address: ADDRESS,
+      lastUpdateBlock: BLOCK_NUMBER,
+      owner: OWNER,
+      liquidityToken: "0xLT",
+      projectToken: EMPTY_ADDRESS,
+      dateLaunch: "1",
+      dateEndCliff: "2",
+      claimFeesPerThousandForPT: "3",
+    });
 
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
@@ -112,13 +116,8 @@ describe("InterfaceProjectToken loader", () => {
     expect(loader.projectToken).toBeDefined();
     expect(loader.projectToken?.init).toBeCalledTimes(1);
 
-    expect(loader.instance.owner).toBeCalledTimes(1);
-    expect(loader.instance.liquidityToken).toBeCalledTimes(1);
-    expect(loader.instance.projectToken).toBeCalledTimes(1);
-    expect(loader.instance.dateLaunch).toBeCalledTimes(1);
-    expect(loader.instance.dateEndCliff).toBeCalledTimes(1);
-    expect(loader.instance.claimFeesPerThousandForPT).toBeCalledTimes(1);
-    expect(loader.instance.queryFilter).toBeCalledTimes(0);
+    expect(blockchain.loadInterfaceProjectToken).toBeCalledTimes(1);
+    expect(blockchain.loadAndSyncEvents).toBeCalledTimes(0);
 
     expect((session as any).startTransaction).toBeCalledTimes(1);
     expect((session as any).commitTransaction).toBeCalledTimes(1);
@@ -129,7 +128,7 @@ describe("InterfaceProjectToken loader", () => {
     const PREV_BLOCK_NUMBER = 15;
     const BLOCK_NUMBER = 20;
 
-    (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
+    blockchain.getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
     const loadedModel = {
@@ -147,9 +146,6 @@ describe("InterfaceProjectToken loader", () => {
 
     db.get.mockResolvedValueOnce(loadedModel);
 
-    // mocking contract instance
-    (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
-
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
 
@@ -162,13 +158,8 @@ describe("InterfaceProjectToken loader", () => {
     expect(loader.projectToken).toBeDefined();
     expect(loader.projectToken?.init).toBeCalledTimes(1);
 
-    expect(loader.instance.owner).toBeCalledTimes(0);
-    expect(loader.instance.liquidityToken).toBeCalledTimes(0);
-    expect(loader.instance.projectToken).toBeCalledTimes(0);
-    expect(loader.instance.dateLaunch).toBeCalledTimes(0);
-    expect(loader.instance.dateEndCliff).toBeCalledTimes(0);
-    expect(loader.instance.claimFeesPerThousandForPT).toBeCalledTimes(0);
-    expect(loader.instance.queryFilter).toBeCalledTimes(1);
+    expect(blockchain.loadInterfaceProjectToken).toBeCalledTimes(0);
+    expect(blockchain.loadAndSyncEvents).toBeCalledTimes(1);
 
     expect(loader.lastState).toEqual(loadedModel);
 
@@ -180,7 +171,7 @@ describe("InterfaceProjectToken loader", () => {
     // mocking ethers
     const BLOCK_NUMBER = 20;
 
-    (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
+    blockchain.getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
     const PT_ADDRESS = "0xPT";
@@ -198,9 +189,6 @@ describe("InterfaceProjectToken loader", () => {
     };
 
     db.get.mockResolvedValueOnce(loadedModel);
-
-    // mocking contract instance
-    (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
 
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
@@ -211,7 +199,7 @@ describe("InterfaceProjectToken loader", () => {
     expect(loader.skipProjectUpdates).toBe(false);
     expect(loader.projectToken?.init).toBeCalledTimes(1);
     expect(loader.projectToken?.subscribeToEvents).toBeCalledTimes(1);
-    expect(loader.instance.on).toHaveBeenNthCalledWith(1, { address: ADDRESS }, expect.anything());
+    expect(blockchain.subscribeToEvents).toHaveBeenNthCalledWith(1, DataType.InterfaceProjectToken, ADDRESS);
     expect(InterfaceProjectToken.projectInstances[PT_ADDRESS]).toBe(loader.projectToken);
     expect(InterfaceProjectToken.projectUsageCount[PT_ADDRESS]).toBe(0);
     expect(InterfaceProjectToken.subscribedProjects).toContain(PT_ADDRESS);
@@ -220,7 +208,7 @@ describe("InterfaceProjectToken loader", () => {
   test("Should use existing project token if available", async () => {
     // preparing existing mock
     const PT_ADDRESS = "0xPT";
-    const ptLoader = new DelegableToLT(CHAIN_ID, provider, PT_ADDRESS, directoryLoader, ctLoader, db);
+    const ptLoader = new DelegableToLT(CHAIN_ID, blockchain, PT_ADDRESS, directoryLoader, ctLoader, db);
     InterfaceProjectToken.projectInstances[PT_ADDRESS] = ptLoader;
     InterfaceProjectToken.projectUsageCount[PT_ADDRESS] = 0;
     InterfaceProjectToken.subscribedProjects.push(PT_ADDRESS);
@@ -228,7 +216,7 @@ describe("InterfaceProjectToken loader", () => {
     // mocking ethers
     const BLOCK_NUMBER = 20;
 
-    (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
+    blockchain.getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
     const loadedModel = {
@@ -246,9 +234,6 @@ describe("InterfaceProjectToken loader", () => {
 
     db.get.mockResolvedValueOnce(loadedModel);
 
-    // mocking contract instance
-    (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
-
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
     loader.subscribeToEvents();
@@ -258,27 +243,12 @@ describe("InterfaceProjectToken loader", () => {
     expect(loader.skipProjectUpdates).toBe(true);
     expect(loader.projectToken?.init).not.toBeCalled();
     expect(loader.projectToken?.subscribeToEvents).not.toBeCalled();
-    expect(loader.instance.on).toHaveBeenNthCalledWith(1, { address: ADDRESS }, expect.anything());
+    expect(blockchain.subscribeToEvents).toHaveBeenNthCalledWith(1, DataType.InterfaceProjectToken, ADDRESS);
+    expect(blockchain.subscribeToEvents).toHaveBeenNthCalledWith(2, DataType.DelegableToLT, PT_ADDRESS);
     expect(loader.projectToken).toBe(ptLoader);
     expect(InterfaceProjectToken.projectInstances[PT_ADDRESS]).toBe(ptLoader);
     expect(InterfaceProjectToken.projectUsageCount[PT_ADDRESS]).toBe(1);
     expect(InterfaceProjectToken.subscribedProjects).toContain(PT_ADDRESS);
-  });
-
-  test("should load PT balance from delegable to lt contract", async () => {
-    loader.projectToken = new DelegableToLT(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader, db);
-
-    await loader.loadUserBalancePT("0xUSER");
-
-    expect(loader.projectToken.loadUserBalance).toHaveBeenNthCalledWith(1, "0xUSER");
-  });
-
-  test("should load value project token to full recharge from blockchain", async () => {
-    (loader.instance as any).valueProjectTokenToFullRecharge.mockResolvedValueOnce(BigNumber.from(0));
-
-    await loader.loadValueProjectTokenToFullRecharge("0xUSER");
-
-    expect(loader.instance.valueProjectTokenToFullRecharge).toHaveBeenNthCalledWith(1, "0xUSER");
   });
 
   test("should update all matching balances with project token address and PT balance", async () => {
@@ -288,15 +258,15 @@ describe("InterfaceProjectToken loader", () => {
     ] as IUserBalance[];
     db.getBalances.mockResolvedValueOnce(balancesToUpdate);
 
-    const loadPTBalance = jest.spyOn(loader, "loadUserBalancePT").mockResolvedValueOnce("1").mockResolvedValueOnce("2");
+    blockchain.getUserBalancePT.mockResolvedValueOnce("1").mockResolvedValueOnce("2");
 
     const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockResolvedValue(undefined);
 
     await loader.setProjectTokenAddressOnBalances(session, "0xCT", "0xPT", BLOCK_NUMBER);
 
     expect(db.getBalances).toHaveBeenNthCalledWith(1, CHAIN_ID, "0xCT");
-    expect(loadPTBalance).toHaveBeenNthCalledWith(1, "0xUSER1");
-    expect(loadPTBalance).toHaveBeenNthCalledWith(2, "0xUSER2");
+    expect(blockchain.getUserBalancePT).toHaveBeenNthCalledWith(1, "0xPT", "0xUSER1");
+    expect(blockchain.getUserBalancePT).toHaveBeenNthCalledWith(2, "0xPT", "0xUSER2");
     expect(updateBalance).toHaveBeenNthCalledWith(
       1,
       session,
@@ -313,38 +283,6 @@ describe("InterfaceProjectToken loader", () => {
       { ptAddress: "0xPT", balancePT: "2" },
       BLOCK_NUMBER,
     );
-  });
-
-  test("destroy interface with project when it is the last reference", async () => {
-    loader.projectToken = new DelegableToLT(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader, db);
-    Object.defineProperty(loader.projectToken, "address", { value: ADDRESS });
-    InterfaceProjectToken.projectUsageCount[ADDRESS] = 0;
-    InterfaceProjectToken.projectInstances[ADDRESS] = loader.projectToken;
-    InterfaceProjectToken.subscribedProjects.push(ADDRESS);
-
-    await loader.destroy();
-
-    expect(loader.projectToken.destroy).toBeCalledTimes(1);
-    expect(loader.instance.removeAllListeners).toBeCalledTimes(1);
-    expect(InterfaceProjectToken.projectUsageCount[ADDRESS]).toBeUndefined();
-    expect(InterfaceProjectToken.projectInstances[ADDRESS]).toBeUndefined();
-    expect(InterfaceProjectToken.subscribedProjects).not.toContain(ADDRESS);
-  });
-
-  test("destroy interface only if project is still referenced", async () => {
-    loader.projectToken = new DelegableToLT(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader, db);
-    Object.defineProperty(loader.projectToken, "address", { value: ADDRESS });
-    InterfaceProjectToken.projectUsageCount[ADDRESS] = 1;
-    InterfaceProjectToken.projectInstances[ADDRESS] = loader.projectToken;
-    InterfaceProjectToken.subscribedProjects.push(ADDRESS);
-
-    await loader.destroy();
-
-    expect(loader.projectToken.destroy).not.toBeCalled();
-    expect(loader.instance.removeAllListeners).toBeCalledTimes(1);
-    expect(InterfaceProjectToken.projectUsageCount[ADDRESS]).toBe(0);
-    expect(InterfaceProjectToken.projectInstances[ADDRESS]).toBe(loader.projectToken);
-    expect(InterfaceProjectToken.subscribedProjects).toContain(ADDRESS);
   });
 
   // Event handlers
@@ -388,7 +326,7 @@ describe("InterfaceProjectToken loader", () => {
       valueProjectTokenToFullRecharge: "100",
     } as IUserBalance;
     db.getBalance.mockResolvedValueOnce(balance);
-    ctLoader.instance.userLiquiToken.mockResolvedValueOnce({ dateOfPartiallyCharged: BigNumber.from("150") });
+    blockchain.getUserLiquiToken.mockResolvedValueOnce({ dateOfPartiallyCharged: 150 });
     const updateBalance = jest.spyOn(loader, "updateBalanceAndNotify").mockResolvedValue(undefined);
 
     await loader.onIncreasedValueProjectTokenToFullRechargeEvent(

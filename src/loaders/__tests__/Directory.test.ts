@@ -1,12 +1,13 @@
-import { BigNumber, ethers } from "ethers";
+import { ethers } from "ethers";
 import { ClientSession } from "mongodb";
 import { IInterfaceProjectToken, IUserBalance } from "../../models";
 import pubSub from "../../pubsub";
 import { DataType } from "../../types";
+import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
 import { Directory } from "../Directory";
-import { EventListener } from "../EventListener";
+import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
 
 jest.mock("../../globals/config");
@@ -15,7 +16,6 @@ jest.mock("../../topics");
 jest.mock("../../pubsub");
 jest.mock("../../models");
 jest.mock("../ChargedToken");
-jest.mock("../FundraisingChargedToken");
 
 describe("Directory loader", () => {
   const CHAIN_ID = 1337;
@@ -23,7 +23,7 @@ describe("Directory loader", () => {
   const ADDRESS = "0xF79A6c67E99b2135E09C3Ba0d06AE60977C1f393";
   const BLOCK_NUMBER = 15;
 
-  let eventListener: EventListener;
+  let blockchain: jest.Mocked<AbstractBlockchainRepository>;
   let provider: ethers.providers.JsonRpcProvider;
   let db: jest.Mocked<AbstractDbRepository>;
   let loader: Directory;
@@ -32,8 +32,8 @@ describe("Directory loader", () => {
   beforeEach(() => {
     provider = new ethers.providers.JsonRpcProvider();
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
-    eventListener = new EventListener(db, false);
-    loader = new Directory(eventListener, CHAIN_ID, provider, ADDRESS, db as unknown as AbstractDbRepository);
+    blockchain = new MockBlockchainRepository() as jest.Mocked<AbstractBlockchainRepository>;
+    loader = new Directory(CHAIN_ID, blockchain, ADDRESS, db as AbstractDbRepository);
     session = new ClientSession();
   });
 
@@ -72,8 +72,6 @@ describe("Directory loader", () => {
   test("Should initialize Directory by reading blockchain when not in db", async () => {
     // checking constructor
     expect(loader.chainId).toBe(CHAIN_ID);
-    expect(loader.provider).toBe(provider);
-    expect(loader.eventsListener).toBe(eventListener);
     expect(loader.address).toBe(ADDRESS);
     expect(loader.lastState).toEqual(undefined);
 
@@ -81,15 +79,13 @@ describe("Directory loader", () => {
     (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
+    const data = sampleData();
     const graphqlModel = sampleGraphqlData();
 
     db.get.mockResolvedValueOnce(null).mockResolvedValueOnce(graphqlModel);
 
     // mocking contract instance
-    loader.instance.countWhitelistedProjectOwners.mockResolvedValueOnce(BigNumber.from(0));
-    loader.instance.countLTContracts.mockResolvedValueOnce(BigNumber.from(0));
-    loader.instance.owner.mockResolvedValueOnce(OWNER);
-    loader.instance.areUserFunctionsDisabled.mockResolvedValueOnce(false);
+    blockchain.loadDirectory.mockResolvedValueOnce(data);
 
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
@@ -101,11 +97,8 @@ describe("Directory loader", () => {
     expect(db.get).toHaveBeenNthCalledWith(2, DataType.Directory, CHAIN_ID, ADDRESS);
     expect(db.save).toHaveBeenCalledTimes(1);
 
-    expect(loader.instance.countWhitelistedProjectOwners).toBeCalledTimes(1);
-    expect(loader.instance.countLTContracts).toBeCalledTimes(1);
-    expect(loader.instance.owner).toBeCalledTimes(1);
-    expect(loader.instance.areUserFunctionsDisabled).toBeCalledTimes(1);
-    expect(loader.instance.queryFilter).toBeCalledTimes(0);
+    expect(blockchain.loadDirectory).toBeCalledTimes(1);
+    expect(blockchain.loadAndSyncEvents).toBeCalledTimes(0);
 
     expect((session as any).startTransaction).toBeCalledTimes(1);
     expect((session as any).commitTransaction).toBeCalledTimes(1);
@@ -135,9 +128,6 @@ describe("Directory loader", () => {
 
     db.get.mockResolvedValueOnce(loadedModel);
 
-    // mocking contract instance
-    (loader.instance as any).queryFilter.mockResolvedValueOnce(() => []);
-
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
 
@@ -148,11 +138,8 @@ describe("Directory loader", () => {
     expect(db.get).toHaveBeenNthCalledWith(1, DataType.Directory, CHAIN_ID, ADDRESS);
     expect(db.save).toHaveBeenCalledTimes(0);
 
-    expect(loader.instance.countWhitelistedProjectOwners).toBeCalledTimes(0);
-    expect(loader.instance.countLTContracts).toBeCalledTimes(0);
-    expect(loader.instance.owner).toBeCalledTimes(0);
-    expect(loader.instance.areUserFunctionsDisabled).toBeCalledTimes(0);
-    expect(loader.instance.queryFilter).toBeCalledTimes(1);
+    expect(blockchain.loadDirectory).toBeCalledTimes(0);
+    expect(blockchain.loadAndSyncEvents).toBeCalledTimes(1);
 
     expect((session as any).startTransaction).toBeCalledTimes(1);
     expect((session as any).commitTransaction).toBeCalledTimes(1);
@@ -182,9 +169,6 @@ describe("Directory loader", () => {
 
     db.get.mockResolvedValueOnce(loadedModel);
 
-    // mocking contract instance
-    (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
-
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
 
@@ -198,7 +182,7 @@ describe("Directory loader", () => {
   test("Should propagate user balances loading and save them for the first time", async () => {
     const userAddress = "0xUSER";
     const ctAddress = "0xCT";
-    const ct = new ChargedToken(loader.chainId, provider, ctAddress, loader, db);
+    const ct = new ChargedToken(loader.chainId, blockchain, ctAddress, loader, db);
     loader.ct[ctAddress] = ct;
 
     const ctBalance = { address: ctAddress, balance: "xxx" } as IUserBalance;
@@ -223,7 +207,7 @@ describe("Directory loader", () => {
   test("Should propagate user balances loading and update them when existing", async () => {
     const userAddress = "0xUSER";
     const ctAddress = "0xCT";
-    const ct = new ChargedToken(loader.chainId, provider, ctAddress, loader, db);
+    const ct = new ChargedToken(loader.chainId, blockchain, ctAddress, loader, db);
     loader.ct[ctAddress] = ct;
 
     const ctBalance = { address: ctAddress, balance: "xxx" } as IUserBalance;
@@ -252,27 +236,16 @@ describe("Directory loader", () => {
 
   test("Should subscribe to events and propagate events subscriptions to existing charged tokens", async () => {
     const ctAddress = "0xCT";
-    const ct = new ChargedToken(loader.chainId, provider, ctAddress, loader, db);
+    const ct = new ChargedToken(loader.chainId, blockchain, ctAddress, loader, db);
     loader.ct[ctAddress] = ct;
 
     // tested function
     loader.subscribeToEvents();
 
     // expectations
-    expect(loader.instance.on).toHaveBeenNthCalledWith(1, { address: ADDRESS }, expect.anything());
+    expect(blockchain.subscribeToEvents).toHaveBeenNthCalledWith(1, DataType.ChargedToken, ADDRESS);
 
     expect(ct.subscribeToEvents).toBeCalledTimes(1);
-  });
-
-  test("destroy", async () => {
-    loader.ct.x = new ChargedToken(CHAIN_ID, provider, ADDRESS, loader, db);
-    loader.ct.y = new ChargedToken(CHAIN_ID, provider, ADDRESS, loader, db);
-
-    await loader.destroy();
-
-    expect(loader.ct.x.destroy).toBeCalledTimes(1);
-    expect(loader.ct.y.destroy).toBeCalledTimes(1);
-    expect(loader.instance.removeAllListeners).toBeCalledTimes(1);
   });
 
   // Event handlers
@@ -380,7 +353,6 @@ describe("Directory loader", () => {
 
     // mocking init
     db.get.mockResolvedValueOnce(loadedModel);
-    (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
 
     // initializing directory
     await loader.init(session, BLOCK_NUMBER, true);
@@ -389,12 +361,12 @@ describe("Directory loader", () => {
     db.get.mockResolvedValue(loadedModel);
     db.exists.mockResolvedValueOnce(true);
 
-    loader.instance.projectRelatedToLT.mockResolvedValueOnce(PROJECT);
+    blockchain.getProjectRelatedToLT.mockResolvedValueOnce(PROJECT);
 
     // handler under test
     await loader.onAddedLTContractEvent(session, [CONTRACT], BLOCK_NUMBER, "AddedLTContract");
 
-    expect(loader.instance.projectRelatedToLT).toHaveBeenNthCalledWith(1, CONTRACT);
+    expect(blockchain.getProjectRelatedToLT).toHaveBeenNthCalledWith(1, CONTRACT);
 
     // new charged token init and subscribe
     expect(loader.ct[CONTRACT]).toBeDefined();
@@ -431,7 +403,7 @@ describe("Directory loader", () => {
 
   test("RemovedLTContract", async () => {
     const ctAddress = "0xCT";
-    const ct = new ChargedToken(CHAIN_ID, provider, ctAddress, loader, db);
+    const ct = new ChargedToken(CHAIN_ID, blockchain, ctAddress, loader, db);
     loader.ct[ctAddress] = ct;
 
     const ctAddressNotToRemove = "0xCT2";
@@ -461,7 +433,6 @@ describe("Directory loader", () => {
 
     expect(db.get).toBeCalledTimes(2);
     expect(db.getInterfaceByChargedToken).toBeCalledTimes(1);
-    expect(ct.destroy).toBeCalledTimes(1);
     expect(loader.ct[ctAddress]).toBeUndefined();
     expect(db.delete).toHaveBeenNthCalledWith(1, DataType.ChargedToken, CHAIN_ID, ctAddress);
 

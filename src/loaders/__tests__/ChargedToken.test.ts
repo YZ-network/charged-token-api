@@ -1,14 +1,13 @@
-import { BigNumber, ethers } from "ethers";
 import { ClientSession } from "mongodb";
 import { FlattenMaps } from "mongoose";
 import { type IChargedToken, type IUserBalance } from "../../models";
 import pubSub from "../../pubsub";
 import { DataType, EMPTY_ADDRESS } from "../../types";
+import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
 import { Directory } from "../Directory";
-import { EventListener } from "../EventListener";
-import { InterfaceProjectToken } from "../InterfaceProjectToken";
+import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
 
 jest.mock("../../globals/config");
@@ -28,19 +27,17 @@ describe("ChargedToken loader", () => {
   const INTERFACE_ADDR = "0xIFACE";
   const BLOCK_NUMBER = 15;
 
-  let provider: ethers.providers.JsonRpcProvider;
-  let eventsListener: EventListener;
+  let blockchain: jest.Mocked<AbstractBlockchainRepository>;
   let db: jest.Mocked<AbstractDbRepository>;
   let directoryLoader: Directory;
   let loader: ChargedToken;
   let session: ClientSession;
 
   beforeEach(() => {
-    provider = new ethers.providers.JsonRpcProvider();
+    blockchain = new MockBlockchainRepository() as jest.Mocked<AbstractBlockchainRepository>;
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
-    eventsListener = new EventListener(db, false);
-    directoryLoader = new Directory(eventsListener, CHAIN_ID, provider, ADDRESS, db as unknown as AbstractDbRepository);
-    loader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader, db as unknown as AbstractDbRepository);
+    directoryLoader = new Directory(CHAIN_ID, blockchain, ADDRESS, db as unknown as AbstractDbRepository);
+    loader = new ChargedToken(CHAIN_ID, blockchain, ADDRESS, directoryLoader, db as unknown as AbstractDbRepository);
     session = new ClientSession();
   });
 
@@ -85,49 +82,14 @@ describe("ChargedToken loader", () => {
     };
   }
 
-  function prepareContractMock(loader: ChargedToken) {
-    loader.instance.owner.mockResolvedValueOnce(OWNER);
-    loader.instance.name.mockResolvedValueOnce(NAME);
-    loader.instance.symbol.mockResolvedValueOnce(SYMBOL);
-    loader.instance.decimals.mockResolvedValueOnce(BigNumber.from(18));
-    loader.instance.totalSupply.mockResolvedValueOnce(BigNumber.from(1));
-    loader.instance.fractionInitialUnlockPerThousand.mockResolvedValueOnce(BigNumber.from(2));
-    loader.instance.durationCliff.mockResolvedValueOnce(BigNumber.from(3));
-    loader.instance.durationLinearVesting.mockResolvedValueOnce(BigNumber.from(4));
-    loader.instance.maxInitialTokenAllocation.mockResolvedValueOnce(BigNumber.from(5));
-    loader.instance.maxWithdrawFeesPerThousandForLT.mockResolvedValueOnce(BigNumber.from(6));
-    loader.instance.maxClaimFeesPerThousandForPT.mockResolvedValueOnce(BigNumber.from(7));
-    loader.instance.maxStakingAPR.mockResolvedValueOnce(BigNumber.from(8));
-    loader.instance.maxStakingTokenAmount.mockResolvedValueOnce(BigNumber.from(9));
-    loader.instance.areUserFunctionsDisabled.mockResolvedValueOnce(true);
-    loader.instance.isInterfaceProjectTokenLocked.mockResolvedValueOnce(false);
-    loader.instance.areAllocationsTerminated.mockResolvedValueOnce(false);
-    loader.instance.interfaceProjectToken.mockResolvedValueOnce(INTERFACE_ADDR);
-    loader.instance.ratioFeesToRewardHodlersPerThousand.mockResolvedValueOnce(BigNumber.from(11));
-    loader.instance.currentRewardPerShare1e18.mockResolvedValueOnce(BigNumber.from(12));
-    loader.instance.stakedLT.mockResolvedValueOnce(BigNumber.from(13));
-    loader.instance.balanceOf.mockResolvedValueOnce(BigNumber.from(14));
-    loader.instance.totalTokenAllocated.mockResolvedValueOnce(BigNumber.from(15));
-    loader.instance.withdrawFeesPerThousandForLT.mockResolvedValueOnce(BigNumber.from(16));
-    loader.instance.stakingStartDate.mockResolvedValueOnce(BigNumber.from(17));
-    loader.instance.stakingDuration.mockResolvedValueOnce(BigNumber.from(18));
-    loader.instance.stakingDateLastCheckpoint.mockResolvedValueOnce(BigNumber.from(19));
-    loader.instance.campaignStakingRewards.mockResolvedValueOnce(BigNumber.from(20));
-    loader.instance.totalStakingRewards.mockResolvedValueOnce(BigNumber.from(21));
-  }
-
   test("Should initialize ChargedToken by reading blockchain when not in db", async () => {
     // checking constructor
     expect(loader.chainId).toBe(CHAIN_ID);
-    expect(loader.provider).toBe(provider);
-    expect(loader.eventsListener).toBe(directoryLoader.eventsListener);
     expect(loader.address).toBe(ADDRESS);
     expect(loader.lastState).toEqual(undefined);
 
     // mocking ethers
     const BLOCK_NUMBER = 15;
-
-    (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
     const graphqlModel = sampleData();
@@ -137,7 +99,7 @@ describe("ChargedToken loader", () => {
     db.get.mockResolvedValueOnce(graphqlModel);
 
     // mocking contract instance
-    prepareContractMock(loader);
+    blockchain.loadChargedToken.mockResolvedValueOnce(graphqlModel);
 
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
@@ -152,35 +114,8 @@ describe("ChargedToken loader", () => {
     expect(loader.interface).toBeDefined();
     expect(loader.interface?.init).toBeCalledTimes(1);
 
-    expect(loader.instance.owner).toBeCalledTimes(1);
-    expect(loader.instance.name).toBeCalledTimes(1);
-    expect(loader.instance.symbol).toBeCalledTimes(1);
-    expect(loader.instance.decimals).toBeCalledTimes(1);
-    expect(loader.instance.totalSupply).toBeCalledTimes(1);
-    expect(loader.instance.fractionInitialUnlockPerThousand).toBeCalledTimes(1);
-    expect(loader.instance.durationCliff).toBeCalledTimes(1);
-    expect(loader.instance.durationLinearVesting).toBeCalledTimes(1);
-    expect(loader.instance.maxInitialTokenAllocation).toBeCalledTimes(1);
-    expect(loader.instance.maxWithdrawFeesPerThousandForLT).toBeCalledTimes(1);
-    expect(loader.instance.maxClaimFeesPerThousandForPT).toBeCalledTimes(1);
-    expect(loader.instance.maxStakingAPR).toBeCalledTimes(1);
-    expect(loader.instance.maxStakingTokenAmount).toBeCalledTimes(1);
-    expect(loader.instance.areUserFunctionsDisabled).toBeCalledTimes(1);
-    expect(loader.instance.isInterfaceProjectTokenLocked).toBeCalledTimes(1);
-    expect(loader.instance.areAllocationsTerminated).toBeCalledTimes(1);
-    expect(loader.instance.interfaceProjectToken).toBeCalledTimes(1);
-    expect(loader.instance.ratioFeesToRewardHodlersPerThousand).toBeCalledTimes(1);
-    expect(loader.instance.currentRewardPerShare1e18).toBeCalledTimes(1);
-    expect(loader.instance.stakedLT).toBeCalledTimes(1);
-    expect(loader.instance.balanceOf).toHaveBeenNthCalledWith(1, ADDRESS);
-    expect(loader.instance.totalTokenAllocated).toBeCalledTimes(1);
-    expect(loader.instance.withdrawFeesPerThousandForLT).toBeCalledTimes(1);
-    expect(loader.instance.stakingStartDate).toBeCalledTimes(1);
-    expect(loader.instance.stakingDuration).toBeCalledTimes(1);
-    expect(loader.instance.stakingDateLastCheckpoint).toBeCalledTimes(1);
-    expect(loader.instance.campaignStakingRewards).toBeCalledTimes(1);
-    expect(loader.instance.totalStakingRewards).toBeCalledTimes(1);
-    expect(loader.instance.queryFilter).toBeCalledTimes(0);
+    expect(blockchain.loadChargedToken).toBeCalledTimes(1);
+    expect(blockchain.loadAndSyncEvents).toBeCalledTimes(0);
 
     expect((session as any).startTransaction).toBeCalledTimes(1);
     expect((session as any).commitTransaction).toBeCalledTimes(1);
@@ -195,9 +130,6 @@ describe("ChargedToken loader", () => {
 
     db.get.mockResolvedValueOnce(loadedModel);
 
-    // mocking contract instance
-    (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
-
     // tested function
     await loader.init(session, ACTUAL_BLOCK_NUMBER, true);
 
@@ -211,35 +143,8 @@ describe("ChargedToken loader", () => {
     expect(loader.interface).toBeDefined();
     expect(loader.interface?.init).toBeCalledTimes(1);
 
-    expect(loader.instance.owner).toBeCalledTimes(0);
-    expect(loader.instance.name).toBeCalledTimes(0);
-    expect(loader.instance.symbol).toBeCalledTimes(0);
-    expect(loader.instance.decimals).toBeCalledTimes(0);
-    expect(loader.instance.totalSupply).toBeCalledTimes(0);
-    expect(loader.instance.fractionInitialUnlockPerThousand).toBeCalledTimes(0);
-    expect(loader.instance.durationCliff).toBeCalledTimes(0);
-    expect(loader.instance.durationLinearVesting).toBeCalledTimes(0);
-    expect(loader.instance.maxInitialTokenAllocation).toBeCalledTimes(0);
-    expect(loader.instance.maxWithdrawFeesPerThousandForLT).toBeCalledTimes(0);
-    expect(loader.instance.maxClaimFeesPerThousandForPT).toBeCalledTimes(0);
-    expect(loader.instance.maxStakingAPR).toBeCalledTimes(0);
-    expect(loader.instance.maxStakingTokenAmount).toBeCalledTimes(0);
-    expect(loader.instance.areUserFunctionsDisabled).toBeCalledTimes(0);
-    expect(loader.instance.isInterfaceProjectTokenLocked).toBeCalledTimes(0);
-    expect(loader.instance.areAllocationsTerminated).toBeCalledTimes(0);
-    expect(loader.instance.interfaceProjectToken).toBeCalledTimes(0);
-    expect(loader.instance.ratioFeesToRewardHodlersPerThousand).toBeCalledTimes(0);
-    expect(loader.instance.currentRewardPerShare1e18).toBeCalledTimes(0);
-    expect(loader.instance.stakedLT).toBeCalledTimes(0);
-    expect(loader.instance.balanceOf).toBeCalledTimes(0);
-    expect(loader.instance.totalTokenAllocated).toBeCalledTimes(0);
-    expect(loader.instance.withdrawFeesPerThousandForLT).toBeCalledTimes(0);
-    expect(loader.instance.stakingStartDate).toBeCalledTimes(0);
-    expect(loader.instance.stakingDuration).toBeCalledTimes(0);
-    expect(loader.instance.stakingDateLastCheckpoint).toBeCalledTimes(0);
-    expect(loader.instance.campaignStakingRewards).toBeCalledTimes(0);
-    expect(loader.instance.totalStakingRewards).toBeCalledTimes(0);
-    expect(loader.instance.queryFilter).toBeCalledTimes(1);
+    expect(blockchain.loadChargedToken).toBeCalledTimes(0);
+    expect(blockchain.loadAndSyncEvents).toBeCalledTimes(1);
 
     expect(loader.lastState).toEqual(loadedModel);
 
@@ -248,9 +153,6 @@ describe("ChargedToken loader", () => {
   });
 
   test("Should not initialize InterfaceProjectToken if not set", async () => {
-    // mocking contract instance
-    (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
-
     // mocking mongo model
     const loadedModel = {
       ...sampleData(),
@@ -292,29 +194,13 @@ describe("ChargedToken loader", () => {
     // mocking contract
     const expectedBalances = sampleBalance(user, ACTUAL_BLOCK_NUMBER);
 
-    loader.instance.balanceOf.mockReset().mockResolvedValueOnce(BigNumber.from(expectedBalances.balance));
-    loader.instance.getUserFullyChargedBalanceLiquiToken.mockResolvedValueOnce(
-      BigNumber.from(expectedBalances.fullyChargedBalance),
-    );
-    loader.instance.getUserPartiallyChargedBalanceLiquiToken.mockResolvedValueOnce(
-      BigNumber.from(expectedBalances.partiallyChargedBalance),
-    );
-    loader.instance.getUserDateOfPartiallyChargedToken.mockResolvedValueOnce(
-      BigNumber.from(expectedBalances.dateOfPartiallyCharged),
-    );
-    loader.instance.claimedRewardPerShare1e18.mockResolvedValueOnce(
-      BigNumber.from(expectedBalances.claimedRewardPerShare1e18),
-    );
+    blockchain.loadUserBalances.mockResolvedValueOnce(expectedBalances);
 
     const actualBalances = await loader.loadUserBalances(user, ACTUAL_BLOCK_NUMBER);
 
     expect(actualBalances).toEqual(expectedBalances);
 
-    expect(loader.instance.balanceOf).toHaveBeenNthCalledWith(1, user);
-    expect(loader.instance.getUserFullyChargedBalanceLiquiToken).toHaveBeenNthCalledWith(1, user);
-    expect(loader.instance.getUserPartiallyChargedBalanceLiquiToken).toHaveBeenNthCalledWith(1, user);
-    expect(loader.instance.getUserDateOfPartiallyChargedToken).toHaveBeenNthCalledWith(1, user);
-    expect(loader.instance.claimedRewardPerShare1e18).toHaveBeenNthCalledWith(1, user);
+    expect(blockchain.loadUserBalances).toHaveBeenNthCalledWith(1, user);
   });
 
   test("Should load PT balances when available", async () => {
@@ -324,13 +210,8 @@ describe("ChargedToken loader", () => {
     const ACTUAL_BLOCK_NUMBER = 20;
 
     // preparing loader initialization
-    prepareContractMock(loader);
-
     const returnedData = { ...sampleData(), interfaceProjectToken: INTERFACE_ADDR };
-
     db.get.mockResolvedValueOnce(returnedData);
-
-    (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
 
     await loader.init(session, ACTUAL_BLOCK_NUMBER);
 
@@ -343,62 +224,19 @@ describe("ChargedToken loader", () => {
       valueProjectTokenToFullRecharge: "6",
       balancePT: "7",
     };
-
-    loader.instance.balanceOf.mockReset().mockResolvedValueOnce(BigNumber.from(expectedBalances.balance));
-    loader.instance.getUserFullyChargedBalanceLiquiToken.mockResolvedValueOnce(
-      BigNumber.from(expectedBalances.fullyChargedBalance),
-    );
-    loader.instance.getUserPartiallyChargedBalanceLiquiToken.mockResolvedValueOnce(
-      BigNumber.from(expectedBalances.partiallyChargedBalance),
-    );
-    loader.instance.getUserDateOfPartiallyChargedToken.mockResolvedValueOnce(
-      BigNumber.from(expectedBalances.dateOfPartiallyCharged),
-    );
-    loader.instance.claimedRewardPerShare1e18.mockResolvedValueOnce(
-      BigNumber.from(expectedBalances.claimedRewardPerShare1e18),
-    );
-
-    (loader.interface as any).loadUserBalancePT.mockResolvedValueOnce(expectedBalances.balancePT);
-    (loader.interface as any).loadValueProjectTokenToFullRecharge.mockResolvedValueOnce(
-      expectedBalances.valueProjectTokenToFullRecharge,
-    );
+    blockchain.loadUserBalances.mockResolvedValueOnce(expectedBalances);
 
     const actualBalances = await loader.loadUserBalances(user, ACTUAL_BLOCK_NUMBER);
 
     expect(actualBalances).toEqual(expectedBalances);
 
-    expect(loader.instance.balanceOf).toHaveBeenNthCalledWith(1, user);
-    expect(loader.instance.getUserFullyChargedBalanceLiquiToken).toHaveBeenNthCalledWith(1, user);
-    expect(loader.instance.getUserPartiallyChargedBalanceLiquiToken).toHaveBeenNthCalledWith(1, user);
-    expect(loader.instance.getUserDateOfPartiallyChargedToken).toHaveBeenNthCalledWith(1, user);
-    expect(loader.instance.claimedRewardPerShare1e18).toHaveBeenNthCalledWith(1, user);
-
-    expect(loader.interface?.loadUserBalancePT).toHaveBeenNthCalledWith(1, user);
-    expect(loader.interface?.loadValueProjectTokenToFullRecharge).toHaveBeenNthCalledWith(1, user);
+    expect(blockchain.loadUserBalances).toHaveBeenNthCalledWith(1, user);
   });
 
   test("Should propagate events subscription", async () => {
-    loader.interface = new InterfaceProjectToken(
-      CHAIN_ID,
-      provider,
-      ADDRESS,
-      { eventsListener } as Directory,
-      loader,
-      db,
-    );
-
     loader.subscribeToEvents();
 
-    expect(loader.interface.subscribeToEvents).toBeCalledTimes(1);
-  });
-
-  test("destroy", async () => {
-    loader.interface = new InterfaceProjectToken(CHAIN_ID, provider, ADDRESS, directoryLoader, loader, db);
-
-    await loader.destroy();
-
-    expect(loader.interface.destroy).toBeCalledTimes(1);
-    expect(loader.instance.removeAllListeners).toBeCalledTimes(1);
+    expect(blockchain.subscribeToEvents).toBeCalledTimes(1);
   });
 
   // Event handlers
@@ -948,5 +786,60 @@ describe("ChargedToken loader", () => {
   test("LTDeposited", async () => {
     // does nothing
     await loader.onLTDepositedEvent(session, [], BLOCK_NUMBER, "LTDeposited");
+  });
+
+  // Fundraising event handlers
+  test("FundraisingConditionsSet", async () => {
+    const loadedModel = sampleData();
+
+    db.exists.mockResolvedValueOnce(true);
+    db.get.mockResolvedValueOnce(loadedModel);
+
+    await loader.onFundraisingConditionsSetEvent(
+      session,
+      ["0xfundlowering", "YYY", "55"],
+      BLOCK_NUMBER,
+      "FundraisingConditionsSet",
+    );
+
+    expect(db.get).toBeCalledTimes(1);
+    expect(db.update).toHaveBeenCalledWith(DataType.ChargedToken, {
+      chainId: CHAIN_ID,
+      address: ADDRESS,
+      lastUpdateBlock: BLOCK_NUMBER,
+      fundraisingToken: "0xfundlowering",
+      fundraisingTokenSymbol: "YYY",
+      priceTokenPer1e18: "55",
+    });
+    expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}.${ADDRESS}`, loadedModel);
+    expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}`, loadedModel);
+  });
+
+  test("FundraisingStatusChanged", async () => {
+    const loadedModel = sampleData();
+
+    db.exists.mockResolvedValueOnce(true);
+    db.get.mockResolvedValueOnce(loadedModel);
+    blockchain.getChargedTokenFundraisingStatus.mockResolvedValueOnce(true);
+
+    await loader.onFundraisingStatusChangedEvent(session, [], BLOCK_NUMBER, "FundraisingStatusChanged");
+
+    expect(blockchain.getChargedTokenFundraisingStatus).toBeCalledTimes(1);
+    expect(db.get).toBeCalledTimes(1);
+    expect(db.update).toHaveBeenCalledWith(DataType.ChargedToken, {
+      chainId: CHAIN_ID,
+      address: ADDRESS,
+      lastUpdateBlock: BLOCK_NUMBER,
+      isFundraisingActive: true,
+    });
+    expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}.${ADDRESS}`, loadedModel);
+    expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}`, loadedModel);
+  });
+
+  // extraneous events
+
+  test("LTAllocatedThroughSale", async () => {
+    // does nothing
+    await loader.onLTAllocatedThroughSaleEvent(session, [], BLOCK_NUMBER, "LTAllocatedThroughSale");
   });
 });

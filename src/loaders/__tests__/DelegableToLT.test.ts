@@ -1,13 +1,13 @@
-import { BigNumber, ethers } from "ethers";
 import { ClientSession } from "mongodb";
 import { FlattenMaps } from "mongoose";
 import { IDelegableToLT } from "../../models";
 import { DataType, EMPTY_ADDRESS } from "../../types";
+import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
 import { DelegableToLT } from "../DelegableToLT";
 import { Directory } from "../Directory";
-import { EventListener } from "../EventListener";
+import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
 
 jest.mock("../../globals/config");
@@ -25,30 +25,26 @@ describe("DelegableToLT loader", () => {
   const NAME = "Test CT";
   const SYMBOL = "TCT";
 
-  let provider: ethers.providers.JsonRpcProvider;
+  let blockchain: jest.Mocked<AbstractBlockchainRepository>;
   let db: jest.Mocked<AbstractDbRepository>;
-  let eventsListener: EventListener;
   let directoryLoader: Directory;
   let ctLoader: ChargedToken;
   let loader: DelegableToLT;
   let session: ClientSession;
 
   beforeEach(() => {
-    provider = new ethers.providers.JsonRpcProvider();
+    blockchain = new MockBlockchainRepository() as jest.Mocked<AbstractBlockchainRepository>;
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
-    eventsListener = new EventListener(db, false);
-    directoryLoader = new Directory(eventsListener, CHAIN_ID, provider, ADDRESS, db);
-    ctLoader = new ChargedToken(CHAIN_ID, provider, ADDRESS, directoryLoader, db);
+    directoryLoader = new Directory(CHAIN_ID, blockchain, ADDRESS, db);
+    ctLoader = new ChargedToken(CHAIN_ID, blockchain, ADDRESS, directoryLoader, db);
     Object.defineProperty(ctLoader, "address", { value: ADDRESS });
-    loader = new DelegableToLT(CHAIN_ID, provider, ADDRESS, directoryLoader, ctLoader, db);
+    loader = new DelegableToLT(CHAIN_ID, blockchain, ADDRESS, directoryLoader, ctLoader, db);
     session = new ClientSession();
   });
 
   test("Should initialize DelegableToLT by reading blockchain when not in db", async () => {
     // checking constructor
     expect(loader.chainId).toBe(CHAIN_ID);
-    expect(loader.provider).toBe(provider);
-    expect(loader.eventsListener).toBe(directoryLoader.eventsListener);
     expect(loader.directory).toBe(directoryLoader);
     expect(loader.ct).toBe(ctLoader);
     expect(loader.address).toBe(ADDRESS);
@@ -57,7 +53,7 @@ describe("DelegableToLT loader", () => {
     // mocking ethers
     const BLOCK_NUMBER = 15;
 
-    (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
+    blockchain.getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
     const graphqlModel = {
@@ -77,14 +73,18 @@ describe("DelegableToLT loader", () => {
     db.get.mockResolvedValueOnce(null).mockResolvedValueOnce(graphqlModel);
 
     // mocking contract instance
-    loader.instance.owner.mockResolvedValueOnce(OWNER);
-    loader.instance.name.mockResolvedValueOnce(NAME);
-    loader.instance.symbol.mockResolvedValueOnce(SYMBOL);
-    loader.instance.decimals.mockResolvedValueOnce(BigNumber.from(18));
-    loader.instance.totalSupply.mockResolvedValueOnce(BigNumber.from(1));
-    loader.instance.countValidatedInterfaceProjectToken.mockResolvedValueOnce(BigNumber.from(1));
-    loader.instance.getValidatedInterfaceProjectToken.mockResolvedValueOnce("0xADDR");
-    loader.instance.isListOfInterfaceProjectTokenComplete.mockResolvedValueOnce(false);
+    blockchain.loadDelegableToLT.mockResolvedValueOnce({
+      chainId: CHAIN_ID,
+      address: ADDRESS,
+      lastUpdateBlock: BLOCK_NUMBER,
+      owner: OWNER,
+      name: NAME,
+      symbol: SYMBOL,
+      decimals: "18",
+      totalSupply: "1",
+      validatedInterfaceProjectToken: ["0xADDR"],
+      isListOfInterfaceProjectTokenComplete: false,
+    });
 
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
@@ -95,15 +95,8 @@ describe("DelegableToLT loader", () => {
     expect(db.get).toHaveBeenNthCalledWith(2, DataType.DelegableToLT, CHAIN_ID, ADDRESS);
     expect(db.save).toHaveBeenCalledTimes(1);
 
-    expect(loader.instance.owner).toBeCalledTimes(1);
-    expect(loader.instance.name).toBeCalledTimes(1);
-    expect(loader.instance.symbol).toBeCalledTimes(1);
-    expect(loader.instance.decimals).toBeCalledTimes(1);
-    expect(loader.instance.totalSupply).toBeCalledTimes(1);
-    expect(loader.instance.countValidatedInterfaceProjectToken).toBeCalledTimes(1);
-    expect(loader.instance.isListOfInterfaceProjectTokenComplete).toBeCalledTimes(1);
-    expect(loader.instance.getValidatedInterfaceProjectToken).toHaveBeenNthCalledWith(1, 0);
-    expect(loader.instance.queryFilter).toBeCalledTimes(0);
+    expect(blockchain.loadDelegableToLT).toBeCalledTimes(1);
+    expect(blockchain.loadAndSyncEvents).toBeCalledTimes(0);
 
     expect((session as any).startTransaction).toBeCalledTimes(1);
     expect((session as any).commitTransaction).toBeCalledTimes(1);
@@ -114,7 +107,7 @@ describe("DelegableToLT loader", () => {
     const PREV_BLOCK_NUMBER = 15;
     const BLOCK_NUMBER = 20;
 
-    (provider as any).getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
+    blockchain.getBlockNumber.mockResolvedValueOnce(BLOCK_NUMBER);
 
     // mocking mongo model
     const loadedModel = {
@@ -133,9 +126,6 @@ describe("DelegableToLT loader", () => {
 
     db.get.mockResolvedValueOnce(loadedModel);
 
-    // mocking contract instance
-    (loader.instance as any).queryFilter.mockResolvedValueOnce([]);
-
     // tested function
     await loader.init(session, BLOCK_NUMBER, true);
 
@@ -145,29 +135,13 @@ describe("DelegableToLT loader", () => {
     expect(db.get).toHaveBeenNthCalledWith(1, DataType.DelegableToLT, CHAIN_ID, ADDRESS);
     expect(db.save).toHaveBeenCalledTimes(0);
 
-    expect(loader.instance.owner).toBeCalledTimes(0);
-    expect(loader.instance.name).toBeCalledTimes(0);
-    expect(loader.instance.symbol).toBeCalledTimes(0);
-    expect(loader.instance.decimals).toBeCalledTimes(0);
-    expect(loader.instance.totalSupply).toBeCalledTimes(0);
-    expect(loader.instance.countValidatedInterfaceProjectToken).toBeCalledTimes(0);
-    expect(loader.instance.isListOfInterfaceProjectTokenComplete).toBeCalledTimes(0);
-    expect(loader.instance.getValidatedInterfaceProjectToken).toBeCalledTimes(0);
-    expect(loader.instance.queryFilter).toBeCalledTimes(1);
+    expect(blockchain.loadDelegableToLT).toBeCalledTimes(0);
+    expect(blockchain.loadAndSyncEvents).toBeCalledTimes(1);
 
     expect(loader.lastState).toEqual(loadedModel);
 
     expect((session as any).startTransaction).toBeCalledTimes(1);
     expect((session as any).commitTransaction).toBeCalledTimes(1);
-  });
-
-  test("should load user balance from contract", async () => {
-    loader.instance.balanceOf.mockResolvedValueOnce(BigNumber.from(10));
-
-    const result = await loader.loadUserBalance("0xUSER");
-
-    expect(result).toBe("10");
-    expect(loader.instance.balanceOf).toHaveBeenCalledWith("0xUSER");
   });
 
   // Event Handlers

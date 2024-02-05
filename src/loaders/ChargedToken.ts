@@ -1,9 +1,9 @@
-import { BigNumber, type ethers } from "ethers";
+import { BigNumber } from "ethers";
 import { type ClientSession } from "mongoose";
-import { contracts } from "../contracts";
 import { type IChargedToken } from "../models";
 import { type IUserBalance } from "../models/UserBalances";
-import { EMPTY_ADDRESS } from "../types";
+import { DataType, EMPTY_ADDRESS } from "../types";
+import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
 import { type Directory } from "./Directory";
@@ -15,12 +15,12 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
 
   constructor(
     chainId: number,
-    provider: ethers.providers.JsonRpcProvider,
+    blockchain: AbstractBlockchainRepository,
     address: string,
     directory: Directory,
     dbRepository: AbstractDbRepository,
   ) {
-    super(directory.eventsListener, chainId, provider, address, contracts.LiquidityToken, dbRepository);
+    super(chainId, blockchain, address, dbRepository, DataType.ChargedToken);
     this.directory = directory;
   }
 
@@ -30,7 +30,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     if (this.lastState!.interfaceProjectToken !== EMPTY_ADDRESS) {
       this.interface = new InterfaceProjectToken(
         this.chainId,
-        this.provider,
+        this.blockchain,
         this.lastState!.interfaceProjectToken,
         this.directory,
         this,
@@ -60,92 +60,24 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   }
 
   async load(blockNumber: number) {
-    this.log.debug({
-      msg: "Reading entire charged token",
-      chainId: this.chainId,
-      contract: this.contract.name,
-      address: this.address,
-    });
-
-    const ins = this.instance;
-
-    return {
-      // contract
-      chainId: this.chainId,
-      lastUpdateBlock: blockNumber,
-      address: this.address,
-      // ownable
-      owner: await ins.owner(),
-      // erc20
-      name: await ins.name(),
-      symbol: await ins.symbol(),
-      decimals: (await ins.decimals()).toString(),
-      totalSupply: (await ins.totalSupply()).toString(),
-      // constants
-      fractionInitialUnlockPerThousand: (await ins.fractionInitialUnlockPerThousand()).toString(),
-      durationCliff: (await ins.durationCliff()).toString(),
-      durationLinearVesting: (await ins.durationLinearVesting()).toString(),
-      maxInitialTokenAllocation: (await ins.maxInitialTokenAllocation()).toString(),
-      maxWithdrawFeesPerThousandForLT: (await ins.maxWithdrawFeesPerThousandForLT()).toString(),
-      maxClaimFeesPerThousandForPT: (await ins.maxClaimFeesPerThousandForPT()).toString(),
-      maxStakingAPR: (await ins.maxStakingAPR()).toString(),
-      maxStakingTokenAmount: (await ins.maxStakingTokenAmount()).toString(),
-      // toggles
-      areUserFunctionsDisabled: await ins.areUserFunctionsDisabled(),
-      isInterfaceProjectTokenLocked: await ins.isInterfaceProjectTokenLocked(),
-      areAllocationsTerminated: await ins.areAllocationsTerminated(),
-      // variables
-      interfaceProjectToken: await ins.interfaceProjectToken(),
-      ratioFeesToRewardHodlersPerThousand: (await ins.ratioFeesToRewardHodlersPerThousand()).toString(),
-      currentRewardPerShare1e18: (await ins.currentRewardPerShare1e18()).toString(),
-      stakedLT: (await ins.stakedLT()).toString(),
-      totalLocked: (await ins.balanceOf(this.address)).toString(),
-      totalTokenAllocated: (await ins.totalTokenAllocated()).toString(),
-      withdrawFeesPerThousandForLT: (await ins.withdrawFeesPerThousandForLT()).toString(),
-      // staking
-      stakingStartDate: (await ins.stakingStartDate()).toString(),
-      stakingDuration: (await ins.stakingDuration()).toString(),
-      stakingDateLastCheckpoint: (await ins.stakingDateLastCheckpoint()).toString(),
-      campaignStakingRewards: (await ins.campaignStakingRewards()).toString(),
-      totalStakingRewards: (await ins.totalStakingRewards()).toString(),
-      // fundraising
-      isFundraisingContract: false,
-      fundraisingTokenSymbol: "",
-      priceTokenPer1e18: "0",
-      fundraisingToken: EMPTY_ADDRESS,
-      isFundraisingActive: false,
-    };
+    return await this.blockchain.loadChargedToken(this.address, blockNumber);
   }
 
   async loadUserBalances(user: string, blockNumber: number): Promise<IUserBalance> {
     this.log.debug({
       msg: `Loading CT balance for ${user}`,
       chainId: this.chainId,
-      contract: this.contract.name,
+      contract: this.dataType,
       address: this.address,
     });
 
-    const balance = (await this.instance.balanceOf(user)).toString();
-    const fullyChargedBalance = (await this.instance.getUserFullyChargedBalanceLiquiToken(user)).toString();
-    const partiallyChargedBalance = (await this.instance.getUserPartiallyChargedBalanceLiquiToken(user)).toString();
-
-    return {
-      chainId: this.chainId,
+    return await this.blockchain.loadUserBalances(
+      blockNumber,
       user,
-      address: this.address,
-      ptAddress: this.interface?.projectToken !== undefined ? this.interface.projectToken.address : "",
-      lastUpdateBlock: blockNumber,
-      balance,
-      balancePT: this.interface !== undefined ? await this.interface.loadUserBalancePT(user) : "0",
-      fullyChargedBalance,
-      partiallyChargedBalance,
-      dateOfPartiallyCharged: (await this.instance.getUserDateOfPartiallyChargedToken(user)).toString(),
-      claimedRewardPerShare1e18: (await this.instance.claimedRewardPerShare1e18(user)).toString(),
-      valueProjectTokenToFullRecharge:
-        this.interface !== undefined
-          ? (await this.interface.loadValueProjectTokenToFullRecharge(user)).toString()
-          : "0",
-    };
+      this.address,
+      this.interface?.address,
+      this.interface?.projectToken?.address,
+    );
   }
 
   subscribeToEvents(): void {
@@ -153,11 +85,6 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     if (this.interface !== undefined) {
       this.interface.subscribeToEvents();
     }
-  }
-
-  async destroy() {
-    if (this.interface !== undefined) await this.interface.destroy();
-    await super.destroy();
   }
 
   async onTransferEvent(
@@ -171,7 +98,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       this.log.warn({
         msg: "Skipping transfer event processing since value is zero",
         chainId: this.chainId,
-        contract: this.contract.name,
+        contract: this.dataType,
         address: this.address,
       });
       return;
@@ -203,7 +130,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
           this.log.info({
             msg: "Skipping from balance update since it was not found in db",
             chainId: this.chainId,
-            contract: this.contract.name,
+            contract: this.dataType,
             address: this.address,
           });
         }
@@ -237,7 +164,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
           this.log.info({
             msg: "Skipping to balance update since it was not found in db",
             chainId: this.chainId,
-            contract: this.contract.name,
+            contract: this.dataType,
             address: this.address,
           });
         }
@@ -287,7 +214,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
   ): Promise<void> {
     this.interface = new InterfaceProjectToken(
       this.chainId,
-      this.provider,
+      this.blockchain,
       interfaceProjectToken,
       this.directory,
       this,
@@ -680,7 +607,51 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     await this.applyUpdateAndNotify(
       session,
       {
-        isFundraisingActive: await this.instance.isFundraisingActive(),
+        isFundraisingActive: await this.blockchain.getChargedTokenFundraisingStatus(this.address),
+      },
+      blockNumber,
+      eventName,
+    );
+  }
+
+  // fundraising events
+
+  // Fundraising
+  async onFundraisingConditionsSetEvent(
+    session: ClientSession,
+    [token, symbol, price1e18]: any[],
+    blockNumber: number,
+    eventName?: string,
+  ): Promise<void> {
+    await this.applyUpdateAndNotify(
+      session,
+      {
+        fundraisingToken: token,
+        fundraisingTokenSymbol: symbol,
+        priceTokenPer1e18: price1e18,
+      },
+      blockNumber,
+      eventName,
+    );
+  }
+
+  async onLTAllocatedThroughSaleEvent(
+    session: ClientSession,
+    [user, valueLT, valuePayment, fee]: any[],
+    blockNumber: number,
+    eventName?: string,
+  ): Promise<void> {}
+
+  async onFundraisingStatusChangedEvent(
+    session: ClientSession,
+    []: any[],
+    blockNumber: number,
+    eventName?: string,
+  ): Promise<void> {
+    await this.applyUpdateAndNotify(
+      session,
+      {
+        isFundraisingActive: await this.blockchain.getChargedTokenFundraisingStatus(this.address),
       },
       blockNumber,
       eventName,

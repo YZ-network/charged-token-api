@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 import { WebSocket } from "ws";
+import { BlockchainRepository } from "./BlockchainRepository";
 import { Config, ProviderStatus, WorkerStatus } from "./globals";
 import { AbstractDbRepository } from "./loaders/AbstractDbRepository";
 import { Directory } from "./loaders/Directory";
-import { EventListener } from "./loaders/EventListener";
 import { subscribeToUserBalancesLoading } from "./subscriptions";
 import { Metrics, rootLogger } from "./util";
 import { AutoWebSocketProvider } from "./util/AutoWebSocketProvider";
@@ -31,7 +31,7 @@ export class ChainWorker {
   readonly chainId: number;
   readonly db: AbstractDbRepository;
 
-  eventListener: EventListener | undefined;
+  blockchain: BlockchainRepository | undefined;
   name: string | undefined;
   restartCount: number = 0;
   blockNumberBeforeDisconnect: number = 0;
@@ -229,8 +229,8 @@ export class ChainWorker {
     });
 
     try {
-      this.eventListener = new EventListener(this.db);
-      this.directory = new Directory(this.eventListener, this.chainId, this.provider, this.directoryAddress, this.db);
+      this.blockchain = new BlockchainRepository(this.chainId, this.provider, this.db);
+      this.directory = new Directory(this.chainId, this.blockchain, this.directoryAddress, this.db);
       const blockNumber = await this.provider.getBlockNumber();
 
       log.info({
@@ -250,7 +250,7 @@ export class ChainWorker {
       });
       this.directory.subscribeToEvents();
       this.subscribeToNewBlocks();
-      await subscribeToUserBalancesLoading(this.directory);
+      await subscribeToUserBalancesLoading(this.directory, this.blockchain);
     } catch (err) {
       log.error({
         msg: `Error happened running worker on network ${this.name}`,
@@ -269,10 +269,9 @@ export class ChainWorker {
 
     Metrics.workerStopped(this.chainId);
 
-    this.eventListener?.destroy();
-    this.eventListener = undefined;
+    this.blockchain?.destroy();
+    this.blockchain = undefined;
 
-    this.directory?.destroy();
     this.directory = undefined;
     this.provider?.removeAllListeners();
     this.worker = undefined;

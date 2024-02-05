@@ -1,7 +1,7 @@
 import { EventFilter, ethers } from "ethers";
 import { contracts } from "./contracts";
 import { AbstractBlockchainRepository, AbstractDbRepository, AbstractLoader, EventListener } from "./loaders";
-import { IChargedToken, IDelegableToLT, IDirectory, IInterfaceProjectToken } from "./models";
+import { IChargedToken, IDelegableToLT, IDirectory, IInterfaceProjectToken, IUserBalance } from "./models";
 import topicsMap from "./topics";
 import { DataType, EMPTY_ADDRESS } from "./types";
 import { rootLogger } from "./util";
@@ -14,6 +14,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   private readonly log = rootLogger.child({ name: "BlockchainRepository" });
 
   private readonly instances: Record<string, ethers.Contract> = {};
+  private readonly interfaces: Record<string, ethers.utils.Interface> = {};
 
   constructor(
     chainId: number,
@@ -25,7 +26,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     this.chainId = chainId;
     this.provider = provider;
     this.db = db;
-    this.eventListener = new EventListener(db, startEventLoop);
+    this.eventListener = new EventListener(db, provider, startEventLoop);
   }
 
   private getInstance(dataType: DataType, address: string): ethers.Contract {
@@ -48,6 +49,32 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
       }
     }
     return this.instances[address];
+  }
+
+  private getInterface(dataType: DataType): ethers.utils.Interface {
+    if (this.interfaces[dataType] === undefined) {
+      switch (dataType) {
+        case DataType.ChargedToken:
+          this.interfaces[dataType] = new ethers.utils.Interface(contracts.LiquidityToken.abi);
+          break;
+        case DataType.InterfaceProjectToken:
+          this.interfaces[dataType] = new ethers.utils.Interface(contracts.InterfaceProjectToken.abi);
+          break;
+        case DataType.Directory:
+          this.interfaces[dataType] = new ethers.utils.Interface(contracts.ContractsDirectory.abi);
+          break;
+        case DataType.DelegableToLT:
+          this.interfaces[dataType] = new ethers.utils.Interface(contracts.DelegableToLT.abi);
+          break;
+        default:
+          throw new Error(`Unhandled contract type : ${dataType}`);
+      }
+    }
+    return this.interfaces[dataType];
+  }
+
+  async getBlockNumber(): Promise<number> {
+    return await this.provider.getBlockNumber();
   }
 
   async loadDirectory(address: string, blockNumber: number): Promise<IDirectory> {
@@ -151,6 +178,24 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     };
   }
 
+  async getUserBalancePT(ptAddress: string, user: string): Promise<string> {
+    return (await this.getInstance(DataType.DelegableToLT, ptAddress).balanceOf(user)).toString();
+  }
+
+  async getChargedTokenFundraisingStatus(address: string): Promise<boolean> {
+    return await this.getInstance(DataType.ChargedToken, address).isFundraisingActive();
+  }
+
+  async getProjectRelatedToLT(address: string, contract: string): Promise<string> {
+    return await this.getInstance(DataType.Directory, address).projectRelatedToLT(contract);
+  }
+
+  async getUserLiquiToken(address: string, user: string): Promise<{ dateOfPartiallyCharged: number }> {
+    return (await this.getInstance(DataType.ChargedToken, address).userLiquiToken(user)) as {
+      dateOfPartiallyCharged: number;
+    };
+  }
+
   async loadInterfaceProjectToken(address: string, blockNumber: number): Promise<IInterfaceProjectToken> {
     const ins = this.getInstance(DataType.InterfaceProjectToken, address);
 
@@ -197,7 +242,157 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     };
   }
 
-  async loadEvents(dataType: DataType, address: string, startBlock: number): Promise<ethers.Event[]> {
+  async loadUserBalances(
+    blockNumber: number,
+    user: string,
+    ctAddress: string,
+    interfaceAddress?: string,
+    ptAddress?: string,
+  ): Promise<IUserBalance> {
+    const ctInstance = this.getInstance(DataType.ChargedToken, ctAddress);
+    const ifaceInstance =
+      interfaceAddress !== undefined ? this.getInstance(DataType.InterfaceProjectToken, interfaceAddress) : undefined;
+    const ptInstance = ptAddress !== undefined ? this.getInstance(DataType.DelegableToLT, ptAddress) : undefined;
+
+    const balance = (await ctInstance.balanceOf(user)).toString();
+    const fullyChargedBalance = (await ctInstance.getUserFullyChargedBalanceLiquiToken(user)).toString();
+    const partiallyChargedBalance = (await ctInstance.getUserPartiallyChargedBalanceLiquiToken(user)).toString();
+
+    return {
+      chainId: this.chainId,
+      user,
+      address: ctAddress,
+      ptAddress: ptAddress || "",
+      lastUpdateBlock: blockNumber,
+      balance,
+      balancePT: ptInstance !== undefined ? (await ptInstance.balanceOf(user)).toString() : "0",
+      fullyChargedBalance,
+      partiallyChargedBalance,
+      dateOfPartiallyCharged: (await ctInstance.getUserDateOfPartiallyChargedToken(user)).toString(),
+      claimedRewardPerShare1e18: (await ctInstance.claimedRewardPerShare1e18(user)).toString(),
+      valueProjectTokenToFullRecharge:
+        ifaceInstance !== undefined ? (await ifaceInstance.loadValueProjectTokenToFullRecharge(user)).toString() : "0",
+    };
+  }
+
+  async loadAndSyncEvents(
+    dataType: DataType,
+    address: string,
+    startBlock: number,
+    loader: AbstractLoader<any>,
+  ): Promise<void> {
+    let missedEvents: ethers.Event[] = [];
+
+    let eventsFetchRetryCount = 0;
+    while (eventsFetchRetryCount < 3) {
+      try {
+        missedEvents = await this.getFilteredMissedEvents(dataType, address, startBlock);
+        break;
+      } catch (err) {
+        this.log.warn({
+          msg: `Could not retrieve events from block ${startBlock}`,
+          err,
+          contract: dataType,
+          address,
+          chainId: this.chainId,
+        });
+        eventsFetchRetryCount++;
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
+
+    if (eventsFetchRetryCount >= 3) {
+      this.log.error({
+        msg: `Error retrieving events from block ${startBlock} after 3 tries`,
+        contract: dataType,
+        address,
+        chainId: this.chainId,
+      });
+      return;
+    }
+
+    if (missedEvents.length === 0) return;
+
+    for (const event of missedEvents) {
+      const name = event.event;
+
+      if (name === undefined) {
+        this.log.warn({
+          msg: "found unnamed event :",
+          event,
+          contract: dataType,
+          address,
+          chainId: this.chainId,
+        });
+      } else {
+        this.log.info({
+          msg: "delegating event processing",
+          contract: dataType,
+          address,
+          chainId: this.chainId,
+        });
+
+        await this.eventListener.queueLog(name, event, loader, this.getInterface(dataType));
+      }
+    }
+  }
+
+  private async getFilteredMissedEvents(
+    dataType: DataType,
+    address: string,
+    fromBlock: number,
+  ): Promise<ethers.Event[]> {
+    this.log.info({
+      msg: `Querying missed events from block ${fromBlock}`,
+      contract: dataType,
+      address,
+      chainId: this.chainId,
+    });
+
+    const missedEvents = await this.loadEvents(dataType, address, fromBlock);
+
+    if (missedEvents.length === 0) {
+      this.log.info({
+        msg: "No events missed",
+        contract: dataType,
+        address,
+        chainId: this.chainId,
+      });
+      return [];
+    }
+
+    this.log.info({
+      msg: `Found ${missedEvents.length} potentially missed events`,
+      contract: dataType,
+      address,
+      chainId: this.chainId,
+    });
+
+    const filteredEvents: ethers.Event[] = await this.removeKnownEvents(missedEvents);
+
+    if (missedEvents.length > filteredEvents.length) {
+      this.log.info({
+        msg: `Skipped ${missedEvents.length - filteredEvents.length} events already played`,
+        contract: dataType,
+        address,
+        chainId: this.chainId,
+      });
+    }
+
+    if (filteredEvents.length > 0) {
+      this.log.info({
+        msg: `Found ${filteredEvents.length} really missed events`,
+        // missedEvents,
+        contract: dataType,
+        address,
+        chainId: this.chainId,
+      });
+    }
+
+    return filteredEvents;
+  }
+
+  private async loadEvents(dataType: DataType, address: string, startBlock: number): Promise<ethers.Event[]> {
     const eventFilter: EventFilter = {
       address,
     };
@@ -227,7 +422,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     return events;
   }
 
-  async removeKnownEvents(events: ethers.Event[]): Promise<ethers.Event[]> {
+  private async removeKnownEvents(events: ethers.Event[]): Promise<ethers.Event[]> {
     const filteredEvents: ethers.Event[] = [];
     for (const event of events) {
       if (
@@ -256,7 +451,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     instance.on(eventFilter, (log: ethers.providers.Log) => {
       const eventName = topicsMap[this.constructor.name][log.topics[0]];
 
-      this.eventListener.queueLog(eventName, log, loader).catch((err) => {
+      this.eventListener.queueLog(eventName, log, loader, this.getInterface(dataType)).catch((err) => {
         this.log.error({
           msg: `error queuing event ${eventName}`,
           err,

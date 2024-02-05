@@ -1,8 +1,8 @@
-import { BigNumber, type ethers } from "ethers";
+import { BigNumber } from "ethers";
 import { type ClientSession } from "mongoose";
-import { contracts } from "../contracts";
 import { type IDelegableToLT } from "../models";
-import { EMPTY_ADDRESS } from "../types";
+import { DataType, EMPTY_ADDRESS } from "../types";
+import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
 import { type ChargedToken } from "./ChargedToken";
@@ -14,13 +14,13 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
 
   constructor(
     chainId: number,
-    provider: ethers.providers.JsonRpcProvider,
+    blockchain: AbstractBlockchainRepository,
     address: string,
     directory: Directory,
     ct: ChargedToken,
     dbRepository: AbstractDbRepository,
   ) {
-    super(directory.eventsListener, chainId, provider, address, contracts.DelegableToLT, dbRepository);
+    super(chainId, blockchain, address, dbRepository, DataType.DelegableToLT);
 
     this.directory = directory;
     this.ct = ct;
@@ -38,45 +38,11 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     this.log.debug({
       msg: "Reading entire project token",
       chainId: this.chainId,
-      contract: this.contract.name,
+      contract: this.dataType,
       address: this.address,
     });
 
-    const ins = this.instance;
-
-    const validatedInterfaceProjectToken: string[] = [];
-    const validatedInterfaceCount = (await ins.countValidatedInterfaceProjectToken()).toNumber();
-    for (let i = 0; i < validatedInterfaceCount; i++) {
-      validatedInterfaceProjectToken.push(await ins.getValidatedInterfaceProjectToken(i));
-    }
-
-    return {
-      // contract
-      chainId: this.chainId,
-      lastUpdateBlock: blockNumber,
-      address: this.address,
-      // ownable
-      owner: await ins.owner(),
-      // erc20
-      name: await ins.name(),
-      symbol: await ins.symbol(),
-      decimals: (await ins.decimals()).toString(),
-      totalSupply: (await ins.totalSupply()).toString(),
-      // other
-      validatedInterfaceProjectToken,
-      isListOfInterfaceProjectTokenComplete: await ins.isListOfInterfaceProjectTokenComplete(),
-    };
-  }
-
-  async loadUserBalance(user: string) {
-    this.log.debug({
-      msg: `Loading PT balance for ${user}`,
-      chainId: this.chainId,
-      contract: this.contract.name,
-      address: this.address,
-    });
-
-    return (await this.instance.balanceOf(user)).toString();
+    return await this.blockchain.loadDelegableToLT(this.address, blockNumber);
   }
 
   async onTransferEvent(
@@ -90,7 +56,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
       this.log.warn({
         msg: "Skipping transfer event processing since value is zero",
         chainId: this.chainId,
-        contract: this.contract.name,
+        contract: this.dataType,
         address: this.address,
       });
       return;

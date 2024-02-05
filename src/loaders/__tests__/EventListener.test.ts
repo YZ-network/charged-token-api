@@ -1,3 +1,4 @@
+import { ethers } from "ethers";
 import { ClientSession } from "mongodb";
 import mongoose from "mongoose";
 import { EventHandlerStatus } from "../../globals";
@@ -11,13 +12,15 @@ jest.mock("../../models");
 
 describe("EventListener", () => {
   let db: jest.Mocked<AbstractDbRepository>;
+  let provider: jest.Mocked<ethers.providers.JsonRpcProvider>;
 
   beforeEach(() => {
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
+    provider = new ethers.providers.JsonRpcProvider() as jest.Mocked<ethers.providers.JsonRpcProvider>;
   });
 
   it("should start looking for event queue to execute and dispose on destroy", () => {
-    const listener = new EventListener(db);
+    const listener = new EventListener(db, provider);
 
     expect(listener.timer).toBeDefined();
     expect(listener.executingEventHandlers).toBe(false);
@@ -47,25 +50,27 @@ describe("EventListener", () => {
     const mockAbstractLoader = {
       chainId: 1337,
       address: "0xaddr",
-      iface: {
-        parseLog: jest.fn(() => {
-          return { args: decodedArgs };
-        }),
-      },
-      provider: {
-        getBlock: jest.fn(() => {
-          return {
-            timestamp: 0,
-          };
-        }),
-      },
     };
+
+    const mockInterface = {
+      parseLog: jest.fn(() => ({ args: decodedArgs })),
+    };
+
+    provider.getBlock.mockResolvedValueOnce({
+      timestamp: 0,
+    } as unknown as ethers.providers.Block);
+
     db.existsEvent.mockResolvedValueOnce(false);
 
-    const listener = new EventListener(db, false);
+    const listener = new EventListener(db, provider, false);
     expect(listener.queue.length).toBe(0);
 
-    await listener.queueLog("SampleEvent", log, mockAbstractLoader as unknown as AbstractLoader<any>);
+    await listener.queueLog(
+      "SampleEvent",
+      log,
+      mockAbstractLoader as unknown as AbstractLoader<any>,
+      mockInterface as unknown as ethers.utils.Interface,
+    );
 
     expect(listener.queue.length).toBe(1);
     expect(db.existsEvent).toHaveBeenNthCalledWith(
@@ -76,7 +81,7 @@ describe("EventListener", () => {
       log.transactionIndex,
       log.logIndex,
     );
-    expect(mockAbstractLoader.iface.parseLog).toHaveBeenNthCalledWith(1, log);
+    expect(mockInterface.parseLog).toHaveBeenNthCalledWith(1, log);
     expect(db.saveEvent).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
@@ -103,17 +108,24 @@ describe("EventListener", () => {
     const mockAbstractLoader = {
       chainId: 1337,
       address: "0xaddr",
-      iface: {
-        parseLog: jest.fn(() => {
-          return { args: new Map() };
-        }),
-      },
     };
+
+    const mockInterface = {
+      parseLog: jest.fn(() => {
+        return { args: new Map() };
+      }),
+    };
+
     db.existsEvent.mockResolvedValueOnce(true);
 
-    const listener = new EventListener(db, false);
+    const listener = new EventListener(db, provider, false);
 
-    await listener.queueLog("SampleEvent", log, mockAbstractLoader as unknown as AbstractLoader<any>);
+    await listener.queueLog(
+      "SampleEvent",
+      log,
+      mockAbstractLoader as unknown as AbstractLoader<any>,
+      mockInterface as unknown as ethers.utils.Interface,
+    );
 
     expect(listener.queue.length).toBe(0);
 
@@ -148,28 +160,32 @@ describe("EventListener", () => {
     const mockAbstractLoader = {
       chainId: 1337,
       address: "0xaddr",
-      iface: {
-        parseLog: jest.fn(() => {
-          return { args: decodedArgs };
-        }),
-      },
-      provider: {
-        getBlock: jest.fn(() => {
-          return {
-            timestamp: 0,
-          };
-        }),
-      },
       onEvent: jest.fn(),
     };
+
+    const mockInterface = {
+      parseLog: jest.fn(() => {
+        return { args: decodedArgs };
+      }),
+    };
+
+    provider.getBlock.mockResolvedValueOnce({
+      timestamp: 0,
+    } as unknown as ethers.providers.Block);
+
     db.existsEvent.mockResolvedValue(true).mockResolvedValueOnce(false);
 
     const mockSession = new ClientSession();
     (mongoose as any).startSession.mockReturnValue(mockSession);
 
-    const listener = new EventListener(db);
+    const listener = new EventListener(db, provider);
 
-    await listener.queueLog("SampleEvent", log, mockAbstractLoader as unknown as AbstractLoader<any>);
+    await listener.queueLog(
+      "SampleEvent",
+      log,
+      mockAbstractLoader as unknown as AbstractLoader<any>,
+      mockInterface as unknown as ethers.utils.Interface,
+    );
     await waitForEventsLoopToComplete(listener);
 
     expect(mongoose.startSession).toBeCalledTimes(1);
@@ -208,33 +224,36 @@ describe("EventListener", () => {
     const mockAbstractLoader = {
       chainId: 1337,
       address: "0xaddr",
-      iface: {
-        parseLog: jest.fn(() => {
-          return { args: decodedArgs };
-        }),
-      },
-      provider: {
-        getBlock: jest.fn(() => {
-          return {
-            timestamp: 0,
-          };
-        }),
-      },
       onEvent: jest.fn(() => {
         throw new Error("event handler error");
       }),
     };
+
+    const mockInterface = {
+      parseLog: jest.fn(() => {
+        return { args: decodedArgs };
+      }),
+    };
+
+    provider.getBlock.mockResolvedValueOnce({
+      timestamp: 0,
+    } as unknown as ethers.providers.Block);
 
     const mockSession = new ClientSession();
     (mongoose as any).startSession.mockResolvedValue(mockSession);
 
     db.existsEvent.mockResolvedValue(true).mockResolvedValueOnce(false);
 
-    const listener = new EventListener(db, false);
+    const listener = new EventListener(db, provider, false);
 
     const loggerErrorMock = jest.spyOn(listener.log, "error");
 
-    await listener.queueLog("SampleEvent", log, mockAbstractLoader as unknown as AbstractLoader<any>);
+    await listener.queueLog(
+      "SampleEvent",
+      log,
+      mockAbstractLoader as unknown as AbstractLoader<any>,
+      mockInterface as unknown as ethers.utils.Interface,
+    );
     await listener.executePendingLogs();
 
     expect(listener.running).toBe(false);

@@ -1,34 +1,30 @@
-import { ethers } from "ethers";
 import { type ClientSession } from "mongodb";
-import { contracts } from "../contracts";
 import { type IDirectory, type IUserBalance } from "../models";
 import pubSub from "../pubsub";
 import { DataType, EMPTY_ADDRESS } from "../types";
+import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
-import { type EventListener } from "./EventListener";
-import { FundraisingChargedToken } from "./FundraisingChargedToken";
 import { InterfaceProjectToken } from "./InterfaceProjectToken";
 
 export class Directory extends AbstractLoader<IDirectory> {
-  readonly ct: Record<string, ChargedToken | FundraisingChargedToken> = {};
+  readonly ct: Record<string, ChargedToken> = {};
 
   constructor(
-    eventListener: EventListener,
     chainId: number,
-    provider: ethers.providers.JsonRpcProvider,
+    blockchain: AbstractBlockchainRepository,
     address: string,
     dbRepository: AbstractDbRepository,
   ) {
-    super(eventListener, chainId, provider, address, contracts.ContractsDirectory, dbRepository);
+    super(chainId, blockchain, address, dbRepository, DataType.Directory);
   }
 
   async init(session: ClientSession, blockNumber: number, createTransaction?: boolean) {
     await super.init(session, blockNumber, createTransaction);
 
     for (const address of this.lastState!.directory) {
-      this.ct[address] = await this.guessChargedTokenKindAndCreate(address);
+      this.ct[address] = await new ChargedToken(this.chainId, this.blockchain, address, this, this.db);
     }
 
     for (const ct of Object.values(this.ct)) {
@@ -36,71 +32,15 @@ export class Directory extends AbstractLoader<IDirectory> {
     }
   }
 
-  private async guessChargedTokenKindAndCreate(address: string): Promise<ChargedToken | FundraisingChargedToken> {
-    try {
-      const instance = new ethers.Contract(address, contracts.LiquidityToken.abi, this.provider);
-      await instance.isFundraisingActive();
-      this.log.info({
-        msg: "Detected Fundraising Contract",
-        chainId: this.chainId,
-        contract: this.contract.name,
-        address,
-      });
-      return new FundraisingChargedToken(this.chainId, this.provider, address, this, this.db);
-    } catch (err) {
-      this.log.info({
-        msg: "Detected old Charged Token Contract",
-        chainId: this.chainId,
-        contract: this.contract.name,
-        address,
-      });
-      return new ChargedToken(this.chainId, this.provider, address, this, this.db);
-    }
-  }
-
   async load(blockNumber: number): Promise<IDirectory> {
     this.log.debug({
       msg: "Reading entire directory",
       chainId: this.chainId,
-      contract: this.contract.name,
+      contract: this.dataType,
       address: this.address,
     });
 
-    const ins = this.instance;
-
-    const whitelistCount = (await ins.countWhitelistedProjectOwners()).toNumber();
-    const whitelistedProjectOwners: string[] = [];
-    const projects: string[] = [];
-    const whitelist: Record<string, string> = {};
-    for (let i = 0; i < whitelistCount; i++) {
-      const projectOwner = await ins.getWhitelistedProjectOwner(i);
-      const projectName = await ins.getWhitelistedProjectName(i);
-      whitelistedProjectOwners.push(projectOwner);
-      projects.push(projectName);
-      whitelist[projectOwner] = await ins.whitelist(projectOwner);
-    }
-
-    const contractsCount = (await ins.countLTContracts()).toNumber();
-    const directory: string[] = [];
-    const projectRelatedToLT: Record<string, string> = {};
-    for (let i = 0; i < contractsCount; i++) {
-      const ctAddress = await ins.getLTContract(i);
-      directory.push(ctAddress);
-      projectRelatedToLT[ctAddress] = await ins.projectRelatedToLT(ctAddress);
-    }
-
-    return {
-      chainId: this.chainId,
-      lastUpdateBlock: blockNumber,
-      address: this.address,
-      owner: await ins.owner(),
-      directory,
-      whitelistedProjectOwners,
-      projects,
-      projectRelatedToLT,
-      whitelist,
-      areUserFunctionsDisabled: await ins.areUserFunctionsDisabled(),
-    };
+    return await this.blockchain.loadDirectory(this.address, blockNumber);
   }
 
   async loadAllUserBalances(
@@ -112,7 +52,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     this.log.info({
       msg: `Loading user balances for ${user}@${address}`,
       chainId: this.chainId,
-      contract: this.contract.name,
+      contract: this.dataType,
       address: this.address,
     });
 
@@ -121,9 +61,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     const results =
       address === undefined || this.ct[address] === undefined
         ? await Promise.all(
-            Object.values(this.ct).map(
-              async (ct: ChargedToken | FundraisingChargedToken) => await ct.loadUserBalances(user, blockNumber),
-            ),
+            Object.values(this.ct).map(async (ct: ChargedToken) => await ct.loadUserBalances(user, blockNumber)),
           )
         : [await this.ct[address].loadUserBalances(user, blockNumber)];
 
@@ -143,7 +81,7 @@ export class Directory extends AbstractLoader<IDirectory> {
         this.log.info({
           msg: `first time saving balance for ${user}`,
           chainId: this.chainId,
-          contract: this.contract.name,
+          contract: this.dataType,
           address: entry.address,
           ptAddress,
         });
@@ -157,7 +95,7 @@ export class Directory extends AbstractLoader<IDirectory> {
       this.log.info({
         msg: `Publishing updated user balances for ${user}`,
         chainId: this.chainId,
-        contract: this.contract.name,
+        contract: this.dataType,
         address: this.address,
       });
 
@@ -166,7 +104,7 @@ export class Directory extends AbstractLoader<IDirectory> {
       this.log.warn({
         msg: `Error while reloading balances after save for user ${user}`,
         chainId: this.chainId,
-        contract: this.contract.name,
+        contract: this.dataType,
         address: this.address,
       });
     }
@@ -175,20 +113,11 @@ export class Directory extends AbstractLoader<IDirectory> {
     this.log.debug({
       msg: `User balances loaded in ${(stopDate - startDate) / 1000} seconds`,
       chainId: this.chainId,
-      contract: this.contract.name,
+      contract: this.dataType,
       address: this.address,
     });
 
     return results;
-  }
-
-  async destroy() {
-    await Promise.all(
-      Object.values(this.ct).map(async (ct) => {
-        await ct.destroy();
-      }),
-    );
-    await super.destroy();
   }
 
   subscribeToEvents(): void {
@@ -236,11 +165,11 @@ export class Directory extends AbstractLoader<IDirectory> {
       directory: [...jsonModel.directory, contract],
       projectRelatedToLT: {
         ...jsonModel.projectRelatedToLT,
-        [contract]: await this.instance.projectRelatedToLT(contract),
+        [contract]: await this.blockchain.getProjectRelatedToLT(this.address, contract),
       },
     };
 
-    this.ct[contract] = await this.guessChargedTokenKindAndCreate(contract);
+    this.ct[contract] = await new ChargedToken(this.chainId, this.blockchain, contract, this, this.db);
 
     await this.ct[contract].init(session, blockNumber, false);
     this.ct[contract].subscribeToEvents();
@@ -274,7 +203,7 @@ export class Directory extends AbstractLoader<IDirectory> {
       address: contract,
     });
 
-    await this.ct[contract].destroy();
+    // TODO remove contract subscriptions
 
     delete this.ct[contract];
     this.db.delete(DataType.ChargedToken, this.chainId, contract);
@@ -290,6 +219,9 @@ export class Directory extends AbstractLoader<IDirectory> {
 
       balanceAddressList.push(iface.address);
       await this.db.delete(DataType.InterfaceProjectToken, this.chainId, iface.address);
+
+      // TODO remove contract subscriptions
+
       if (
         iface.projectToken !== EMPTY_ADDRESS &&
         InterfaceProjectToken.projectUsageCount[iface.projectToken] === undefined &&
@@ -301,6 +233,8 @@ export class Directory extends AbstractLoader<IDirectory> {
           address: iface.projectToken,
           usageCount: InterfaceProjectToken.projectUsageCount[iface.projectToken],
         });
+
+        // TODO remove contract subscriptions
 
         await this.db.delete(DataType.DelegableToLT, this.chainId, iface.projectToken);
         balanceAddressList.push(iface.projectToken);
