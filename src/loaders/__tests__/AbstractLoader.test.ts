@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 import { ClientSession } from "mongodb";
 import mongoose from "mongoose";
-import { pubSub } from "../../graphql";
+import pubSub from "../../pubsub";
 import { DataType } from "../../types";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
@@ -11,7 +11,7 @@ import { MockDbRepository } from "../__mocks__/MockDbRepository";
 
 jest.mock("../../globals/config");
 jest.mock("../../topics");
-jest.mock("../../graphql");
+jest.mock("../../pubsub");
 jest.mock("../../models");
 jest.mock("../EventListener");
 

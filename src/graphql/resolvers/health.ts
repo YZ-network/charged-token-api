@@ -1,5 +1,5 @@
+import pubSub from "../../pubsub";
 import { rootLogger } from "../../util";
-import pubSub from "../pubsub";
 
 const log = rootLogger.child({ name: "health" });
 

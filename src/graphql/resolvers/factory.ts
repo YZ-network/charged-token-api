@@ -1,8 +1,8 @@
 import { Repeater } from "graphql-yoga";
 import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
+import pubSub from "../../pubsub";
 import { DataType } from "../../types";
 import { rootLogger } from "../../util";
-import pubSub from "../pubsub";
 
 const log = rootLogger.child({ name: "resolverFactory" });
 

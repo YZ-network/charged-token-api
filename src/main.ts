@@ -5,10 +5,11 @@ import mongoose from "mongoose";
 import { WebSocketServer } from "ws";
 import { eventsExporterFactory } from "./exporter";
 import { Config, WorkerStatus } from "./globals";
-import { pubSub, schemaFactory } from "./graphql";
+import { schemaFactory } from "./graphql";
 import { AbstractDbRepository } from "./loaders/AbstractDbRepository";
 import { DbRepository } from "./models/DbRepository";
 import { usePrometheus } from "./prometheus";
+import pubSub from "./pubsub";
 import { rootLogger } from "./util";
 import { ChainHealth, ChainWorker } from "./worker";
 

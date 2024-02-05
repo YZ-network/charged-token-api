@@ -1,8 +1,8 @@
 import { BigNumber, ethers } from "ethers";
 import { ClientSession } from "mongodb";
 import { FlattenMaps } from "mongoose";
-import { pubSub } from "../../graphql";
 import { type IChargedToken, type IUserBalance } from "../../models";
+import pubSub from "../../pubsub";
 import { DataType, EMPTY_ADDRESS } from "../../types";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
@@ -14,7 +14,7 @@ import { MockDbRepository } from "../__mocks__/MockDbRepository";
 jest.mock("../../globals/config");
 jest.mock("../EventListener");
 jest.mock("../../topics");
-jest.mock("../../graphql");
+jest.mock("../../pubsub");
 jest.mock("../../models");
 jest.mock("../Directory");
 jest.mock("../InterfaceProjectToken");

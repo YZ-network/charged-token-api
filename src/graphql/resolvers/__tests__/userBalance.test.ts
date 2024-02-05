@@ -2,7 +2,7 @@ import { Repeater } from "graphql-yoga";
 import { AbstractDbRepository } from "../../../loaders/AbstractDbRepository";
 import { MockDbRepository } from "../../../loaders/__mocks__/MockDbRepository";
 import { IUserBalance } from "../../../models";
-import pubSub from "../../pubsub";
+import pubSub from "../../../pubsub";
 import {
   UserBalanceQueryResolver,
   UserBalanceQueryResolverFactory,
@@ -10,7 +10,7 @@ import {
 } from "../userBalance";
 
 jest.mock("../../../globals/config");
-jest.mock("../../pubsub");
+jest.mock("../../../pubsub");
 jest.mock("../../../models");
 
 describe("User balance query resolver", () => {

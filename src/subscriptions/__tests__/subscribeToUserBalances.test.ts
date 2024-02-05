@@ -1,14 +1,14 @@
 import { ClientSession } from "mongodb";
 import mongoose from "mongoose";
-import { pubSub } from "../../graphql";
 import { Directory } from "../../loaders/Directory";
 import { type EventListener } from "../../loaders/EventListener";
 import { MockDbRepository } from "../../loaders/__mocks__/MockDbRepository";
+import pubSub from "../../pubsub";
 import { type AutoWebSocketProvider } from "../../util";
 import subscribeToUserBalancesLoading from "../subscribeToUserBalances";
 
 jest.mock("../../globals/config");
-jest.mock("../../graphql");
+jest.mock("../../pubsub");
 jest.mock("../../loaders/Directory");
 
 describe("User balances subscriptions", () => {

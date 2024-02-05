@@ -1,8 +1,8 @@
-import pubSub from "../../pubsub";
+import pubSub from "../../../pubsub";
 import { HealthQueryResolver, HealthSubscriptionResolver } from "../health";
 
 jest.mock("../../../globals");
-jest.mock("../../pubsub");
+jest.mock("../../../pubsub");
 jest.mock("../../../models");
 jest.mock("../../../main");
 

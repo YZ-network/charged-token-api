@@ -1,8 +1,8 @@
 import { BigNumber, ethers, type EventFilter } from "ethers";
 import { type ClientSession, type HydratedDocument } from "mongoose";
 import { type Logger } from "pino";
-import { pubSub } from "../graphql";
 import { type IUserBalance } from "../models";
+import pubSub from "../pubsub";
 import topicsMap from "../topics";
 import { DataType, IEventHandler, type IOwnable } from "../types";
 import { rootLogger } from "../util";

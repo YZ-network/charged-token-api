@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import { pubSub } from "../graphql";
 import { type Directory } from "../loaders/Directory";
+import pubSub from "../pubsub";
 import { rootLogger } from "../util";
 
 const log = rootLogger.child({ name: "subscribeToUserBalancesLoading" });

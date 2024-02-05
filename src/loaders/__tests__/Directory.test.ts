@@ -1,7 +1,7 @@
 import { BigNumber, ethers } from "ethers";
 import { ClientSession } from "mongodb";
-import { pubSub } from "../../graphql";
 import { IInterfaceProjectToken, IUserBalance } from "../../models";
+import pubSub from "../../pubsub";
 import { DataType } from "../../types";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
@@ -12,7 +12,7 @@ import { MockDbRepository } from "../__mocks__/MockDbRepository";
 jest.mock("../../globals/config");
 jest.mock("../EventListener");
 jest.mock("../../topics");
-jest.mock("../../graphql");
+jest.mock("../../pubsub");
 jest.mock("../../models");
 jest.mock("../ChargedToken");
 jest.mock("../FundraisingChargedToken");

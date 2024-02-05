@@ -1,11 +1,11 @@
 import { Repeater } from "graphql-yoga";
 import { AbstractDbRepository } from "../../../loaders/AbstractDbRepository";
 import { MockDbRepository } from "../../../loaders/__mocks__/MockDbRepository";
+import pubSub from "../../../pubsub";
 import { DataType, IContract } from "../../../types";
-import pubSub from "../../pubsub";
 import { ResolverFactory } from "../factory";
 
-jest.mock("../../pubsub.ts");
+jest.mock("../../../pubsub.ts");
 jest.mock("../../../models");
 
 describe("Generic query resolver factory", () => {

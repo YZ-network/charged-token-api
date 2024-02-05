@@ -1,8 +1,8 @@
 import { ethers } from "ethers";
 import { type ClientSession } from "mongodb";
 import { contracts } from "../contracts";
-import { pubSub } from "../graphql";
 import { type IDirectory, type IUserBalance } from "../models";
+import pubSub from "../pubsub";
 import { DataType, EMPTY_ADDRESS } from "../types";
 import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
