@@ -1,17 +1,17 @@
 import { ClientSession } from "mongodb";
 import { FlattenMaps } from "mongoose";
-import pubSub from "../../pubsub";
 import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
+import { AbstractBroker } from "../AbstractBroker";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
 import { Directory } from "../Directory";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
+import { MockBroker } from "../__mocks__/MockBroker";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
 import { DataType, EMPTY_ADDRESS, IChargedToken, IUserBalance } from "../types";
 
 jest.mock("../../globals/config");
 jest.mock("../../topics");
-jest.mock("../../pubsub");
 jest.mock("../../models");
 jest.mock("../Directory");
 jest.mock("../InterfaceProjectToken");
@@ -27,6 +27,8 @@ describe("ChargedToken loader", () => {
 
   let blockchain: jest.Mocked<AbstractBlockchainRepository>;
   let db: jest.Mocked<AbstractDbRepository>;
+  let broker: jest.Mocked<AbstractBroker>;
+
   let directoryLoader: Directory;
   let loader: ChargedToken;
   let session: ClientSession;
@@ -34,8 +36,16 @@ describe("ChargedToken loader", () => {
   beforeEach(() => {
     blockchain = new MockBlockchainRepository() as jest.Mocked<AbstractBlockchainRepository>;
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
-    directoryLoader = new Directory(CHAIN_ID, blockchain, ADDRESS, db as unknown as AbstractDbRepository);
-    loader = new ChargedToken(CHAIN_ID, blockchain, ADDRESS, directoryLoader, db as unknown as AbstractDbRepository);
+    broker = new MockBroker() as jest.Mocked<AbstractBroker>;
+    directoryLoader = new Directory(CHAIN_ID, blockchain, ADDRESS, db as unknown as AbstractDbRepository, broker);
+    loader = new ChargedToken(
+      CHAIN_ID,
+      blockchain,
+      ADDRESS,
+      directoryLoader,
+      db as unknown as AbstractDbRepository,
+      broker,
+    );
     session = new ClientSession();
   });
 
@@ -268,8 +278,7 @@ describe("ChargedToken loader", () => {
       lastUpdateBlock: BLOCK_NUMBER,
       isInterfaceProjectTokenLocked: true,
     });
-    expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}.${ADDRESS}`, loadedModel);
-    expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}`, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.ChargedToken, CHAIN_ID, ADDRESS, loadedModel);
   });
 
   test("IncreasedTotalTokenAllocated", async () => {
@@ -288,8 +297,7 @@ describe("ChargedToken loader", () => {
       lastUpdateBlock: BLOCK_NUMBER,
       totalTokenAllocated: "25",
     });
-    expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}.${ADDRESS}`, loadedModel);
-    expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}`, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.ChargedToken, CHAIN_ID, ADDRESS, loadedModel);
   });
 
   test("UserFunctionsAreDisabled", async () => {
@@ -823,8 +831,7 @@ describe("ChargedToken loader", () => {
       fundraisingTokenSymbol: "YYY",
       priceTokenPer1e18: "55",
     });
-    expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}.${ADDRESS}`, loadedModel);
-    expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}`, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.ChargedToken, CHAIN_ID, ADDRESS, loadedModel);
   });
 
   test("FundraisingStatusChanged", async () => {
@@ -844,8 +851,7 @@ describe("ChargedToken loader", () => {
       lastUpdateBlock: BLOCK_NUMBER,
       isFundraisingActive: true,
     });
-    expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}.${ADDRESS}`, loadedModel);
-    expect(pubSub.publish).toHaveBeenCalledWith(`ChargedToken.${CHAIN_ID}`, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.ChargedToken, CHAIN_ID, ADDRESS, loadedModel);
   });
 
   // extraneous events

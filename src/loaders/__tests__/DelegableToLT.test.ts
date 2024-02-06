@@ -1,11 +1,13 @@
 import { ClientSession } from "mongodb";
 import { FlattenMaps } from "mongoose";
 import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
+import { AbstractBroker } from "../AbstractBroker";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
 import { DelegableToLT } from "../DelegableToLT";
 import { Directory } from "../Directory";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
+import { MockBroker } from "../__mocks__/MockBroker";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
 import { DataType, EMPTY_ADDRESS, IDelegableToLT } from "../types";
 
@@ -25,6 +27,7 @@ describe("DelegableToLT loader", () => {
 
   let blockchain: jest.Mocked<AbstractBlockchainRepository>;
   let db: jest.Mocked<AbstractDbRepository>;
+  let broker: jest.Mocked<AbstractBroker>;
   let directoryLoader: Directory;
   let ctLoader: ChargedToken;
   let loader: DelegableToLT;
@@ -33,10 +36,11 @@ describe("DelegableToLT loader", () => {
   beforeEach(() => {
     blockchain = new MockBlockchainRepository() as jest.Mocked<AbstractBlockchainRepository>;
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
-    directoryLoader = new Directory(CHAIN_ID, blockchain, ADDRESS, db);
-    ctLoader = new ChargedToken(CHAIN_ID, blockchain, ADDRESS, directoryLoader, db);
+    broker = new MockBroker() as jest.Mocked<AbstractBroker>;
+    directoryLoader = new Directory(CHAIN_ID, blockchain, ADDRESS, db, broker);
+    ctLoader = new ChargedToken(CHAIN_ID, blockchain, ADDRESS, directoryLoader, db, broker);
     Object.defineProperty(ctLoader, "address", { value: ADDRESS });
-    loader = new DelegableToLT(CHAIN_ID, blockchain, ADDRESS, directoryLoader, ctLoader, db);
+    loader = new DelegableToLT(CHAIN_ID, blockchain, ADDRESS, directoryLoader, ctLoader, db, broker);
     session = new ClientSession();
   });
 

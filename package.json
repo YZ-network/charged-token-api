@@ -18,7 +18,8 @@
     "test": "jest --detectOpenHandles",
     "dep:graph": "depcruise --output-type dot ./src | dot -T svg | depcruise-wrap-stream-in-html > dependency-graph.html",
     "dep:layout": "depcruise --output-type archi ./src | dot -T svg | depcruise-wrap-stream-in-html > dependency-layout.html",
-    "dep:validate": "depcruise --validate --output-type err-html -f dependencies-report.html ./src"
+    "dep:validate": "depcruise --validate --output-type err-html -f dependencies-report.html ./src",
+    "dep:all": "npm run dep:graph && npm run dep:layout && npm run dep:validate"
   },
   "repository": {
     "type": "git",

@@ -1,20 +1,20 @@
-import pubSub from "../../pubsub";
+import { AbstractBroker } from "../../loaders/AbstractBroker";
 import { rootLogger } from "../../rootLogger";
 
 const log = rootLogger.child({ name: "health" });
 
-export const HealthQueryResolver = async () => {
-  const subscription = pubSub.subscribe("Health");
+export const HealthQueryResolverFactory = (broker: AbstractBroker) => async () => {
+  const subscription = broker.subscribeHealth();
   return await subscription.return();
 };
 
-export const HealthSubscriptionResolver = {
+export const HealthSubscriptionResolverFactory = (broker: AbstractBroker) => ({
   subscribe: (_: any) => {
     log.debug({
       msg: "client subscribing to health checks",
     });
 
-    return pubSub.subscribe("Health");
+    return broker.subscribeHealth();
   },
   resolve: (payload: any) => payload,
-};
+});

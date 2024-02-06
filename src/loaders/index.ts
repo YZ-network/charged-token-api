@@ -1,4 +1,5 @@
 export { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
+export { AbstractBroker } from "./AbstractBroker";
 export { AbstractDbRepository } from "./AbstractDbRepository";
 export { type AbstractLoader } from "./AbstractLoader";
 export * from "./ChargedToken";

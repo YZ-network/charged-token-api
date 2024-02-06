@@ -1,6 +1,7 @@
 import { BigNumber } from "ethers";
 import { type ClientSession } from "mongoose";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
+import { AbstractBroker } from "./AbstractBroker";
 import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
 import { type Directory } from "./Directory";
@@ -17,8 +18,9 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     address: string,
     directory: Directory,
     dbRepository: AbstractDbRepository,
+    broker: AbstractBroker,
   ) {
-    super(chainId, blockchain, address, dbRepository, DataType.ChargedToken);
+    super(chainId, blockchain, address, dbRepository, DataType.ChargedToken, broker);
     this.directory = directory;
   }
 
@@ -33,6 +35,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         this.directory,
         this,
         this.db,
+        this.broker,
       );
 
       await this.interface.init(session, blockNumber, createTransaction);
@@ -217,6 +220,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       this.directory,
       this,
       this.db,
+      this.broker,
     );
     await this.interface.init(session, blockNumber, false);
     this.interface.subscribeToEvents();

@@ -1,26 +1,31 @@
-import pubSub from "../../../pubsub";
-import { HealthQueryResolver, HealthSubscriptionResolver } from "../health";
+import { Repeater } from "graphql-yoga";
+import { AbstractBroker } from "../../../loaders/AbstractBroker";
+import { MockBroker } from "../../../loaders/__mocks__/MockBroker";
+import { HealthQueryResolverFactory, HealthSubscriptionResolverFactory } from "../health";
 
 jest.mock("../../../globals");
-jest.mock("../../../pubsub");
 jest.mock("../../../models");
 jest.mock("../../../main");
 
 describe("Health check query resolver", () => {
+  let broker: jest.Mocked<AbstractBroker>;
+
+  beforeEach(() => {
+    broker = new MockBroker() as jest.Mocked<AbstractBroker>;
+  });
+
   it("should return health from matching channel", async () => {
     const returnMock = jest.fn();
     returnMock.mockResolvedValueOnce("pouet");
 
-    const subscribeMock = jest.fn(() => {
-      return { return: returnMock };
-    });
+    const resolver = HealthQueryResolverFactory(broker);
 
-    (pubSub as any).subscribe.mockImplementation(subscribeMock);
+    broker.subscribeHealth.mockReturnValueOnce({ return: returnMock } as unknown as Repeater<any>);
 
-    const result = await HealthQueryResolver();
+    const result = await resolver();
 
     expect(result).toStrictEqual("pouet");
-    expect(subscribeMock).toBeCalled();
+    expect(broker.subscribeHealth).toBeCalled();
     expect(returnMock).toBeCalled();
   });
 
@@ -36,15 +41,13 @@ describe("Health check query resolver", () => {
       return { value: undefined, done: true };
     });
 
-    const subscribeMock = jest.fn(() => {
-      return { next: nextMock, return: returnMock };
-    });
+    const resolver = HealthSubscriptionResolverFactory(broker);
 
-    (pubSub as any).subscribe.mockImplementation(subscribeMock);
+    broker.subscribeHealth.mockReturnValueOnce({ next: nextMock, return: returnMock } as unknown as Repeater<any>);
 
-    expect(HealthSubscriptionResolver.resolve("pouet")).toBe("pouet");
+    expect(resolver.resolve("pouet")).toBe("pouet");
 
-    const result = HealthSubscriptionResolver.subscribe(undefined);
+    const result = resolver.subscribe(undefined);
 
     expect(await result.next()).toStrictEqual({ value: 1, done: false });
     expect(await result.next()).toStrictEqual({ value: 2, done: false });

@@ -1,6 +1,6 @@
 import { type ClientSession } from "mongodb";
-import pubSub from "../pubsub";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
+import { AbstractBroker } from "./AbstractBroker";
 import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
@@ -15,15 +15,16 @@ export class Directory extends AbstractLoader<IDirectory> {
     blockchain: AbstractBlockchainRepository,
     address: string,
     dbRepository: AbstractDbRepository,
+    broker: AbstractBroker,
   ) {
-    super(chainId, blockchain, address, dbRepository, DataType.Directory);
+    super(chainId, blockchain, address, dbRepository, DataType.Directory, broker);
   }
 
   async init(session: ClientSession, blockNumber: number, createTransaction?: boolean) {
     await super.init(session, blockNumber, createTransaction);
 
     for (const address of this.lastState!.directory) {
-      this.ct[address] = await new ChargedToken(this.chainId, this.blockchain, address, this, this.db);
+      this.ct[address] = await new ChargedToken(this.chainId, this.blockchain, address, this, this.db, this.broker);
     }
 
     for (const ct of Object.values(this.ct)) {
@@ -98,7 +99,7 @@ export class Directory extends AbstractLoader<IDirectory> {
         address: this.address,
       });
 
-      pubSub.publish(`UserBalance.${this.chainId}.${user}`, saved);
+      this.broker.notifyUpdate(DataType.UserBalance, this.chainId, user, saved);
     } else {
       this.log.warn({
         msg: `Error while reloading balances after save for user ${user}`,
@@ -168,7 +169,7 @@ export class Directory extends AbstractLoader<IDirectory> {
       },
     };
 
-    this.ct[contract] = await new ChargedToken(this.chainId, this.blockchain, contract, this, this.db);
+    this.ct[contract] = await new ChargedToken(this.chainId, this.blockchain, contract, this, this.db, this.broker);
 
     await this.ct[contract].init(session, blockNumber, false);
     this.ct[contract].subscribeToEvents();

@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { AbstractBlockchainRepository } from "../loaders";
+import { AbstractBroker } from "../loaders/AbstractBroker";
 import { type Directory } from "../loaders/Directory";
-import pubSub from "../pubsub";
 import { rootLogger } from "../rootLogger";
 
 const log = rootLogger.child({ name: "subscribeToUserBalancesLoading" });
@@ -9,12 +9,11 @@ const log = rootLogger.child({ name: "subscribeToUserBalancesLoading" });
 export async function subscribeToUserBalancesLoading(
   directory: Directory,
   blockchain: AbstractBlockchainRepository,
+  broker: AbstractBroker,
 ): Promise<void> {
-  const channelName = `UserBalance.${directory.chainId}/load`;
-
-  const sub = pubSub.subscribe(channelName);
+  const sub = broker.subscribeBalanceLoadingRequests(directory.chainId);
   log.info({
-    msg: `listening to notifications from channel ${channelName}`,
+    msg: `listening to balance update requests for ${directory.chainId}`,
     chainId: directory.chainId,
   });
 

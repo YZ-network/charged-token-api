@@ -1,15 +1,16 @@
 import { ClientSession } from "mongodb";
-import pubSub from "../../pubsub";
 import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
+import { AbstractBroker } from "../AbstractBroker";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
 import { Directory } from "../Directory";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
+import { MockBroker } from "../__mocks__/MockBroker";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
+import { DataType } from "../types";
 
 jest.mock("../../globals/config");
 jest.mock("../../topics");
-jest.mock("../../pubsub");
 jest.mock("../../models");
 
 describe("AbstractLoader: common loaders features", () => {
@@ -18,6 +19,7 @@ describe("AbstractLoader: common loaders features", () => {
 
   let blockchain: jest.Mocked<AbstractBlockchainRepository>;
   let db: jest.Mocked<AbstractDbRepository>;
+  let broker: jest.Mocked<AbstractBroker>;
   let directoryLoader: Directory;
   let ctLoader: ChargedToken;
   let session: ClientSession;
@@ -25,8 +27,9 @@ describe("AbstractLoader: common loaders features", () => {
   beforeEach(() => {
     blockchain = new MockBlockchainRepository() as jest.Mocked<AbstractBlockchainRepository>;
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
-    directoryLoader = new Directory(CHAIN_ID, blockchain, ADDRESS, db);
-    ctLoader = new ChargedToken(CHAIN_ID, blockchain, ADDRESS, directoryLoader, db);
+    broker = new MockBroker() as jest.Mocked<AbstractBroker>;
+    directoryLoader = new Directory(CHAIN_ID, blockchain, ADDRESS, db, broker);
+    ctLoader = new ChargedToken(CHAIN_ID, blockchain, ADDRESS, directoryLoader, db, broker);
     session = new ClientSession();
   });
 
@@ -140,7 +143,7 @@ describe("AbstractLoader: common loaders features", () => {
       lastUpdateBlock: blockNumber,
     });
     expect(getBalance).toBeCalledWith(session, ADDRESS, "0xUSER");
-    expect(pubSub.publish).toBeCalledWith("UserBalance.1337.0xUSER", [jsonBalance]);
+    expect(broker.notifyUpdate).toBeCalledWith(DataType.UserBalance, 1337, "0xUSER", [jsonBalance]);
   });
 
   it("should propagate changes to the PT balance and notify", async () => {
@@ -176,6 +179,6 @@ describe("AbstractLoader: common loaders features", () => {
       lastUpdateBlock: blockNumber,
     });
     expect(getBalancesByPT).toBeCalledWith(session, "0xPT", "0xUSER");
-    expect(pubSub.publish).toBeCalledWith("UserBalance.1337.0xUSER", [jsonBalance]);
+    expect(broker.notifyUpdate).toBeCalledWith(DataType.UserBalance, 1337, "0xUSER", [jsonBalance]);
   });
 });

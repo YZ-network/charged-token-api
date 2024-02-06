@@ -1,7 +1,7 @@
 import { Repeater } from "graphql-yoga";
-import { IUserBalance } from "../../loaders";
+import { DataType, IUserBalance } from "../../loaders";
+import { AbstractBroker } from "../../loaders/AbstractBroker";
 import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
-import pubSub from "../../pubsub";
 import { rootLogger } from "../../rootLogger";
 
 const log = rootLogger.child({ name: "userBalance" });
@@ -12,7 +12,7 @@ export type UserBalanceQueryResolver = (
 ) => Promise<IUserBalance | IUserBalance[]>;
 
 export const UserBalanceQueryResolverFactory =
-  (db: AbstractDbRepository) =>
+  (db: AbstractDbRepository, broker: AbstractBroker) =>
   async (_: any, { chainId, user, address }: { chainId: number; user: string; address?: string }) => {
     log.debug({ msg: "checking existing balances", chainId, user, address });
 
@@ -32,15 +32,14 @@ export const UserBalanceQueryResolverFactory =
       chainId,
       address,
     });
-    pubSub.publish(`UserBalance.${chainId}/load`, { user, address });
+    broker.notifyBalanceLoadingRequired(chainId, { user, address });
 
     return [];
   };
 
-export const UserBalanceSubscriptionResolverFactory = (db: AbstractDbRepository) => ({
+export const UserBalanceSubscriptionResolverFactory = (db: AbstractDbRepository, broker: AbstractBroker) => ({
   subscribe: (_: any, { chainId, user }: { chainId: number; user: string }) => {
-    log.debug({ msg: "client subscribing to balances", user, chainId });
-    const sub = pubSub.subscribe(`UserBalance.${chainId}.${user}`);
+    const sub = broker.subscribeUpdatesByAddress(DataType.UserBalance, chainId, user);
 
     return new Repeater(async (push, stop) => {
       stop.then((err) => {

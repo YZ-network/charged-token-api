@@ -1,8 +1,8 @@
 import { Repeater } from "graphql-yoga";
 import { toGraphQL } from "../../globals";
 import { DataType, IContract } from "../../loaders";
+import { AbstractBroker } from "../../loaders/AbstractBroker";
 import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
-import pubSub from "../../pubsub";
 import { rootLogger } from "../../rootLogger";
 
 const log = rootLogger.child({ name: "resolverFactory" });
@@ -18,10 +18,12 @@ export interface ResolverFactory {
   ) => (_: any, { chainId, address }: { chainId: number; address: string }) => Promise<any>;
   subscribeByName: <T>(
     db: AbstractDbRepository,
+    broker: AbstractBroker,
     dataType: DataType,
   ) => { subscribe: (_: any, { chainId }: { chainId: number }) => Repeater<T>; resolve: (payload: any) => any };
   subscribeByNameAndAddress: <T>(
     db: AbstractDbRepository,
+    broker: AbstractBroker,
     dataType: DataType,
   ) => {
     subscribe: (_: any, { chainId, address }: { chainId: number; address: string }) => Repeater<T>;
@@ -46,19 +48,16 @@ export const ResolverFactory = {
     };
   },
 
-  subscribeByName: <T>(db: AbstractDbRepository, dataType: DataType) => {
+  subscribeByName: <T>(db: AbstractDbRepository, broker: AbstractBroker, dataType: DataType) => {
     return {
       subscribe: (_: any, { chainId }: { chainId: number }) => {
-        const channelName = `${dataType}.${chainId}`;
-
-        log.debug({ msg: `client subscribing to ${channelName}`, chainId });
-        const sub = pubSub.subscribe(channelName);
+        const sub = broker.subscribeUpdates(dataType, chainId);
 
         return new Repeater(async (push, stop) => {
           stop.then((err) => {
             sub.return();
             log.debug({
-              msg: `client subscription to ${channelName} stopped by error`,
+              msg: `client subscription to ${dataType} ${chainId} stopped by error`,
               err,
               chainId,
             });
@@ -74,12 +73,12 @@ export const ResolverFactory = {
               await push(toGraphQL(value));
             }
             log.debug({
-              msg: `client subscription to ${channelName} ended`,
+              msg: `client subscription to ${dataType} ${chainId} ended`,
               chainId,
             });
           } catch (err) {
             log.debug({
-              msg: `client subscription to ${channelName} stopped with error`,
+              msg: `client subscription to ${dataType} ${chainId} stopped with error`,
               err,
               chainId,
             });
@@ -91,20 +90,16 @@ export const ResolverFactory = {
     };
   },
 
-  subscribeByNameAndAddress: <T>(db: AbstractDbRepository, dataType: DataType) => {
+  subscribeByNameAndAddress: <T>(db: AbstractDbRepository, broker: AbstractBroker, dataType: DataType) => {
     return {
       subscribe: (_: any, { chainId, address }: { chainId: number; address: string }) => {
-        const channelName = `${dataType}.${chainId}.${address}`;
-
-        log.debug({ msg: `client subscribing to ${channelName}`, chainId });
-
-        const sub = pubSub.subscribe(channelName);
+        const sub = broker.subscribeUpdatesByAddress(dataType, chainId, address);
 
         return new Repeater(async (push, stop) => {
           stop.then((err) => {
             sub.return();
             log.debug({
-              msg: `client subscription to ${channelName} stopped with error`,
+              msg: `client subscription to ${dataType} ${chainId} ${address} stopped with error`,
               err,
               chainId,
             });
@@ -120,12 +115,12 @@ export const ResolverFactory = {
               await push(toGraphQL(value));
             }
             log.debug({
-              msg: `client subscription to ${channelName} ended`,
+              msg: `client subscription to ${dataType} ${chainId} ${address} ended`,
               chainId,
             });
           } catch (err) {
             log.debug({
-              msg: `client subscription to ${channelName} stopped with error`,
+              msg: `client subscription to ${dataType} ${chainId} ${address} stopped with error`,
               err,
               chainId,
             });

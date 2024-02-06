@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { WebSocket } from "ws";
 import { BlockchainRepository } from "./blockchain";
 import { Config, ProviderStatus, WorkerStatus } from "./globals";
+import { AbstractBroker } from "./loaders/AbstractBroker";
 import { AbstractDbRepository } from "./loaders/AbstractDbRepository";
 import { Directory } from "./loaders/Directory";
 import { Metrics } from "./metrics";
@@ -31,6 +32,7 @@ export class ChainWorker {
   readonly directoryAddress: string;
   readonly chainId: number;
   readonly db: AbstractDbRepository;
+  readonly broker: AbstractBroker;
 
   blockchain: BlockchainRepository | undefined;
   name: string | undefined;
@@ -55,12 +57,14 @@ export class ChainWorker {
     directoryAddress: string,
     chainId: number,
     dbRepository: AbstractDbRepository,
+    broker: AbstractBroker,
   ) {
     this.index = index;
     this.rpc = rpc;
     this.directoryAddress = directoryAddress;
     this.chainId = chainId;
     this.db = dbRepository;
+    this.broker = broker;
 
     this.start();
   }
@@ -231,7 +235,7 @@ export class ChainWorker {
 
     try {
       this.blockchain = new BlockchainRepository(this.chainId, this.provider, this.db);
-      this.directory = new Directory(this.chainId, this.blockchain, this.directoryAddress, this.db);
+      this.directory = new Directory(this.chainId, this.blockchain, this.directoryAddress, this.db, this.broker);
       const blockNumber = await this.provider.getBlockNumber();
 
       log.info({
@@ -251,7 +255,7 @@ export class ChainWorker {
       });
       this.directory.subscribeToEvents();
       this.subscribeToNewBlocks();
-      await subscribeToUserBalancesLoading(this.directory, this.blockchain);
+      await subscribeToUserBalancesLoading(this.directory, this.blockchain, this.broker);
     } catch (err) {
       log.error({
         msg: `Error happened running worker on network ${this.name}`,

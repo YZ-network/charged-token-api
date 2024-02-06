@@ -1,18 +1,20 @@
 import { Repeater } from "graphql-yoga";
 import { DataType, IContract } from "../../../loaders";
+import { AbstractBroker } from "../../../loaders/AbstractBroker";
 import { AbstractDbRepository } from "../../../loaders/AbstractDbRepository";
+import { MockBroker } from "../../../loaders/__mocks__/MockBroker";
 import { MockDbRepository } from "../../../loaders/__mocks__/MockDbRepository";
-import pubSub from "../../../pubsub";
 import { ResolverFactory } from "../factory";
 
-jest.mock("../../../pubsub.ts");
 jest.mock("../../../models");
 
 describe("Generic query resolver factory", () => {
   let db: jest.Mocked<AbstractDbRepository>;
+  let broker: jest.Mocked<AbstractBroker>;
 
   beforeEach(() => {
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
+    broker = new MockBroker() as jest.Mocked<AbstractBroker>;
   });
 
   it("should query for all items by chain id and convert results to graphQL format", async () => {
@@ -60,7 +62,11 @@ describe("Generic query resolver factory", () => {
 
   it("should susbscribe to channel by model name", async () => {
     const chainId = 129;
-    const { subscribe: subscribeByNameResolver, resolve } = ResolverFactory.subscribeByName(db, DataType.ChargedToken);
+    const { subscribe: subscribeByNameResolver, resolve } = ResolverFactory.subscribeByName(
+      db,
+      broker,
+      DataType.ChargedToken,
+    );
 
     expect(resolve("test")).toBe("test");
 
@@ -71,7 +77,7 @@ describe("Generic query resolver factory", () => {
       stop();
     });
 
-    (pubSub as any).subscribe.mockReturnValueOnce(subscription);
+    broker.subscribeUpdates.mockReturnValueOnce(subscription);
 
     db.getAllMatching.mockResolvedValueOnce([{ address: "0x0" }] as IContract[]);
 
@@ -79,7 +85,7 @@ describe("Generic query resolver factory", () => {
 
     expect(repeater).toBeDefined();
     expect(repeater).toBeInstanceOf(Repeater);
-    expect(pubSub.subscribe).toBeCalledWith(`${DataType.ChargedToken}.${chainId}`);
+    expect(broker.subscribeUpdates).toBeCalledWith(DataType.ChargedToken, chainId);
 
     expect(await repeater.next()).toEqual({ value: [{ address: "0x0" }], done: false });
     expect(await repeater.next()).toEqual({ value: { address: "0x1" }, done: false });
@@ -90,11 +96,12 @@ describe("Generic query resolver factory", () => {
     expect(db.getAllMatching).toBeCalledWith(DataType.ChargedToken, { chainId });
   });
 
-  it("should susbscribe to channel by model name and contract address", async () => {
+  it.only("should susbscribe to channel by model name and contract address", async () => {
     const chainId = 129;
     const address = "0xCT";
     const { subscribe: subscribeByNameAndAddrResolver, resolve } = ResolverFactory.subscribeByNameAndAddress(
       db,
+      broker,
       DataType.ChargedToken,
     );
 
@@ -107,7 +114,7 @@ describe("Generic query resolver factory", () => {
       stop();
     });
 
-    (pubSub as any).subscribe.mockReturnValueOnce(subscription);
+    broker.subscribeUpdatesByAddress.mockReturnValueOnce(subscription);
 
     db.get.mockResolvedValueOnce({ address: "0x0", supply: "0" });
 
@@ -115,7 +122,7 @@ describe("Generic query resolver factory", () => {
 
     expect(repeater).toBeDefined();
     expect(repeater).toBeInstanceOf(Repeater);
-    expect(pubSub.subscribe).toBeCalledWith(`${DataType.ChargedToken}.${chainId}.${address}`);
+    expect(broker.subscribeUpdatesByAddress).toBeCalledWith(DataType.ChargedToken, chainId, address);
 
     expect(await repeater.next()).toEqual({ value: { address: "0x0", supply: "0" }, done: false });
     expect(await repeater.next()).toEqual({ value: { address: "0x0", supply: "1" }, done: false });

@@ -1,6 +1,7 @@
 import { BigNumber } from "ethers";
 import { type ClientSession } from "mongoose";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
+import { AbstractBroker } from "./AbstractBroker";
 import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
 import { type ChargedToken } from "./ChargedToken";
@@ -18,8 +19,9 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     directory: Directory,
     ct: ChargedToken,
     dbRepository: AbstractDbRepository,
+    broker: AbstractBroker,
   ) {
-    super(chainId, blockchain, address, dbRepository, DataType.DelegableToLT);
+    super(chainId, blockchain, address, dbRepository, DataType.DelegableToLT, broker);
 
     this.directory = directory;
     this.ct = ct;

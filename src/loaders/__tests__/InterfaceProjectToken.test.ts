@@ -1,19 +1,19 @@
 import { BigNumber, ethers } from "ethers";
 import { ClientSession } from "mongodb";
-import pubSub from "../../pubsub";
 import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
+import { AbstractBroker } from "../AbstractBroker";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
 import { DelegableToLT } from "../DelegableToLT";
 import { Directory } from "../Directory";
 import { InterfaceProjectToken } from "../InterfaceProjectToken";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
+import { MockBroker } from "../__mocks__/MockBroker";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
 import { DataType, EMPTY_ADDRESS, IUserBalance } from "../types";
 
 jest.mock("../../globals/config");
 jest.mock("../../topics");
-jest.mock("../../pubsub");
 jest.mock("../../models");
 jest.mock("../Directory");
 jest.mock("../ChargedToken");
@@ -28,6 +28,7 @@ describe("InterfaceProjectToken loader", () => {
 
   let blockchain: jest.Mocked<AbstractBlockchainRepository>;
   let db: jest.Mocked<AbstractDbRepository>;
+  let broker: jest.Mocked<AbstractBroker>;
   let directoryLoader: Directory;
   let ctLoader: ChargedToken;
   let loader: InterfaceProjectToken;
@@ -40,9 +41,10 @@ describe("InterfaceProjectToken loader", () => {
 
     blockchain = new MockBlockchainRepository() as jest.Mocked<AbstractBlockchainRepository>;
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
-    directoryLoader = new Directory(CHAIN_ID, blockchain, ADDRESS, db);
-    ctLoader = new ChargedToken(CHAIN_ID, blockchain, ADDRESS, directoryLoader, db);
-    loader = new InterfaceProjectToken(CHAIN_ID, blockchain, ADDRESS, directoryLoader, ctLoader, db);
+    broker = new MockBroker() as jest.Mocked<AbstractBroker>;
+    directoryLoader = new Directory(CHAIN_ID, blockchain, ADDRESS, db, broker);
+    ctLoader = new ChargedToken(CHAIN_ID, blockchain, ADDRESS, directoryLoader, db, broker);
+    loader = new InterfaceProjectToken(CHAIN_ID, blockchain, ADDRESS, directoryLoader, ctLoader, db, broker);
     session = new ClientSession();
   });
 
@@ -211,7 +213,7 @@ describe("InterfaceProjectToken loader", () => {
   test("Should use existing project token if available", async () => {
     // preparing existing mock
     const PT_ADDRESS = "0xPT";
-    const ptLoader = new DelegableToLT(CHAIN_ID, blockchain, PT_ADDRESS, directoryLoader, ctLoader, db);
+    const ptLoader = new DelegableToLT(CHAIN_ID, blockchain, PT_ADDRESS, directoryLoader, ctLoader, db, broker);
     InterfaceProjectToken.projectInstances[PT_ADDRESS] = ptLoader;
     InterfaceProjectToken.projectUsageCount[PT_ADDRESS] = 0;
     InterfaceProjectToken.subscribedProjects.push(PT_ADDRESS);
@@ -314,8 +316,7 @@ describe("InterfaceProjectToken loader", () => {
       dateEndCliff: dateEndCliff.toString(),
     });
 
-    expect(pubSub.publish).toHaveBeenCalledWith(`InterfaceProjectToken.${CHAIN_ID}.${ADDRESS}`, loadedModel);
-    expect(pubSub.publish).toHaveBeenCalledWith(`InterfaceProjectToken.${CHAIN_ID}`, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.InterfaceProjectToken, CHAIN_ID, ADDRESS, loadedModel);
   });
 
   test("ProjectTokenReceived", async () => {

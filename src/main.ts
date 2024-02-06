@@ -3,12 +3,12 @@ import { createYoga } from "graphql-yoga";
 import { createServer } from "http";
 import mongoose from "mongoose";
 import { WebSocketServer } from "ws";
+import { Broker } from "./broker";
 import { eventsExporterFactory } from "./exporter";
 import { Config, WorkerStatus } from "./globals";
 import { schemaFactory } from "./graphql";
 import { DbRepository } from "./models";
 import { usePrometheus } from "./prometheus";
-import pubSub from "./pubsub";
 import { rootLogger } from "./rootLogger";
 import { ChainHealth, ChainWorker } from "./worker";
 
@@ -22,10 +22,11 @@ export class MainClass {
   healthTimer: NodeJS.Timeout | undefined;
 
   readonly db: DbRepository = new DbRepository();
+  readonly broker: Broker = new Broker();
   readonly workers: ChainWorker[] = [];
 
   readonly yoga = createYoga({
-    schema: schemaFactory(this.db),
+    schema: schemaFactory(this.db, this.broker),
     graphiql: Config.api.enableGraphiql
       ? {
           subscriptionsProtocol: "WS",
@@ -140,7 +141,7 @@ export class MainClass {
 
       this.healthTimer = setInterval(() => {
         log.debug({ msg: "pushing health status" });
-        pubSub.publish("Health", this.health());
+        this.broker.notifyHealth(this.health());
       }, Config.delays.healthPublishDelayMs);
 
       this.httpServer.listen(this.bindPort, this.bindAddress, () => {
@@ -174,7 +175,7 @@ export class MainClass {
       chainId,
     });
 
-    this.workers.push(new ChainWorker(index, rpc, directory, chainId, this.db));
+    this.workers.push(new ChainWorker(index, rpc, directory, chainId, this.db, this.broker));
   }
 }
 

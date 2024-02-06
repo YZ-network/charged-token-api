@@ -1,17 +1,17 @@
 import { ethers } from "ethers";
 import { ClientSession } from "mongodb";
-import pubSub from "../../pubsub";
 import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
+import { AbstractBroker } from "../AbstractBroker";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
 import { Directory } from "../Directory";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
+import { MockBroker } from "../__mocks__/MockBroker";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
 import { DataType, IInterfaceProjectToken, IUserBalance } from "../types";
 
 jest.mock("../../globals/config");
 jest.mock("../../topics");
-jest.mock("../../pubsub");
 jest.mock("../../models");
 jest.mock("../ChargedToken");
 
@@ -24,6 +24,7 @@ describe("Directory loader", () => {
   let blockchain: jest.Mocked<AbstractBlockchainRepository>;
   let provider: ethers.providers.JsonRpcProvider;
   let db: jest.Mocked<AbstractDbRepository>;
+  let broker: jest.Mocked<AbstractBroker>;
   let loader: Directory;
   let session: ClientSession;
 
@@ -31,7 +32,8 @@ describe("Directory loader", () => {
     provider = new ethers.providers.JsonRpcProvider();
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
     blockchain = new MockBlockchainRepository() as jest.Mocked<AbstractBlockchainRepository>;
-    loader = new Directory(CHAIN_ID, blockchain, ADDRESS, db as AbstractDbRepository);
+    broker = new MockBroker() as jest.Mocked<AbstractBroker>;
+    loader = new Directory(CHAIN_ID, blockchain, ADDRESS, db as AbstractDbRepository, broker);
     session = new ClientSession();
   });
 
@@ -180,7 +182,7 @@ describe("Directory loader", () => {
   test("Should propagate user balances loading and save them for the first time", async () => {
     const userAddress = "0xUSER";
     const ctAddress = "0xCT";
-    const ct = new ChargedToken(loader.chainId, blockchain, ctAddress, loader, db);
+    const ct = new ChargedToken(loader.chainId, blockchain, ctAddress, loader, db, broker);
     loader.ct[ctAddress] = ct;
 
     const ctBalance = { address: ctAddress, balance: "xxx" } as IUserBalance;
@@ -199,13 +201,13 @@ describe("Directory loader", () => {
     expect(db.existsBalance).toHaveBeenNthCalledWith(1, CHAIN_ID, ctAddress, userAddress);
     expect(db.saveBalance).toHaveBeenNthCalledWith(1, ctBalance);
     expect(db.getBalances).toHaveBeenNthCalledWith(1, CHAIN_ID, userAddress);
-    expect(pubSub.publish).toBeCalledTimes(1);
+    expect(broker.notifyUpdate).toBeCalledTimes(1);
   });
 
   test("Should propagate user balances loading and update them when existing", async () => {
     const userAddress = "0xUSER";
     const ctAddress = "0xCT";
-    const ct = new ChargedToken(loader.chainId, blockchain, ctAddress, loader, db);
+    const ct = new ChargedToken(loader.chainId, blockchain, ctAddress, loader, db, broker);
     loader.ct[ctAddress] = ct;
 
     const ctBalance = { address: ctAddress, balance: "xxx" } as IUserBalance;
@@ -229,12 +231,12 @@ describe("Directory loader", () => {
       address: ctAddress,
     });
     expect(db.getBalances).toHaveBeenNthCalledWith(1, CHAIN_ID, userAddress);
-    expect(pubSub.publish).toBeCalledTimes(1);
+    expect(broker.notifyUpdate).toBeCalledTimes(1);
   });
 
   test("Should subscribe to events and propagate events subscriptions to existing charged tokens", async () => {
     const ctAddress = "0xCT";
-    const ct = new ChargedToken(loader.chainId, blockchain, ctAddress, loader, db);
+    const ct = new ChargedToken(loader.chainId, blockchain, ctAddress, loader, db, broker);
     loader.ct[ctAddress] = ct;
 
     // tested function
@@ -291,8 +293,7 @@ describe("Directory loader", () => {
       lastUpdateBlock: BLOCK_NUMBER,
       areUserFunctionsDisabled: true,
     });
-    expect(pubSub.publish).toHaveBeenCalledWith(`Directory.${CHAIN_ID}.${ADDRESS}`, loadedModel);
-    expect(pubSub.publish).toHaveBeenCalledWith(`Directory.${CHAIN_ID}`, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.Directory, CHAIN_ID, ADDRESS, loadedModel);
   });
 
   test("ProjectOwnerWhitelisted", async () => {
@@ -333,8 +334,7 @@ describe("Directory loader", () => {
         [PROJECT_OWNER]: PROJECT_NAME,
       },
     });
-    expect(pubSub.publish).toHaveBeenCalledWith(`Directory.${CHAIN_ID}.${ADDRESS}`, loadedModel);
-    expect(pubSub.publish).toHaveBeenCalledWith(`Directory.${CHAIN_ID}`, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.Directory, CHAIN_ID, ADDRESS, loadedModel);
   });
 
   test("AddedLTContract", async () => {
@@ -384,8 +384,7 @@ describe("Directory loader", () => {
         [CONTRACT]: PROJECT,
       },
     });
-    expect(pubSub.publish).toHaveBeenCalledWith(`Directory.${CHAIN_ID}.${ADDRESS}`, loadedModel);
-    expect(pubSub.publish).toHaveBeenCalledWith(`Directory.${CHAIN_ID}`, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.Directory, CHAIN_ID, ADDRESS, loadedModel);
   });
 
   test("OwnershipTransferred", async () => {
@@ -401,7 +400,7 @@ describe("Directory loader", () => {
 
   test("RemovedLTContract", async () => {
     const ctAddress = "0xCT";
-    const ct = new ChargedToken(CHAIN_ID, blockchain, ctAddress, loader, db);
+    const ct = new ChargedToken(CHAIN_ID, blockchain, ctAddress, loader, db, broker);
     loader.ct[ctAddress] = ct;
 
     const ctAddressNotToRemove = "0xCT2";

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { GraphQLSchema } from "graphql";
+import { MockBroker } from "../../loaders/__mocks__/MockBroker";
 import { MockDbRepository } from "../../loaders/__mocks__/MockDbRepository";
 import schemaFactory from "../schema";
 
@@ -7,7 +8,7 @@ jest.mock("../resolvers");
 
 describe("GraphQL Schema", () => {
   it("should create schema with all needed queries and subscriptions", () => {
-    const schema = schemaFactory(new MockDbRepository());
+    const schema = schemaFactory(new MockDbRepository(), new MockBroker());
 
     expect(schema).toBeInstanceOf(GraphQLSchema);
 

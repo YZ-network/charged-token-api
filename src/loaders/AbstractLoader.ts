@@ -1,10 +1,10 @@
 import { BigNumber, ethers } from "ethers";
 import { type ClientSession, type HydratedDocument } from "mongoose";
 import { type Logger } from "pino";
-import pubSub from "../pubsub";
 import { rootLogger } from "../rootLogger";
 import { IEventHandler } from "../types";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
+import { AbstractBroker } from "./AbstractBroker";
 import { AbstractDbRepository } from "./AbstractDbRepository";
 import { DataType, IOwnable, IUserBalance } from "./types";
 
@@ -25,6 +25,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
   }>;
 
   protected readonly blockchain: AbstractBlockchainRepository;
+  protected readonly broker: AbstractBroker;
 
   lastState: T | undefined;
 
@@ -40,12 +41,14 @@ export abstract class AbstractLoader<T extends IOwnable> {
     address: string,
     db: AbstractDbRepository,
     dataType: DataType,
+    broker: AbstractBroker,
   ) {
     this.chainId = chainId;
     this.blockchain = blockchain;
     this.address = address;
     this.db = db;
     this.dataType = dataType;
+    this.broker = broker;
 
     this.log = rootLogger.child({
       chainId,
@@ -102,10 +105,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
       });
       await this.saveOrUpdate(session, await this.load(blockNumber), blockNumber);
 
-      const contractName = this.constructor.name === "FundraisingChargedToken" ? "ChargedToken" : this.constructor.name;
-
-      pubSub.publish(`${contractName}.${this.chainId}.${this.address}`, this.lastState);
-      pubSub.publish(`${contractName}.${this.chainId}`, this.lastState);
+      this.broker.notifyUpdate(this.dataType, this.chainId, this.address, this.lastState);
     }
 
     if (createTransaction === true) await session.commitTransaction();
@@ -239,7 +239,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
         chainId: this.chainId,
       });
 
-      pubSub.publish(`UserBalance.${this.chainId}.${user}`, [newBalance]);
+      this.broker.notifyUpdate(DataType.UserBalance, this.chainId, user, [newBalance]);
     } else {
       const updatedBalances = await this.getBalancesByProjectToken(session, ptAddress, user);
 
@@ -253,7 +253,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
         });
 
         for (const b of updatedBalances) {
-          pubSub.publish(`UserBalance.${this.chainId}.${user}`, [b]);
+          this.broker.notifyUpdate(DataType.UserBalance, this.chainId, user, [b]);
         }
       } catch (err) {
         this.log.error({
@@ -324,8 +324,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
       contract: this.constructor.name,
     });
 
-    pubSub.publish(`${this.dataType}.${this.chainId}.${this.address}`, this.lastState);
-    pubSub.publish(`${this.dataType}.${this.chainId}`, this.lastState);
+    this.broker.notifyUpdate(this.dataType, this.chainId, this.address, this.lastState);
   }
 
   subscribeToEvents() {

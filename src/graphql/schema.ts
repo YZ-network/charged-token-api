@@ -1,9 +1,10 @@
 import { createSchema } from "graphql-yoga";
 
+import { AbstractBroker } from "../loaders/AbstractBroker";
 import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
 import resolversFactory from "./resolvers";
 
-const schemaFactory = (db: AbstractDbRepository) =>
+const schemaFactory = (db: AbstractDbRepository, broker: AbstractBroker) =>
   createSchema({
     typeDefs: `
   type IEntry {
@@ -173,7 +174,7 @@ const schemaFactory = (db: AbstractDbRepository) =>
     health: [IWorkerHealth!]!
   }
 `,
-    resolvers: resolversFactory(db),
+    resolvers: resolversFactory(db, broker),
   });
 
 export default schemaFactory;
