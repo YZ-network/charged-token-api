@@ -8,7 +8,7 @@ import {
   IInterfaceProjectToken,
   IUserBalance,
 } from "../loaders";
-import { rootLogger } from "../util";
+import { rootLogger } from "../rootLogger";
 import { ChargedTokenModel } from "./ChargedToken";
 import { DelegableToLTModel } from "./DelegableToLT";
 import { DirectoryModel } from "./Directory";

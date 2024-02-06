@@ -17,8 +17,8 @@ import {
 } from "@ethersproject/providers/lib/websocket-provider";
 import { ethers } from "ethers";
 import { MessageEvent, WebSocket } from "ws";
+import { rootLogger } from "../rootLogger";
 import { Metrics } from "./metrics";
-import { rootLogger } from "./rootLogger";
 
 const logger = rootLogger.child({ name: "AutoWebSocketProvider" });
 

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { AbstractBlockchainRepository } from "../loaders";
 import { type Directory } from "../loaders/Directory";
 import pubSub from "../pubsub";
-import { rootLogger } from "../util";
+import { rootLogger } from "../rootLogger";
 
 const log = rootLogger.child({ name: "subscribeToUserBalancesLoading" });
 

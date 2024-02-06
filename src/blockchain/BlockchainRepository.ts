@@ -12,8 +12,8 @@ import {
   IInterfaceProjectToken,
   IUserBalance,
 } from "../loaders";
+import { rootLogger } from "../rootLogger";
 import topicsMap from "../topics";
-import { rootLogger } from "../util";
 import { EventListener } from "./EventListener";
 
 export class BlockchainRepository extends AbstractBlockchainRepository {

@@ -3,7 +3,7 @@ import { toGraphQL } from "../../globals";
 import { DataType, IContract } from "../../loaders";
 import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
 import pubSub from "../../pubsub";
-import { rootLogger } from "../../util";
+import { rootLogger } from "../../rootLogger";
 
 const log = rootLogger.child({ name: "resolverFactory" });
 

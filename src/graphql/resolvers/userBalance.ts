@@ -2,7 +2,7 @@ import { Repeater } from "graphql-yoga";
 import { IUserBalance } from "../../loaders";
 import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
 import pubSub from "../../pubsub";
-import { rootLogger } from "../../util";
+import { rootLogger } from "../../rootLogger";
 
 const log = rootLogger.child({ name: "userBalance" });
 

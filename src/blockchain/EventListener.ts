@@ -5,7 +5,7 @@ import { getBlockDate } from "../globals";
 import { EventHandlerStatus } from "../loaders";
 import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
 import { type AbstractLoader } from "../loaders/AbstractLoader";
-import { rootLogger } from "../util";
+import { rootLogger } from "../rootLogger";
 
 type EventQueue = Array<{
   eventName: string;

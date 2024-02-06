@@ -6,11 +6,10 @@ import { WebSocketServer } from "ws";
 import { eventsExporterFactory } from "./exporter";
 import { Config, WorkerStatus } from "./globals";
 import { schemaFactory } from "./graphql";
-import { AbstractDbRepository } from "./loaders/AbstractDbRepository";
-import { DbRepository } from "./models/DbRepository";
+import { DbRepository } from "./models";
 import { usePrometheus } from "./prometheus";
 import pubSub from "./pubsub";
-import { rootLogger } from "./util";
+import { rootLogger } from "./rootLogger";
 import { ChainHealth, ChainWorker } from "./worker";
 
 const log = rootLogger.child({ name: "Main" });
@@ -22,7 +21,7 @@ export class MainClass {
   keepAlive: NodeJS.Timeout | undefined;
   healthTimer: NodeJS.Timeout | undefined;
 
-  readonly db: AbstractDbRepository = new DbRepository();
+  readonly db: DbRepository = new DbRepository();
   readonly workers: ChainWorker[] = [];
 
   readonly yoga = createYoga({

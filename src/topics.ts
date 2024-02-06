@@ -3,7 +3,7 @@ import Directory from "./contracts/ContractsDirectory.json";
 import DelegableToLT from "./contracts/DelegableToLT.json";
 import InterfaceProjectToken from "./contracts/InterfaceProjectToken.json";
 import ChargedToken from "./contracts/LiquidityToken.json";
-import { rootLogger } from "./util";
+import { rootLogger } from "./rootLogger";
 
 const log = rootLogger.child({ name: "encodeEvents" });
 
