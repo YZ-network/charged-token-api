@@ -4,9 +4,9 @@ import { BlockchainRepository } from "./blockchain";
 import { Config, ProviderStatus, WorkerStatus } from "./globals";
 import { AbstractDbRepository } from "./loaders/AbstractDbRepository";
 import { Directory } from "./loaders/Directory";
+import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";
 import { subscribeToUserBalancesLoading } from "./subscriptions";
-import { Metrics } from "./util";
 import { AutoWebSocketProvider } from "./util/AutoWebSocketProvider";
 
 const log = rootLogger.child({ name: "worker" });

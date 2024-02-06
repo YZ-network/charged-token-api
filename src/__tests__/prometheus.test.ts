@@ -1,6 +1,6 @@
 import { OnRequestEventPayload } from "@whatwg-node/server";
+import { Metrics } from "../metrics";
 import { usePrometheus } from "../prometheus";
-import { Metrics } from "../util";
 
 async function streamToString(stream: ReadableStream<Uint8Array>): Promise<string> {
   const chunks: string[] = [];

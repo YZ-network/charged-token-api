@@ -3,8 +3,9 @@ import { ProviderStatus, WorkerStatus } from "../globals";
 import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
 import { Directory } from "../loaders/Directory";
 import { MockDbRepository } from "../loaders/__mocks__/MockDbRepository";
+import { Metrics } from "../metrics";
 import { subscribeToUserBalancesLoading } from "../subscriptions";
-import { AutoWebSocketProvider, Metrics } from "../util";
+import { AutoWebSocketProvider } from "../util";
 import { ChainWorker } from "../worker";
 
 jest.mock("../topics");
