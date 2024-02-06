@@ -1,13 +1,12 @@
 import { BigNumber } from "ethers";
 import { type ClientSession } from "mongoose";
-import { type IInterfaceProjectToken } from "../models";
-import { DataType } from "../types";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
 import { type ChargedToken } from "./ChargedToken";
 import { DelegableToLT } from "./DelegableToLT";
 import { type Directory } from "./Directory";
+import { DataType, IInterfaceProjectToken } from "./types";
 
 export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken> {
   projectToken: DelegableToLT | undefined;

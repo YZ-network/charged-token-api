@@ -1,14 +1,6 @@
 import mongoose from "mongoose";
-import { type IModel, type IOwnable } from "../types";
-
-export interface IDirectory extends IOwnable {
-  directory: string[];
-  whitelistedProjectOwners: string[];
-  projects: string[];
-  projectRelatedToLT: Record<string, string>;
-  whitelist: Record<string, string>;
-  areUserFunctionsDisabled: boolean;
-}
+import { IDirectory } from "../loaders";
+import { IModel } from "./types";
 
 const { Schema } = mongoose;
 

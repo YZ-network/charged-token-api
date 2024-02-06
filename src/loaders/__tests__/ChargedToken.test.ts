@@ -1,14 +1,13 @@
 import { ClientSession } from "mongodb";
 import { FlattenMaps } from "mongoose";
-import { type IChargedToken, type IUserBalance } from "../../models";
 import pubSub from "../../pubsub";
-import { DataType, EMPTY_ADDRESS } from "../../types";
 import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
 import { Directory } from "../Directory";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
+import { DataType, EMPTY_ADDRESS, IChargedToken, IUserBalance } from "../types";
 
 jest.mock("../../globals/config");
 jest.mock("../../topics");

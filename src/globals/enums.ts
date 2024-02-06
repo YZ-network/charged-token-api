@@ -1,9 +1,3 @@
-export enum EventHandlerStatus {
-  QUEUED = "QUEUED",
-  SUCCESS = "SUCCESS",
-  FAILURE = "FAILURE",
-}
-
 export enum ProviderStatus {
   STARTING = "STARTING",
   CONNECTING = "CONNECTING",

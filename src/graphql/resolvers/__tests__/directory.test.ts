@@ -1,6 +1,6 @@
+import { IDirectory } from "../../../loaders";
 import { AbstractDbRepository } from "../../../loaders/AbstractDbRepository";
 import { MockDbRepository } from "../../../loaders/__mocks__/MockDbRepository";
-import { IDirectory } from "../../../models";
 import { DirectoryQueryResolver, DirectoryQueryResolverFactory } from "../directory";
 
 jest.mock("../../../models");

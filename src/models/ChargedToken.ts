@@ -1,53 +1,6 @@
 import mongoose from "mongoose";
-import { type IErc20, type IModel } from "../types";
-
-interface IChargedTokenConstants {
-  fractionInitialUnlockPerThousand: string;
-  durationCliff: string;
-  durationLinearVesting: string;
-  maxInitialTokenAllocation: string;
-  maxWithdrawFeesPerThousandForLT: string;
-  maxClaimFeesPerThousandForPT: string;
-  maxStakingAPR: string;
-  maxStakingTokenAmount: string;
-}
-
-interface IChargedTokenStaking {
-  stakingStartDate: string;
-  stakingDuration: string;
-  stakingDateLastCheckpoint: string;
-  campaignStakingRewards: string;
-  totalStakingRewards: string;
-}
-
-interface IChargedTokenToggles {
-  areUserFunctionsDisabled: boolean;
-  isInterfaceProjectTokenLocked: boolean;
-  areAllocationsTerminated: boolean;
-}
-
-interface IChargedTokenFundraising {
-  fundraisingTokenSymbol: string;
-  priceTokenPer1e18: string;
-  fundraisingToken: string;
-  isFundraisingActive: boolean;
-}
-
-export interface IChargedToken
-  extends IChargedTokenConstants,
-    IChargedTokenToggles,
-    IChargedTokenStaking,
-    IChargedTokenFundraising,
-    IErc20 {
-  interfaceProjectToken: string;
-  ratioFeesToRewardHodlersPerThousand: string;
-  currentRewardPerShare1e18: string;
-  stakedLT: string;
-  totalLocked: string;
-  totalTokenAllocated: string;
-  withdrawFeesPerThousandForLT: string;
-  isFundraisingContract: boolean;
-}
+import { IChargedToken } from "../loaders";
+import { IModel } from "./types";
 
 const chargedTokenSchema = new mongoose.Schema<IChargedToken, IModel<IChargedToken>>({
   // contract

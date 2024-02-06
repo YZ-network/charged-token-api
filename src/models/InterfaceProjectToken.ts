@@ -1,13 +1,6 @@
 import mongoose from "mongoose";
-import { type IModel, type IOwnable } from "../types";
-
-export interface IInterfaceProjectToken extends IOwnable {
-  liquidityToken: string;
-  projectToken: string;
-  dateLaunch: string;
-  dateEndCliff: string;
-  claimFeesPerThousandForPT: string;
-}
+import { IInterfaceProjectToken } from "../loaders";
+import { IModel } from "./types";
 
 const interfaceProjectTokenSchema = new mongoose.Schema<IInterfaceProjectToken, IModel<IInterfaceProjectToken>>({
   // contract

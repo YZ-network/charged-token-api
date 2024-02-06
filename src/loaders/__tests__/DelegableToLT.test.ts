@@ -1,7 +1,5 @@
 import { ClientSession } from "mongodb";
 import { FlattenMaps } from "mongoose";
-import { IDelegableToLT } from "../../models";
-import { DataType, EMPTY_ADDRESS } from "../../types";
 import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
@@ -9,6 +7,7 @@ import { DelegableToLT } from "../DelegableToLT";
 import { Directory } from "../Directory";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
+import { DataType, EMPTY_ADDRESS, IDelegableToLT } from "../types";
 
 jest.mock("../../globals/config");
 jest.mock("../../topics");

@@ -1,7 +1,7 @@
 import { Repeater } from "graphql-yoga";
+import { IUserBalance } from "../../../loaders";
 import { AbstractDbRepository } from "../../../loaders/AbstractDbRepository";
 import { MockDbRepository } from "../../../loaders/__mocks__/MockDbRepository";
-import { IUserBalance } from "../../../models";
 import pubSub from "../../../pubsub";
 import {
   UserBalanceQueryResolver,

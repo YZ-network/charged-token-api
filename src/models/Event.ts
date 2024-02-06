@@ -1,21 +1,6 @@
 import mongoose from "mongoose";
-import { EventHandlerStatus } from "../globals";
-import { type IModel } from "../types";
-
-export interface IEvent {
-  status: EventHandlerStatus;
-  chainId: number;
-  address: string;
-  blockNumber: number;
-  blockDate: string;
-  txHash: string;
-  txIndex: number;
-  logIndex: number;
-  name: string;
-  contract: string;
-  topics: string[];
-  args: string[];
-}
+import { EventHandlerStatus, IEvent } from "../loaders";
+import { IModel } from "./types";
 
 const { Schema } = mongoose;
 

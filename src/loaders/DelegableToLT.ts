@@ -1,12 +1,11 @@
 import { BigNumber } from "ethers";
 import { type ClientSession } from "mongoose";
-import { type IDelegableToLT } from "../models";
-import { DataType, EMPTY_ADDRESS } from "../types";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
 import { type ChargedToken } from "./ChargedToken";
 import { type Directory } from "./Directory";
+import { DataType, EMPTY_ADDRESS, IDelegableToLT } from "./types";
 
 export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
   readonly ct: ChargedToken;

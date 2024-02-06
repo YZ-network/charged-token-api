@@ -1,12 +1,11 @@
 import { type ClientSession } from "mongodb";
-import { type IDirectory, type IUserBalance } from "../models";
 import pubSub from "../pubsub";
-import { DataType, EMPTY_ADDRESS } from "../types";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
 import { ChargedToken } from "./ChargedToken";
 import { InterfaceProjectToken } from "./InterfaceProjectToken";
+import { DataType, EMPTY_ADDRESS, IDirectory, IUserBalance } from "./types";
 
 export class Directory extends AbstractLoader<IDirectory> {
   readonly ct: Record<string, ChargedToken> = {};

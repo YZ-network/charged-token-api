@@ -1,10 +1,6 @@
 import mongoose from "mongoose";
-import { type IErc20, type IModel } from "../types";
-
-export interface IDelegableToLT extends IErc20 {
-  validatedInterfaceProjectToken: string[];
-  isListOfInterfaceProjectTokenComplete: boolean;
-}
+import { IDelegableToLT } from "../loaders";
+import { IModel } from "./types";
 
 const delegableToLTSchema = new mongoose.Schema<IDelegableToLT, IModel<IDelegableToLT>>({
   // contract

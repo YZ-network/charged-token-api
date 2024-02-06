@@ -1,6 +1,6 @@
+import { IEvent } from "../../../loaders";
 import { AbstractDbRepository } from "../../../loaders/AbstractDbRepository";
 import { MockDbRepository } from "../../../loaders/__mocks__/MockDbRepository";
-import { IEvent } from "../../../models";
 import {
   EventsCountQueryResolver,
   EventsCountQueryResolverFactory,

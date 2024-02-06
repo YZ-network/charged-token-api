@@ -1,9 +1,8 @@
 import { OnRequestEventPayload } from "@whatwg-node/server";
 import { eventsExporterFactory } from "../exporter";
-import { EventHandlerStatus } from "../globals";
+import { EventHandlerStatus, IEvent } from "../loaders";
 import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
 import { MockDbRepository } from "../loaders/__mocks__/MockDbRepository";
-import { IEvent } from "../models";
 
 jest.mock("../models");
 

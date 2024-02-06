@@ -1,6 +1,12 @@
-import { EventHandlerStatus } from "../globals";
-import { IDirectory, IEvent, IInterfaceProjectToken, IUserBalance } from "../models";
-import { DataType, IContract } from "../types";
+import {
+  DataType,
+  EventHandlerStatus,
+  IContract,
+  IDirectory,
+  IEvent,
+  IInterfaceProjectToken,
+  IUserBalance,
+} from "./types";
 
 export abstract class AbstractDbRepository {
   abstract exists(dataType: DataType, chainId: number, address: string): Promise<boolean>;

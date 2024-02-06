@@ -1,13 +1,11 @@
 import { BigNumber } from "ethers";
 import { type ClientSession } from "mongoose";
-import { type IChargedToken } from "../models";
-import { type IUserBalance } from "../models/UserBalances";
-import { DataType, EMPTY_ADDRESS } from "../types";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
 import { type Directory } from "./Directory";
 import { InterfaceProjectToken } from "./InterfaceProjectToken";
+import { DataType, EMPTY_ADDRESS, IChargedToken, IUserBalance } from "./types";
 
 export class ChargedToken extends AbstractLoader<IChargedToken> {
   interface: InterfaceProjectToken | undefined;

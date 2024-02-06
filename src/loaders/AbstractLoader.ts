@@ -1,12 +1,12 @@
 import { BigNumber, ethers } from "ethers";
 import { type ClientSession, type HydratedDocument } from "mongoose";
 import { type Logger } from "pino";
-import { type IUserBalance } from "../models";
 import pubSub from "../pubsub";
-import { DataType, IEventHandler, type IOwnable } from "../types";
+import { IEventHandler } from "../types";
 import { rootLogger } from "../util";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { AbstractDbRepository } from "./AbstractDbRepository";
+import { DataType, IOwnable, IUserBalance } from "./types";
 
 /**
  * Generic contract loader. Used for loading initial contracts state, keeping

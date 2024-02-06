@@ -1,23 +1,6 @@
 import mongoose from "mongoose";
-import { type IModel } from "../types";
-
-export interface IChargedTokenBalance {
-  balance: string;
-  balancePT: string;
-  fullyChargedBalance: string;
-  partiallyChargedBalance: string;
-  dateOfPartiallyCharged: string;
-  claimedRewardPerShare1e18: string;
-  valueProjectTokenToFullRecharge: string;
-}
-
-export interface IUserBalance extends IChargedTokenBalance {
-  chainId: number;
-  lastUpdateBlock: number;
-  user: string;
-  address: string;
-  ptAddress: string;
-}
+import { IUserBalance } from "../loaders";
+import { IModel } from "./types";
 
 const userBalanceSchema = new mongoose.Schema<IUserBalance, IModel<IUserBalance>>({
   chainId: { type: Number, required: true },

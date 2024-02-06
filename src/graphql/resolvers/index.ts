@@ -1,5 +1,5 @@
+import { DataType } from "../../loaders";
 import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
-import { DataType } from "../../types";
 import { DirectoryQueryResolverFactory } from "./directory";
 import { EventsCountQueryResolverFactory, EventsQueryResolverFactory } from "./events";
 import { ResolverFactory } from "./factory";

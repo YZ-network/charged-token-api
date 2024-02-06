@@ -1,7 +1,13 @@
-import { IDirectory, IEvent, IInterfaceProjectToken, IUserBalance } from ".";
-import { EventHandlerStatus } from "../globals";
-import { AbstractDbRepository } from "../loaders";
-import { DataType, IContract, IModel } from "../types";
+import {
+  AbstractDbRepository,
+  DataType,
+  EventHandlerStatus,
+  IContract,
+  IDirectory,
+  IEvent,
+  IInterfaceProjectToken,
+  IUserBalance,
+} from "../loaders";
 import { rootLogger } from "../util";
 import { ChargedTokenModel } from "./ChargedToken";
 import { DelegableToLTModel } from "./DelegableToLT";
@@ -9,6 +15,7 @@ import { DirectoryModel } from "./Directory";
 import { EventModel } from "./Event";
 import { InterfaceProjectTokenModel } from "./InterfaceProjectToken";
 import { UserBalanceModel } from "./UserBalances";
+import { IModel } from "./types";
 
 export class DbRepository extends AbstractDbRepository {
   private readonly log = rootLogger.child({ name: "DbRepository" });
@@ -240,7 +247,7 @@ export class DbRepository extends AbstractDbRepository {
     if (failedEvents.length > 0) {
       this.log.warn({
         msg: `Found ${failedEvents.length} failed events ! will remove them`,
-        events: failedEvents.map((event) => event.toJSON()),
+        events: failedEvents.map((event: any) => event.toJSON()),
         chainId,
       });
     }

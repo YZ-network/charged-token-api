@@ -1,6 +1,6 @@
 import { Repeater } from "graphql-yoga";
+import { IUserBalance } from "../../loaders";
 import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
-import { IUserBalance } from "../../models";
 import pubSub from "../../pubsub";
 import { rootLogger } from "../../util";
 

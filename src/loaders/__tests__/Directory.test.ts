@@ -1,14 +1,13 @@
 import { ethers } from "ethers";
 import { ClientSession } from "mongodb";
-import { IInterfaceProjectToken, IUserBalance } from "../../models";
 import pubSub from "../../pubsub";
-import { DataType } from "../../types";
 import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
 import { Directory } from "../Directory";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
+import { DataType, IInterfaceProjectToken, IUserBalance } from "../types";
 
 jest.mock("../../globals/config");
 jest.mock("../../topics");

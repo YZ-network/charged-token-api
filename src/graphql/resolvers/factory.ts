@@ -1,8 +1,8 @@
 import { Repeater } from "graphql-yoga";
 import { toGraphQL } from "../../globals";
+import { DataType, IContract } from "../../loaders";
 import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
 import pubSub from "../../pubsub";
-import { DataType, IContract } from "../../types";
 import { rootLogger } from "../../util";
 
 const log = rootLogger.child({ name: "resolverFactory" });

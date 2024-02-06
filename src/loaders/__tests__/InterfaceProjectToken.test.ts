@@ -1,8 +1,6 @@
 import { BigNumber, ethers } from "ethers";
 import { ClientSession } from "mongodb";
-import { IUserBalance } from "../../models";
 import pubSub from "../../pubsub";
-import { DataType, EMPTY_ADDRESS } from "../../types";
 import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractDbRepository } from "../AbstractDbRepository";
 import { ChargedToken } from "../ChargedToken";
@@ -11,6 +9,7 @@ import { Directory } from "../Directory";
 import { InterfaceProjectToken } from "../InterfaceProjectToken";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
+import { DataType, EMPTY_ADDRESS, IUserBalance } from "../types";
 
 jest.mock("../../globals/config");
 jest.mock("../../topics");

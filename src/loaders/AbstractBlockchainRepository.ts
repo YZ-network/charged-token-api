@@ -1,6 +1,5 @@
-import { IChargedToken, IDelegableToLT, IDirectory, IInterfaceProjectToken, IUserBalance } from "../models";
-import { DataType } from "../types";
 import { AbstractLoader } from "./AbstractLoader";
+import { DataType, IChargedToken, IDelegableToLT, IDirectory, IInterfaceProjectToken, IUserBalance } from "./types";
 
 export abstract class AbstractBlockchainRepository {
   abstract getBlockNumber(): Promise<number>;
