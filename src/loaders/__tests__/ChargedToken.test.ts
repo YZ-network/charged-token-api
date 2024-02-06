@@ -11,7 +11,6 @@ import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository"
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
 
 jest.mock("../../globals/config");
-jest.mock("../EventListener");
 jest.mock("../../topics");
 jest.mock("../../pubsub");
 jest.mock("../../models");

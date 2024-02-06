@@ -1,10 +1,11 @@
 import { EventFilter, ethers } from "ethers";
-import { contracts } from "./contracts";
-import { AbstractBlockchainRepository, AbstractDbRepository, AbstractLoader, EventListener } from "./loaders";
-import { IChargedToken, IDelegableToLT, IDirectory, IInterfaceProjectToken, IUserBalance } from "./models";
-import topicsMap from "./topics";
-import { DataType, EMPTY_ADDRESS } from "./types";
-import { rootLogger } from "./util";
+import { contracts } from "../contracts";
+import { AbstractBlockchainRepository, AbstractDbRepository, AbstractLoader } from "../loaders";
+import { IChargedToken, IDelegableToLT, IDirectory, IInterfaceProjectToken, IUserBalance } from "../models";
+import topicsMap from "../topics";
+import { DataType, EMPTY_ADDRESS } from "../types";
+import { rootLogger } from "../util";
+import { EventListener } from "./EventListener";
 
 export class BlockchainRepository extends AbstractBlockchainRepository {
   private readonly chainId: number;

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { WebSocket } from "ws";
-import { BlockchainRepository } from "./BlockchainRepository";
+import { BlockchainRepository } from "./blockchain";
 import { Config, ProviderStatus, WorkerStatus } from "./globals";
 import { AbstractDbRepository } from "./loaders/AbstractDbRepository";
 import { Directory } from "./loaders/Directory";

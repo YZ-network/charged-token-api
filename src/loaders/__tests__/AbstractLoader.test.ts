@@ -11,7 +11,6 @@ jest.mock("../../globals/config");
 jest.mock("../../topics");
 jest.mock("../../pubsub");
 jest.mock("../../models");
-jest.mock("../EventListener");
 
 describe("AbstractLoader: common loaders features", () => {
   const CHAIN_ID = 1337;

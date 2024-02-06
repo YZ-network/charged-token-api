@@ -10,7 +10,6 @@ import { ChainWorker } from "../worker";
 jest.mock("../topics");
 jest.mock("../globals/config");
 jest.mock("../util/AutoWebSocketProvider");
-jest.mock("../loaders/EventListener");
 jest.mock("../loaders/Directory");
 jest.mock("../models");
 jest.mock("../subscriptions");
