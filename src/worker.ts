@@ -236,7 +236,7 @@ export class ChainWorker {
 
     try {
       this.blockchain = new BlockchainRepository(this.chainId, this.provider, this.db, this.broker);
-      this.contractsWatcher = new ContractsWatcher(this.chainId, this.blockchain, this.db, this.broker);
+      this.contractsWatcher = new ContractsWatcher(this.chainId, this.blockchain);
 
       await this.contractsWatcher.registerDirectory(this.directoryAddress);
 

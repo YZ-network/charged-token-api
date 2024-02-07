@@ -4,7 +4,6 @@ import { DataType, IContract, IUserBalance } from "./types";
 export abstract class AbstractBlockchainRepository {
   abstract getBlockNumber(): Promise<number>;
   abstract getUserBalance(address: string, user: string): Promise<IUserBalance | null>;
-  abstract getUserBalancesByProjectToken(ptAddress: string, user: string): Promise<IUserBalance[]>;
   abstract getUserBalancePT(ptAddress: string, user: string): Promise<string>;
   abstract getUserPTBalanceFromDb(ptAddress: string, user: string): Promise<string | null>;
   abstract setProjectTokenAddressOnBalances(address: string, ptAddress: string, blockNumber: number): Promise<void>;
@@ -25,7 +24,7 @@ export abstract class AbstractBlockchainRepository {
     address: string,
     blockNumber: number,
     loader: AbstractLoader<T>,
-  ): Promise<void>;
+  ): Promise<T>;
   abstract unregisterContract(dataType: DataType, address: string, remove?: boolean): Promise<void>;
   abstract isContractRegistered(address: string): boolean;
   abstract getLastState<T>(address: string): T;

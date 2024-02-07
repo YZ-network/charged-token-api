@@ -37,7 +37,7 @@ export abstract class AbstractDbRepository {
   abstract getAllEvents(): Promise<IEvent[]>;
   abstract getEventsPaginated(chainId: number, count: number, offset: number): Promise<IEvent[]>;
 
-  abstract save<T extends IContract>(dataType: DataType, data: T): Promise<void>;
+  abstract save<T extends IContract>(dataType: DataType, data: T): Promise<T>;
   abstract saveBalance(data: IUserBalance): Promise<void>;
   abstract saveEvent(data: IEvent): Promise<void>;
 

@@ -1,8 +1,6 @@
 import pino from "pino";
 import { rootLogger } from "../rootLogger";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
-import { AbstractBroker } from "./AbstractBroker";
-import { AbstractDbRepository } from "./AbstractDbRepository";
 import { ChargedToken } from "./ChargedToken";
 import { DelegableToLT } from "./DelegableToLT";
 import { Directory } from "./Directory";
@@ -12,20 +10,11 @@ import { DataType, EMPTY_ADDRESS, IChargedToken, IDirectory, IInterfaceProjectTo
 export class ContractsWatcher {
   readonly chainId: number;
   private readonly blockchain: AbstractBlockchainRepository;
-  private readonly db: AbstractDbRepository;
-  private readonly broker: AbstractBroker;
   private readonly log: pino.Logger;
 
-  constructor(
-    chainId: number,
-    blockchain: AbstractBlockchainRepository,
-    db: AbstractDbRepository,
-    broker: AbstractBroker,
-  ) {
+  constructor(chainId: number, blockchain: AbstractBlockchainRepository) {
     this.chainId = chainId;
     this.blockchain = blockchain;
-    this.db = db;
-    this.broker = broker;
 
     this.log = rootLogger.child({
       chainId,
@@ -34,15 +23,24 @@ export class ContractsWatcher {
   }
 
   async registerDirectory(address: string): Promise<void> {
+    this.log.info({ msg: "Registering directory", address, chainId: this.chainId });
+
     const blockNumber = await this.blockchain.getBlockNumber();
     const loader = new Directory(this.chainId, this.blockchain, address);
 
-    await this.blockchain.registerContract(DataType.Directory, address, blockNumber, loader);
+    const lastState = await this.blockchain.registerContract<IDirectory>(
+      DataType.Directory,
+      address,
+      blockNumber,
+      loader,
+    );
 
-    const lastState = this.blockchain.getLastState<IDirectory>(address);
+    if (lastState.directory.length > 0) {
+      this.log.info({ msg: "Directory has charged tokens", address, chainId: this.chainId });
 
-    for (const ctAddress in lastState.directory) {
-      await this.registerChargedToken(ctAddress, blockNumber);
+      for (const ctAddress of lastState.directory) {
+        await this.registerChargedToken(ctAddress, blockNumber);
+      }
     }
   }
 
@@ -51,19 +49,21 @@ export class ContractsWatcher {
 
     await this.blockchain.unregisterContract(DataType.Directory, address);
 
-    for (const ctAddress in lastState.directory) {
+    for (const ctAddress of lastState.directory) {
       await this.unregisterChargedToken(ctAddress);
     }
   }
 
   async registerChargedToken(address: string, blockNumber: number): Promise<void> {
+    this.log.info({ msg: "Registering charged token", address, chainId: this.chainId });
+
     const loader = new ChargedToken(this.chainId, this.blockchain, address);
 
-    await this.blockchain.registerContract(DataType.ChargedToken, address, blockNumber, loader);
-
-    const lastState = this.blockchain.getLastState<IChargedToken>(address);
+    const lastState = await this.blockchain.registerContract(DataType.ChargedToken, address, blockNumber, loader);
 
     if (lastState.interfaceProjectToken !== EMPTY_ADDRESS) {
+      this.log.info({ msg: "Charged token has interface", address, chainId: this.chainId });
+
       await this.registerInterfaceProjectToken(lastState.interfaceProjectToken, blockNumber);
     }
   }
@@ -79,14 +79,25 @@ export class ContractsWatcher {
   }
 
   async registerInterfaceProjectToken(address: string, blockNumber: number): Promise<void> {
+    this.log.info({ msg: "Registering interface", address, chainId: this.chainId });
+
     const loader = new InterfaceProjectToken(this.chainId, this.blockchain, address);
 
-    await this.blockchain.registerContract(DataType.InterfaceProjectToken, address, blockNumber, loader);
+    const lastState = await this.blockchain.registerContract(
+      DataType.InterfaceProjectToken,
+      address,
+      blockNumber,
+      loader,
+    );
 
-    const lastState = this.blockchain.getLastState<IInterfaceProjectToken>(address);
+    if (lastState.projectToken !== EMPTY_ADDRESS) {
+      if (!this.blockchain.isContractRegistered(lastState.projectToken)) {
+        this.log.info({ msg: "Interface has new project token", address, chainId: this.chainId });
 
-    if (lastState.projectToken !== EMPTY_ADDRESS && !this.blockchain.isContractRegistered(lastState.projectToken)) {
-      await this.registerDelegableToLT(lastState.projectToken, blockNumber);
+        await this.registerDelegableToLT(lastState.projectToken, blockNumber);
+      } else {
+        this.log.info({ msg: "Skipping project token already registered", address, chainId: this.chainId });
+      }
     }
   }
 
@@ -101,6 +112,8 @@ export class ContractsWatcher {
   }
 
   async registerDelegableToLT(address: string, blockNumber: number): Promise<void> {
+    this.log.info({ msg: "Registering project token", address, chainId: this.chainId });
+
     const loader = new DelegableToLT(this.chainId, this.blockchain, address);
 
     await this.blockchain.registerContract(DataType.DelegableToLT, address, blockNumber, loader);

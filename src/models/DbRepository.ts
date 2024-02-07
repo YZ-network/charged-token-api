@@ -91,7 +91,11 @@ export class DbRepository extends AbstractDbRepository {
   }
 
   async getDirectory(chainId: number): Promise<IDirectory | null> {
-    return await DirectoryModel.findOne({ chainId });
+    const result = await DirectoryModel.findOne({ chainId });
+
+    if (result === null) return null;
+
+    return result.toObject();
   }
 
   async getInterfaceByChargedToken(chainId: number, ctAddress: string): Promise<IInterfaceProjectToken | null> {
@@ -169,14 +173,16 @@ export class DbRepository extends AbstractDbRepository {
     return result.map((doc: any) => doc.toObject());
   }
 
-  async save<T extends IContract>(dataType: DataType, data: T): Promise<void> {
+  async save<T extends IContract>(dataType: DataType, data: T): Promise<T> {
     if (await this.exists(dataType, data.chainId, data.address)) {
       throw new Error("Tried to create a duplicate document !");
     }
 
     const model = this.getModelByDataType(dataType);
 
-    await new model(data).save();
+    const result = await new model(data).save();
+
+    return result.toObject();
   }
 
   async saveBalance(data: IUserBalance): Promise<void> {

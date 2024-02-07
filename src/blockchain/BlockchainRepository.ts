@@ -12,7 +12,6 @@ import {
   IDelegableToLT,
   IDirectory,
   IInterfaceProjectToken,
-  IOwnable,
   IUserBalance,
 } from "../loaders";
 import { rootLogger } from "../rootLogger";
@@ -496,12 +495,12 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     delete this.instances[address];
   }
 
-  async registerContract<T extends IOwnable>(
+  async registerContract<T extends IContract>(
     dataType: DataType,
     address: string,
     blockNumber: number,
     loader: AbstractLoader<T>,
-  ): Promise<void> {
+  ): Promise<T> {
     if (dataType === DataType.Directory) {
       if (this.directory !== undefined) {
         throw new Error("ContractsDirectory already registered !");
@@ -511,36 +510,38 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
     this.loaders[address] = loader;
 
-    const existing = await this.db.get<IChargedToken>(dataType, this.chainId, address);
+    const lastState = await this.db.get<T>(dataType, this.chainId, address);
 
-    if (existing != null) {
+    if (lastState != null) {
       this.log.info({
         msg: "Found existing data for contract",
         contract: dataType,
         chainId: this.chainId,
         address,
-        lastUpdateBlock: existing.lastUpdateBlock,
+        lastUpdateBlock: lastState.lastUpdateBlock,
       });
 
-      this.lastStates[address] = existing;
+      this.lastStates[address] = lastState;
 
       const eventsStartBlock = Math.max(
-        existing.lastUpdateBlock, // last update block should be included in case of partial events handling
+        lastState.lastUpdateBlock, // last update block should be included in case of partial events handling
         blockNumber - 100, // otherwise, limit the number of past blocks to query
       );
 
-      if (eventsStartBlock > existing.lastUpdateBlock) {
+      if (eventsStartBlock > lastState.lastUpdateBlock) {
         this.log.warn({
           msg: "Skipped blocks for events syncing",
           contract: dataType,
           address,
           chainId: this.chainId,
-          lastUpdateBlock: existing.lastUpdateBlock,
+          lastUpdateBlock: lastState.lastUpdateBlock,
           eventsStartBlock,
         });
       }
 
       await this.loadAndSyncEvents(dataType, address, eventsStartBlock, this.loaders[address]);
+
+      this.lastStates[address] = this.db.get(dataType, this.chainId, address);
     } else {
       this.log.info({
         msg: "First time loading",
@@ -549,15 +550,22 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
         chainId: this.chainId,
       });
 
-      await this.db.save(dataType, await this.loadContract(dataType, address, blockNumber));
+      const data = await this.loadContract<T>(dataType, address, blockNumber);
+      this.lastStates[address] = await this.db.save<T>(dataType, data);
 
       this.broker.notifyUpdate(dataType, this.chainId, address, this.lastStates[address]);
     }
 
     this.subscribeToEvents(dataType, address, loader);
+
+    return this.lastStates[address];
   }
 
-  private async loadContract<T extends IOwnable>(dataType: DataType, address: string, blockNumber: number): Promise<T> {
+  private async loadContract<T extends IContract>(
+    dataType: DataType,
+    address: string,
+    blockNumber: number,
+  ): Promise<T> {
     switch (dataType) {
       case DataType.Directory:
         return (await this.loadDirectory(address, blockNumber)) as unknown as T;
