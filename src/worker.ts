@@ -241,7 +241,7 @@ export class ChainWorker {
       await this.contractsWatcher.registerDirectory(this.directoryAddress);
 
       this.subscribeToNewBlocks();
-      await subscribeToUserBalancesLoading(this.chainId, this.blockchain, this.broker);
+      await subscribeToUserBalancesLoading(this.chainId, this.db, this.blockchain, this.broker);
     } catch (err) {
       log.error({
         msg: `Error happened running worker on network ${this.name}`,

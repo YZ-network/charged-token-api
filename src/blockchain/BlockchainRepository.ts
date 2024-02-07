@@ -275,6 +275,8 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     interfaceAddress?: string,
     ptAddress?: string,
   ): Promise<IUserBalance> {
+    this.log.info({ msg: "Loading user balances", user, ctAddress, interfaceAddress, ptAddress });
+
     const ctInstance = this.getInstance(DataType.ChargedToken, ctAddress);
     const ifaceInstance =
       interfaceAddress !== undefined ? this.getInstance(DataType.InterfaceProjectToken, interfaceAddress) : undefined;
@@ -297,7 +299,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
       dateOfPartiallyCharged: (await ctInstance.getUserDateOfPartiallyChargedToken(user)).toString(),
       claimedRewardPerShare1e18: (await ctInstance.claimedRewardPerShare1e18(user)).toString(),
       valueProjectTokenToFullRecharge:
-        ifaceInstance !== undefined ? (await ifaceInstance.loadValueProjectTokenToFullRecharge(user)).toString() : "0",
+        ifaceInstance !== undefined ? (await ifaceInstance.valueProjectTokenToFullRecharge(user)).toString() : "0",
     };
   }
 
