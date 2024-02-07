@@ -52,7 +52,7 @@ const configDefaults: JsonConfig = {
     rpcMaxRetryCount: 3,
     rpcPingDelayMs: 3000,
     rpcPongMaxWaitMs: 6000,
-    rpcRetryDelayMs: 10,
+    rpcRetryDelayMs: 1000,
   },
 };
 

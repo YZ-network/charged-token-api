@@ -146,26 +146,34 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
 
     this.websocket.onmessage = (messageEvent: MessageEvent) => {
       const data = messageEvent.data as string;
-      const result = JSON.parse(data);
-      if (result.id != null && result.id !== 0) {
-        this._onRequestResponse(data, result);
-      } else if (result.method === "eth_subscription") {
-        this._onSubscriptionMessage(result);
-      } else if (result.error && result.error.code === 429) {
+      try {
+        const result = JSON.parse(data);
+        if (result.id != null && result.id !== 0) {
+          this._onRequestResponse(data, result);
+        } else if (result.method === "eth_subscription") {
+          this._onSubscriptionMessage(result);
+        } else if (result.error && result.error.code === 429) {
+          this._onRateLimitingError();
+        } else {
+          this._detectNetwork.then((network) => {
+            Metrics.requestFailed(network.chainId);
+          });
+
+          logger.warn({
+            action: "error",
+            msg: "Unknown error handling message",
+            messageEvent,
+            chainId: this.chainId,
+          });
+
+          logger.warn({ msg: "this should not happen", chainId: this.chainId });
+        }
+      } catch (err) {
+        logger.warn({ msg: "Message is not valid JSON, will retry later", data, chainId: this.chainId });
         this._onRateLimitingError();
-      } else {
         this._detectNetwork.then((network) => {
           Metrics.requestFailed(network.chainId);
         });
-
-        logger.warn({
-          action: "error",
-          msg: "Unknown error handling message",
-          messageEvent,
-          chainId: this.chainId,
-        });
-
-        logger.warn({ msg: "this should not happen", chainId: this.chainId });
       }
     };
 
