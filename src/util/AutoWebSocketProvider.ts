@@ -169,7 +169,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
           logger.warn({ msg: "this should not happen", chainId: this.chainId });
         }
       } catch (err) {
-        logger.warn({ msg: "Message is not valid JSON, will retry later", data });
+        logger.warn({ msg: "Message is not valid JSON, will retry later", data, chainId: this.chainId });
         this._onRateLimitingError();
         this._detectNetwork.then((network) => {
           Metrics.requestFailed(network.chainId);
