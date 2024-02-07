@@ -1,49 +1,12 @@
 import { BigNumber } from "ethers";
 import { type ClientSession } from "mongoose";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
-import { AbstractBroker } from "./AbstractBroker";
-import { AbstractDbRepository } from "./AbstractDbRepository";
 import { AbstractLoader } from "./AbstractLoader";
-import { type ChargedToken } from "./ChargedToken";
-import { type Directory } from "./Directory";
 import { DataType, EMPTY_ADDRESS, IDelegableToLT } from "./types";
 
 export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
-  readonly ct: ChargedToken;
-  readonly directory: Directory;
-
-  constructor(
-    chainId: number,
-    blockchain: AbstractBlockchainRepository,
-    address: string,
-    directory: Directory,
-    ct: ChargedToken,
-    dbRepository: AbstractDbRepository,
-    broker: AbstractBroker,
-  ) {
-    super(chainId, blockchain, address, dbRepository, DataType.DelegableToLT, broker);
-
-    this.directory = directory;
-    this.ct = ct;
-  }
-
-  protected checkUpdateAmounts(data: Partial<ChargedToken> | ChargedToken) {
-    super.checkUpdateAmounts(data);
-
-    const fieldsToCheck: string[] = ["totalSupply"];
-
-    this.detectNegativeAmount(this.constructor.name, data as Record<string, string>, fieldsToCheck);
-  }
-
-  async load(blockNumber: number) {
-    this.log.debug({
-      msg: "Reading entire project token",
-      chainId: this.chainId,
-      contract: this.dataType,
-      address: this.address,
-    });
-
-    return await this.blockchain.loadDelegableToLT(this.address, blockNumber);
+  constructor(chainId: number, blockchain: AbstractBlockchainRepository, address: string) {
+    super(chainId, blockchain, address, DataType.DelegableToLT);
   }
 
   async onTransferEvent(
@@ -65,59 +28,55 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
 
     if (from !== EMPTY_ADDRESS) {
       // p2p transfers are not covered by other events
-      const oldBalance = await this.getBalance(session, this.ct.address, from);
+      const oldBalance = await this.getPTBalance(from);
 
       if (oldBalance !== null) {
-        const balancePT = BigNumber.from(oldBalance.balancePT).sub(BigNumber.from(value)).toString();
+        const balancePT = BigNumber.from(oldBalance).sub(BigNumber.from(value)).toString();
 
         await this.updateBalanceAndNotify(
-          session,
-          this.ct.address,
           from,
           {
             balancePT,
           },
           blockNumber,
-          this.address,
           eventName,
+          this.address,
         );
       }
     }
     if (to !== EMPTY_ADDRESS) {
       // p2p transfers are not covered by other events
-      const oldBalance = await this.getBalance(session, this.ct.address, to);
+      const oldBalance = await this.getPTBalance(to);
 
       if (oldBalance !== null) {
-        const balancePT = BigNumber.from(oldBalance.balancePT).add(BigNumber.from(value)).toString();
+        const balancePT = BigNumber.from(oldBalance).add(BigNumber.from(value)).toString();
 
         await this.updateBalanceAndNotify(
-          session,
-          this.ct.address,
           to,
           {
             balancePT,
           },
           blockNumber,
-          this.address,
           eventName,
+          this.address,
         );
       }
     }
     if (from === EMPTY_ADDRESS) {
       // minting project tokens
-      const jsonModel = await this.getJsonModel(session);
+      const jsonModel = await this.getLastState();
       const update = {
         totalSupply: BigNumber.from(jsonModel.totalSupply).add(BigNumber.from(value)).toString(),
       };
-      await this.applyUpdateAndNotify(session, update, blockNumber, eventName);
+      await this.applyUpdateAndNotify(update, blockNumber, eventName);
     }
     if (to === EMPTY_ADDRESS) {
       // burning project tokens
-      const jsonModel = await this.getJsonModel(session);
+      const jsonModel = await this.getLastState();
       const update = {
         totalSupply: BigNumber.from(jsonModel.totalSupply).sub(BigNumber.from(value)).toString(),
       };
-      await this.applyUpdateAndNotify(session, update, blockNumber, eventName);
+      await this.applyUpdateAndNotify(update, blockNumber, eventName);
     }
   }
 
@@ -143,13 +102,13 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = await this.getJsonModel(session);
+    const jsonModel = await this.getLastState();
 
     const update = {
       validatedInterfaceProjectToken: [...jsonModel.validatedInterfaceProjectToken, interfaceProjectToken],
     };
 
-    await this.applyUpdateAndNotify(session, update, blockNumber, eventName);
+    await this.applyUpdateAndNotify(update, blockNumber, eventName);
   }
 
   async onListOfValidatedInterfaceProjectTokenIsFinalizedEvent(
@@ -159,7 +118,6 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     eventName?: string,
   ): Promise<void> {
     await this.applyUpdateAndNotify(
-      session,
       {
         isListOfInterfaceProjectTokenComplete: true,
       },
@@ -174,7 +132,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = await this.getJsonModel(session);
+    const jsonModel = await this.getLastState();
 
     const update = {
       validatedInterfaceProjectToken: jsonModel.validatedInterfaceProjectToken.filter(
@@ -182,6 +140,6 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
       ),
     };
 
-    await this.applyUpdateAndNotify(session, update, blockNumber, eventName);
+    await this.applyUpdateAndNotify(update, blockNumber, eventName);
   }
 }

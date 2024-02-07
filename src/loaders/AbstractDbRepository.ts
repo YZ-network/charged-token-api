@@ -32,6 +32,7 @@ export abstract class AbstractDbRepository {
   abstract getInterfaceByChargedToken(chainId: number, ctAddress: string): Promise<IInterfaceProjectToken | null>;
   abstract getBalances(chainId: number, address: string): Promise<IUserBalance[]>;
   abstract getBalance(chainId: number, address: string, user: string): Promise<IUserBalance | null>;
+  abstract getPTBalance(chainId: number, ptAddress: string, user: string): Promise<string | null>;
   abstract getBalancesByProjectToken(chainId: number, ptAddress: string, user: string): Promise<IUserBalance[]>;
   abstract getAllEvents(): Promise<IEvent[]>;
   abstract getEventsPaginated(chainId: number, count: number, offset: number): Promise<IEvent[]>;

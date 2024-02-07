@@ -140,6 +140,20 @@ export class DbRepository extends AbstractDbRepository {
     return result.map((doc: any) => doc.toObject());
   }
 
+  async getPTBalance(chainId: number, ptAddress: string, user: string): Promise<string | null> {
+    const result = await UserBalanceModel.findOne({
+      chainId,
+      ptAddress,
+      user,
+    });
+
+    if (result === null) {
+      return null;
+    }
+
+    return result.balancePT;
+  }
+
   async getAllEvents(): Promise<IEvent[]> {
     const result = await EventModel.find().sort({ blockNumber: "asc", txIndex: "asc", logIndex: "asc" });
 

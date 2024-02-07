@@ -1,7 +1,7 @@
-import mongoose from "mongoose";
 import { WebSocket } from "ws";
 import { BlockchainRepository } from "./blockchain";
 import { Config, ProviderStatus, WorkerStatus } from "./globals";
+import { ContractsWatcher } from "./loaders";
 import { AbstractBroker } from "./loaders/AbstractBroker";
 import { AbstractDbRepository } from "./loaders/AbstractDbRepository";
 import { Directory } from "./loaders/Directory";
@@ -34,6 +34,7 @@ export class ChainWorker {
   readonly db: AbstractDbRepository;
   readonly broker: AbstractBroker;
 
+  contractsWatcher: ContractsWatcher | undefined;
   blockchain: BlockchainRepository | undefined;
   name: string | undefined;
   restartCount: number = 0;
@@ -234,28 +235,13 @@ export class ChainWorker {
     });
 
     try {
-      this.blockchain = new BlockchainRepository(this.chainId, this.provider, this.db);
-      this.directory = new Directory(this.chainId, this.blockchain, this.directoryAddress, this.db, this.broker);
-      const blockNumber = await this.provider.getBlockNumber();
+      this.blockchain = new BlockchainRepository(this.chainId, this.provider, this.db, this.broker);
+      this.contractsWatcher = new ContractsWatcher(this.chainId, this.blockchain, this.db, this.broker);
 
-      log.info({
-        msg: "Initializing directory",
-        chainId: this.chainId,
-        blockNumber,
-        blockNumberBeforeDisconnect: this.blockNumberBeforeDisconnect,
-      });
+      await this.contractsWatcher.registerDirectory(this.directoryAddress);
 
-      const session = await mongoose.startSession();
-
-      await this.directory.init(session, blockNumber, true);
-      await session.endSession();
-      log.info({
-        msg: `Initialization complete for ${this.name} subscribing to updates`,
-        chainId: this.chainId,
-      });
-      this.directory.subscribeToEvents();
       this.subscribeToNewBlocks();
-      await subscribeToUserBalancesLoading(this.directory, this.blockchain, this.broker);
+      await subscribeToUserBalancesLoading(this.chainId, this.blockchain, this.broker);
     } catch (err) {
       log.error({
         msg: `Error happened running worker on network ${this.name}`,
@@ -273,6 +259,8 @@ export class ChainWorker {
     if (this.providerStatus === ProviderStatus.DEAD && this.workerStatus === WorkerStatus.DEAD) return;
 
     Metrics.workerStopped(this.chainId);
+
+    await this.contractsWatcher?.unregisterDirectory(this.directoryAddress);
 
     this.blockchain?.destroy();
     this.blockchain = undefined;

@@ -2,14 +2,17 @@ import { EventFilter, ethers } from "ethers";
 import { contracts } from "../contracts";
 import {
   AbstractBlockchainRepository,
+  AbstractBroker,
   AbstractDbRepository,
   AbstractLoader,
   DataType,
   EMPTY_ADDRESS,
   IChargedToken,
+  IContract,
   IDelegableToLT,
   IDirectory,
   IInterfaceProjectToken,
+  IOwnable,
   IUserBalance,
 } from "../loaders";
 import { rootLogger } from "../rootLogger";
@@ -17,25 +20,31 @@ import topicsMap from "../topics";
 import { EventListener } from "./EventListener";
 
 export class BlockchainRepository extends AbstractBlockchainRepository {
+  private directory: string | undefined;
   private readonly chainId: number;
   private readonly provider: ethers.providers.JsonRpcProvider;
   private readonly db: AbstractDbRepository;
+  private readonly broker: AbstractBroker;
   private readonly eventListener: EventListener;
   private readonly log = rootLogger.child({ name: "BlockchainRepository" });
 
   private readonly instances: Record<string, ethers.Contract> = {};
   private readonly interfaces: Record<string, ethers.utils.Interface> = {};
+  private readonly lastStates: Record<string, any> = {};
+  private readonly loaders: Record<string, AbstractLoader<any>> = {};
 
   constructor(
     chainId: number,
     provider: ethers.providers.JsonRpcProvider,
     db: AbstractDbRepository,
+    broker: AbstractBroker,
     startEventLoop = true,
   ) {
     super();
     this.chainId = chainId;
     this.provider = provider;
     this.db = db;
+    this.broker = broker;
     this.eventListener = new EventListener(db, provider, startEventLoop);
   }
 
@@ -87,7 +96,15 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     return await this.provider.getBlockNumber();
   }
 
-  async loadDirectory(address: string, blockNumber: number): Promise<IDirectory> {
+  async getUserBalance(address: string, user: string): Promise<IUserBalance | null> {
+    return await this.db.getBalance(this.chainId, address, user);
+  }
+
+  async getUserPTBalanceFromDb(ptAddress: string, user: string): Promise<string | null> {
+    return await this.db.getPTBalance(this.chainId, ptAddress, user);
+  }
+
+  private async loadDirectory(address: string, blockNumber: number): Promise<IDirectory> {
     const ins = this.getInstance(DataType.Directory, address);
 
     const whitelistCount = (await ins.countWhitelistedProjectOwners()).toNumber();
@@ -125,7 +142,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     };
   }
 
-  async loadChargedToken(address: string, blockNumber: number): Promise<IChargedToken> {
+  private async loadChargedToken(address: string, blockNumber: number): Promise<IChargedToken> {
     const ins = this.getInstance(DataType.ChargedToken, address);
 
     const fundraisingFields = {
@@ -206,7 +223,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     };
   }
 
-  async loadInterfaceProjectToken(address: string, blockNumber: number): Promise<IInterfaceProjectToken> {
+  private async loadInterfaceProjectToken(address: string, blockNumber: number): Promise<IInterfaceProjectToken> {
     const ins = this.getInstance(DataType.InterfaceProjectToken, address);
 
     return {
@@ -225,7 +242,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     };
   }
 
-  async loadDelegableToLT(address: string, blockNumber: number): Promise<IDelegableToLT> {
+  private async loadDelegableToLT(address: string, blockNumber: number): Promise<IDelegableToLT> {
     const ins = this.getInstance(DataType.DelegableToLT, address);
 
     const validatedInterfaceProjectToken: string[] = [];
@@ -285,7 +302,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     };
   }
 
-  async loadAndSyncEvents(
+  private async loadAndSyncEvents(
     dataType: DataType,
     address: string,
     startBlock: number,
@@ -472,6 +489,452 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
         });
       });
     });
+  }
+
+  unsubscribeEvents(address: string): void {
+    this.instances[address].removeAllListeners();
+    delete this.instances[address];
+  }
+
+  async registerContract<T extends IOwnable>(
+    dataType: DataType,
+    address: string,
+    blockNumber: number,
+    loader: AbstractLoader<T>,
+  ): Promise<void> {
+    if (dataType === DataType.Directory) {
+      if (this.directory !== undefined) {
+        throw new Error("ContractsDirectory already registered !");
+      }
+      this.directory = address;
+    }
+
+    this.loaders[address] = loader;
+
+    const existing = await this.db.get<IChargedToken>(dataType, this.chainId, address);
+
+    if (existing != null) {
+      this.log.info({
+        msg: "Found existing data for contract",
+        contract: dataType,
+        chainId: this.chainId,
+        address,
+        lastUpdateBlock: existing.lastUpdateBlock,
+      });
+
+      this.lastStates[address] = existing;
+
+      const eventsStartBlock = Math.max(
+        existing.lastUpdateBlock, // last update block should be included in case of partial events handling
+        blockNumber - 100, // otherwise, limit the number of past blocks to query
+      );
+
+      if (eventsStartBlock > existing.lastUpdateBlock) {
+        this.log.warn({
+          msg: "Skipped blocks for events syncing",
+          contract: dataType,
+          address,
+          chainId: this.chainId,
+          lastUpdateBlock: existing.lastUpdateBlock,
+          eventsStartBlock,
+        });
+      }
+
+      await this.loadAndSyncEvents(dataType, address, eventsStartBlock, this.loaders[address]);
+    } else {
+      this.log.info({
+        msg: "First time loading",
+        contract: dataType,
+        address,
+        chainId: this.chainId,
+      });
+
+      await this.db.save(dataType, await this.loadContract(dataType, address, blockNumber));
+
+      this.broker.notifyUpdate(dataType, this.chainId, address, this.lastStates[address]);
+    }
+
+    this.subscribeToEvents(dataType, address, loader);
+  }
+
+  private async loadContract<T extends IOwnable>(dataType: DataType, address: string, blockNumber: number): Promise<T> {
+    switch (dataType) {
+      case DataType.Directory:
+        return (await this.loadDirectory(address, blockNumber)) as unknown as T;
+      case DataType.ChargedToken:
+        return (await this.loadChargedToken(address, blockNumber)) as unknown as T;
+      case DataType.InterfaceProjectToken:
+        return (await this.loadInterfaceProjectToken(address, blockNumber)) as unknown as T;
+      case DataType.DelegableToLT:
+        return (await this.loadDelegableToLT(address, blockNumber)) as unknown as T;
+      default:
+        throw new Error("Unexpected dataType !");
+    }
+  }
+
+  async unregisterContract(dataType: DataType, address: string, remove = false): Promise<void> {
+    const lastState = this.getLastState(address);
+
+    this.unsubscribeEvents(address);
+    delete this.lastStates[address];
+    delete this.loaders[address];
+    if (remove) {
+      await this.db.delete(dataType, this.chainId, address);
+    }
+
+    switch (dataType) {
+      case DataType.ChargedToken:
+        const interfaceAddress = (lastState as IChargedToken).interfaceProjectToken;
+        if (interfaceAddress !== EMPTY_ADDRESS) {
+          await this.unregisterContract(DataType.InterfaceProjectToken, interfaceAddress, remove);
+        }
+        if (remove) {
+          await this.db.delete(DataType.UserBalance, this.chainId, address);
+        }
+        break;
+
+      case DataType.InterfaceProjectToken:
+        const ptAddress = (lastState as IInterfaceProjectToken).projectToken;
+        if (ptAddress !== EMPTY_ADDRESS && !this.isDelegableStillReferenced(ptAddress)) {
+          await this.unregisterContract(DataType.DelegableToLT, ptAddress, remove);
+        }
+        break;
+    }
+  }
+
+  getLastState<T>(address: string): T {
+    return this.lastStates[address];
+  }
+
+  isContractRegistered(address: string): boolean {
+    return this.loaders[address] !== undefined || this.lastStates[address] !== undefined;
+  }
+
+  isDelegableStillReferenced(address: string): boolean {
+    return Object.values(this.lastStates).reduce(
+      (flag, state) => flag || (state.projectToken !== undefined && state.projectToken === address),
+      false,
+    );
+  }
+
+  async loadAllUserBalances(user: string, blockNumber: number, address?: string): Promise<IUserBalance[]> {
+    this.log.info({
+      msg: `Loading user balances for ${user}@${address}`,
+      chainId: this.chainId,
+      address,
+    });
+
+    const startDate = new Date().getTime();
+
+    const lastDirectory = this.getLastState<IDirectory>(this.directory!);
+
+    const results: IUserBalance[] = [];
+    for (const ctAddress of lastDirectory.directory) {
+      const lastCt = this.getLastState<IChargedToken>(ctAddress);
+      let interfaceAddress: string | undefined;
+      let ptAddress: string | undefined;
+
+      if (lastCt.interfaceProjectToken !== EMPTY_ADDRESS) {
+        interfaceAddress = lastCt.interfaceProjectToken;
+
+        const lastInterface = this.getLastState<IInterfaceProjectToken>(interfaceAddress);
+
+        if (lastInterface.projectToken !== EMPTY_ADDRESS) {
+          ptAddress = lastInterface.projectToken;
+        }
+      }
+
+      const balance = await this.loadUserBalances(blockNumber, user, ctAddress, interfaceAddress, ptAddress);
+      results.push(balance);
+    }
+
+    for (const entry of results) {
+      if (await this.db.existsBalance(this.chainId, entry.address, user)) {
+        this.log.info({
+          msg: `updating CT balance for ${user}`,
+          chainId: this.chainId,
+          address: entry.address,
+          balance: entry,
+        });
+        await this.db.updateBalance({ ...entry, chainId: this.chainId, user, address: entry.address });
+      } else {
+        await this.db.saveBalance(entry);
+      }
+    }
+
+    const saved = await this.db.getBalances(this.chainId, user);
+
+    if (saved !== null) {
+      this.log.info({
+        msg: `Publishing updated user balances for ${user}`,
+        chainId: this.chainId,
+        address,
+      });
+
+      this.broker.notifyUpdate(DataType.UserBalance, this.chainId, user, saved);
+    } else {
+      this.log.warn({
+        msg: `Error while reloading balances after save for user ${user}`,
+        chainId: this.chainId,
+        address,
+      });
+    }
+    const stopDate = new Date().getTime();
+
+    this.log.debug({
+      msg: `User balances loaded in ${(stopDate - startDate) / 1000} seconds`,
+      chainId: this.chainId,
+      address,
+    });
+
+    return results;
+  }
+
+  private async saveOrUpdate<T extends IContract>(
+    address: string,
+    dataType: DataType,
+    data: Partial<T> | T,
+    blockNumber: number,
+  ): Promise<void> {
+    this.checkUpdateAmounts<T>(dataType, data);
+
+    if (await this.db.exists(dataType, this.chainId, address)) {
+      await this.db.update(dataType, {
+        ...data,
+        chainId: this.chainId,
+        address,
+        lastUpdateBlock: blockNumber,
+      });
+    } else {
+      await this.db.save(dataType, data as T);
+    }
+
+    const result = await this.db.get(dataType, this.chainId, address);
+    if (result === null) {
+      throw new Error("Error connecting to database !");
+    }
+    this.lastStates[address] = result;
+  }
+
+  private checkUpdateAmounts<T>(dataType: DataType, data: Partial<T> | T): void {
+    let fieldsToCheck: string[];
+
+    switch (dataType) {
+      case DataType.ChargedToken:
+        fieldsToCheck = [
+          "totalSupply",
+          "maxInitialTokenAllocation",
+          "maxStakingTokenAmount",
+          "currentRewardPerShare1e18",
+          "stakedLT",
+          "totalLocked",
+          "totalTokenAllocated",
+          "campaignStakingRewards",
+          "totalStakingRewards",
+        ];
+        break;
+
+      case DataType.DelegableToLT:
+        fieldsToCheck = ["totalSupply"];
+        break;
+
+      case DataType.UserBalance:
+        fieldsToCheck = [
+          "balance",
+          "balancePT",
+          "fullyChargedBalance",
+          "partiallyChargedBalance",
+          "claimedRewardPerShare1e18",
+          "valueProjectTokenToFullRecharge",
+        ];
+        break;
+
+      case DataType.Directory:
+      default:
+        fieldsToCheck = [];
+    }
+
+    if (fieldsToCheck.length > 0) {
+      this.detectNegativeAmount(dataType, data as Record<string, string>, fieldsToCheck);
+    }
+  }
+
+  private detectNegativeAmount(
+    dataType: DataType,
+    data: Record<string, string>,
+    fieldsToCheck: string[],
+    logData: Record<string, any> = {},
+  ) {
+    const faultyFields: Record<string, string> = {};
+    fieldsToCheck.forEach((field) => {
+      if (data[field] !== undefined && data[field].startsWith("-")) {
+        faultyFields[field] = data[field];
+      }
+    });
+
+    if (Object.keys(faultyFields).length > 0) {
+      this.log.error({
+        ...logData,
+        msg: `Invalid update detected : negative amounts in ${dataType}`,
+        faultyFields,
+        chainId: this.chainId,
+      });
+      throw new Error(`Invalid update detected : negative amounts in ${dataType}`);
+    }
+  }
+
+  async setProjectTokenAddressOnBalances(address: string, ptAddress: string, blockNumber: number): Promise<void> {
+    this.log.info({
+      msg: "will update PT address on balances for all users one by one",
+      address,
+      ptAddress,
+      contract: this.constructor.name,
+      chainId: this.chainId,
+    });
+
+    const balancesToUpdate = await this.db.getBalances(this.chainId, address);
+    this.log.info({
+      msg: "user balances to update !",
+      count: balancesToUpdate.length,
+      users: balancesToUpdate.map((balance) => balance.user),
+    });
+
+    const userPTBalances: Record<string, string> = {};
+
+    for (const balance of balancesToUpdate) {
+      if (userPTBalances[balance.user] === undefined) {
+        userPTBalances[balance.user] = await this.getUserBalancePT(balance.ptAddress, balance.user);
+        this.log.info({
+          msg: "loaded user PT balance",
+          user: balance.user,
+          balance: balance.balancePT,
+        });
+      }
+
+      await this.updateBalanceAndNotify(
+        address,
+        balance.user,
+        {
+          ptAddress,
+          balancePT: userPTBalances[balance.user],
+        },
+        blockNumber,
+      );
+    }
+  }
+
+  async updateBalanceAndNotify(
+    address: string,
+    user: string,
+    balanceUpdates: Partial<IUserBalance>,
+    blockNumber: number,
+    ptAddress?: string,
+    eventName?: string,
+  ): Promise<void> {
+    this.checkUpdateAmounts(DataType.UserBalance, balanceUpdates);
+
+    this.log.info({
+      msg: "applying update to balance",
+      address,
+      user,
+      balanceUpdates,
+      eventName,
+      contract: this.constructor.name,
+      chainId: this.chainId,
+    });
+
+    await this.db.updateBalance({
+      ...balanceUpdates,
+      chainId: this.chainId,
+      address,
+      user,
+      lastUpdateBlock: blockNumber,
+    });
+
+    if (balanceUpdates.balancePT !== undefined && ptAddress !== undefined) {
+      this.log.info({
+        msg: "propagating project token balance",
+        ptAddress,
+        user,
+        eventName,
+        contract: this.constructor.name,
+        chainId: this.chainId,
+      });
+
+      await this.db.updateOtherBalancesByProjectToken(address, {
+        chainId: this.chainId,
+        user,
+        ptAddress,
+        balancePT: balanceUpdates.balancePT,
+        lastUpdateBlock: blockNumber,
+      });
+    }
+
+    if (ptAddress === undefined) {
+      const newBalance = await this.db.getBalance(this.chainId, address, user);
+
+      this.log.trace({
+        msg: "sending balance update :",
+        data: newBalance,
+        contract: this.constructor.name,
+        address,
+        chainId: this.chainId,
+      });
+
+      this.broker.notifyUpdate(DataType.UserBalance, this.chainId, user, [newBalance]);
+    } else {
+      const updatedBalances = await this.db.getBalancesByProjectToken(this.chainId, ptAddress, user);
+
+      try {
+        this.log.trace({
+          msg: "sending multiple balance updates :",
+          data: updatedBalances,
+          contract: this.constructor.name,
+          ptAddress,
+          chainId: this.chainId,
+        });
+
+        for (const b of updatedBalances) {
+          this.broker.notifyUpdate(DataType.UserBalance, this.chainId, user, [b]);
+        }
+      } catch (err) {
+        this.log.error({
+          msg: "Error loading updated balances after pt balance changed",
+          err,
+          chainId: this.chainId,
+          ptAddress,
+        });
+      }
+    }
+  }
+
+  async applyUpdateAndNotify(
+    dataType: DataType,
+    address: string,
+    data: Partial<IContract>,
+    blockNumber: number,
+    eventName?: string,
+  ): Promise<void> {
+    this.log.info({
+      msg: "applying update to contract",
+      eventName,
+      data,
+      contract: dataType,
+      address,
+      chainId: this.chainId,
+    });
+
+    await this.saveOrUpdate(address, dataType, data, blockNumber);
+
+    this.log.debug({
+      msg: "sending update to channel",
+      data: this.lastStates[address],
+      chainId: this.chainId,
+      address,
+      contract: dataType,
+    });
+
+    this.broker.notifyUpdate(dataType, this.chainId, address, this.lastStates[address]);
   }
 
   destroy(): void {

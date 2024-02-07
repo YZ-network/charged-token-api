@@ -14,5 +14,11 @@ export const MockBlockchainRepository: jest.Mock<AbstractBlockchainRepository> =
     loadUserBalances: jest.fn(),
     loadAndSyncEvents: jest.fn(),
     subscribeToEvents: jest.fn(),
+    registerContract: jest.fn(),
+    unregisterContract: jest.fn(),
+    isContractRegistered: jest.fn(),
+    getLastState: jest.fn(),
+    isDelegableStillReferenced: jest.fn(),
+    unsubscribeEvents: jest.fn(),
   };
 });
