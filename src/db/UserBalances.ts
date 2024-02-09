@@ -1,8 +1,7 @@
 import mongoose from "mongoose";
 import { IUserBalance } from "../core/types";
-import { IModel } from "./types";
 
-const userBalanceSchema = new mongoose.Schema<IUserBalance, IModel<IUserBalance>>({
+const userBalanceSchema = new mongoose.Schema<IUserBalance, mongoose.Model<IUserBalance>>({
   chainId: { type: Number, required: true },
   lastUpdateBlock: { type: Number, required: true },
   user: String,
@@ -17,4 +16,7 @@ const userBalanceSchema = new mongoose.Schema<IUserBalance, IModel<IUserBalance>
   valueProjectTokenToFullRecharge: { type: String, default: "0" },
 });
 
-export const UserBalanceModel = mongoose.model<IUserBalance, IModel<IUserBalance>>("UserBalance", userBalanceSchema);
+export const UserBalanceModel = mongoose.model<IUserBalance, mongoose.Model<IUserBalance>>(
+  "UserBalance",
+  userBalanceSchema,
+);

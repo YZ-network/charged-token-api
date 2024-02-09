@@ -1,11 +1,10 @@
 import mongoose from "mongoose";
-import { EventHandlerStatus } from "../globals";
 import { IEvent } from "../core/types";
-import { IModel } from "./types";
+import { EventHandlerStatus } from "../globals";
 
 const { Schema } = mongoose;
 
-const eventSchema = new Schema<IEvent, IModel<IEvent>>({
+const eventSchema = new Schema<IEvent, mongoose.Model<IEvent>>({
   status: { type: String, required: true, enum: EventHandlerStatus },
   chainId: { type: Number, required: true },
   address: { type: String, required: true },
@@ -22,4 +21,4 @@ const eventSchema = new Schema<IEvent, IModel<IEvent>>({
 
 eventSchema.index({ chainId: 1, address: 1, blockNumber: 1, txIndex: 1, logIndex: 1 }, { unique: true });
 
-export const EventModel = mongoose.model<IEvent, IModel<IEvent>>("Event", eventSchema);
+export const EventModel = mongoose.model<IEvent, mongoose.Model<IEvent>>("Event", eventSchema);

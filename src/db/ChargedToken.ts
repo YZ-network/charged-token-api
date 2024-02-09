@@ -1,8 +1,7 @@
 import mongoose from "mongoose";
 import { IChargedToken } from "../core/types";
-import { IModel } from "./types";
 
-const chargedTokenSchema = new mongoose.Schema<IChargedToken, IModel<IChargedToken>>({
+const chargedTokenSchema = new mongoose.Schema<IChargedToken, mongoose.Model<IChargedToken>>({
   // contract
   chainId: { type: Number, required: true },
   lastUpdateBlock: { type: Number, required: true },
@@ -49,7 +48,7 @@ const chargedTokenSchema = new mongoose.Schema<IChargedToken, IModel<IChargedTok
   isFundraisingActive: Boolean,
 });
 
-export const ChargedTokenModel = mongoose.model<IChargedToken, IModel<IChargedToken>>(
+export const ChargedTokenModel = mongoose.model<IChargedToken, mongoose.Model<IChargedToken>>(
   "ChargedToken",
   chargedTokenSchema,
 );

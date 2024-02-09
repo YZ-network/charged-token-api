@@ -1,8 +1,7 @@
 import mongoose from "mongoose";
 import { IDelegableToLT } from "../core/types";
-import { IModel } from "./types";
 
-const delegableToLTSchema = new mongoose.Schema<IDelegableToLT, IModel<IDelegableToLT>>({
+const delegableToLTSchema = new mongoose.Schema<IDelegableToLT, mongoose.Model<IDelegableToLT>>({
   // contract
   chainId: { type: Number, required: true },
   lastUpdateBlock: { type: Number, required: true },
@@ -19,7 +18,7 @@ const delegableToLTSchema = new mongoose.Schema<IDelegableToLT, IModel<IDelegabl
   isListOfInterfaceProjectTokenComplete: Boolean,
 });
 
-export const DelegableToLTModel = mongoose.model<IDelegableToLT, IModel<IDelegableToLT>>(
+export const DelegableToLTModel = mongoose.model<IDelegableToLT, mongoose.Model<IDelegableToLT>>(
   "DelegableToLT",
   delegableToLTSchema,
 );

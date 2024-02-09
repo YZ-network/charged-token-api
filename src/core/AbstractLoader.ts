@@ -1,8 +1,7 @@
 import { type ClientSession } from "mongoose";
 import { rootLogger } from "../rootLogger";
-import { IEventHandler } from "../types";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
-import { BigNumber, DataType, IContract, IOwnable, IUserBalance, Log, Logger } from "./types";
+import { BigNumber, DataType, IContract, IEventHandler, IOwnable, IUserBalance, Log, Logger } from "./types";
 
 /**
  * Generic contract loader. Used for loading initial contracts state, keeping

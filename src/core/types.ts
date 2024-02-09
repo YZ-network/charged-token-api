@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+import { ClientSession } from "mongoose";
 import { EventHandlerStatus } from "../globals";
 
 export interface IContract {
@@ -137,5 +138,12 @@ export { BigNumber } from "ethers";
 export { type Logger } from "pino";
 
 export { type ClientSession } from "mongoose";
+
+export type IEventHandler = (
+  session: ClientSession,
+  args: any[],
+  blockNumber: number,
+  eventName: string,
+) => Promise<void>;
 
 export type Log = ethers.providers.Log;
