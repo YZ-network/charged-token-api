@@ -1,8 +1,8 @@
-import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
-import { AbstractLoader } from "./AbstractLoader";
-import { BigNumber, DataType, IInterfaceProjectToken, type ClientSession } from "./types";
+import { BigNumber, type ClientSession } from "../../vendor";
+import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
+import { AbstractHandler } from "../AbstractHandler";
 
-export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken> {
+export class InterfaceProjectToken extends AbstractHandler<IInterfaceProjectToken> {
   constructor(
     chainId: number,
     blockchain: AbstractBlockchainRepository,
@@ -12,9 +12,9 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       chainId: number,
       address: string,
       blockchain: AbstractBlockchainRepository,
-    ) => AbstractLoader<any>,
+    ) => AbstractHandler<any>,
   ) {
-    super(chainId, blockchain, address, DataType.InterfaceProjectToken, loaderFactory);
+    super(chainId, blockchain, address, "InterfaceProjectToken", loaderFactory);
   }
 
   async onStartSetEvent(

@@ -1,6 +1,5 @@
 import { AbstractBroker } from "../../core/AbstractBroker";
 import { AbstractDbRepository } from "../../core/AbstractDbRepository";
-import { DataType } from "../../core/types";
 import { DirectoryQueryResolverFactory } from "./directory";
 import { EventsCountQueryResolverFactory, EventsQueryResolverFactory } from "./events";
 import { ResolverFactory } from "./factory";
@@ -10,12 +9,12 @@ import { UserBalanceQueryResolverFactory, UserBalanceSubscriptionResolverFactory
 const resolversFactory = (db: AbstractDbRepository, broker: AbstractBroker) => ({
   Query: {
     Directory: DirectoryQueryResolverFactory(db),
-    allChargedTokens: ResolverFactory.findAll(db, DataType.ChargedToken),
-    ChargedToken: ResolverFactory.findByAddress(db, DataType.ChargedToken),
-    allInterfaceProjectTokens: ResolverFactory.findAll(db, DataType.InterfaceProjectToken),
-    InterfaceProjectToken: ResolverFactory.findByAddress(db, DataType.InterfaceProjectToken),
-    allDelegableToLTs: ResolverFactory.findAll(db, DataType.DelegableToLT),
-    DelegableToLT: ResolverFactory.findByAddress(db, DataType.DelegableToLT),
+    allChargedTokens: ResolverFactory.findAll(db, "ChargedToken"),
+    ChargedToken: ResolverFactory.findByAddress(db, "ChargedToken"),
+    allInterfaceProjectTokens: ResolverFactory.findAll(db, "InterfaceProjectToken"),
+    InterfaceProjectToken: ResolverFactory.findByAddress(db, "InterfaceProjectToken"),
+    allDelegableToLTs: ResolverFactory.findAll(db, "DelegableToLT"),
+    DelegableToLT: ResolverFactory.findByAddress(db, "DelegableToLT"),
     UserBalance: UserBalanceQueryResolverFactory(db, broker),
     userBalances: UserBalanceQueryResolverFactory(db, broker),
     events: EventsQueryResolverFactory(db),
@@ -23,10 +22,10 @@ const resolversFactory = (db: AbstractDbRepository, broker: AbstractBroker) => (
     health: HealthQueryResolverFactory(broker),
   },
   Subscription: {
-    Directory: ResolverFactory.subscribeByName(db, broker, DataType.Directory),
-    ChargedToken: ResolverFactory.subscribeByNameAndAddress(db, broker, DataType.ChargedToken),
-    InterfaceProjectToken: ResolverFactory.subscribeByNameAndAddress(db, broker, DataType.InterfaceProjectToken),
-    DelegableToLT: ResolverFactory.subscribeByNameAndAddress(db, broker, DataType.DelegableToLT),
+    Directory: ResolverFactory.subscribeByName(db, broker, "Directory"),
+    ChargedToken: ResolverFactory.subscribeByNameAndAddress(db, broker, "ChargedToken"),
+    InterfaceProjectToken: ResolverFactory.subscribeByNameAndAddress(db, broker, "InterfaceProjectToken"),
+    DelegableToLT: ResolverFactory.subscribeByNameAndAddress(db, broker, "DelegableToLT"),
     userBalances: UserBalanceSubscriptionResolverFactory(db, broker),
     health: HealthSubscriptionResolverFactory(broker),
   },

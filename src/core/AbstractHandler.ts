@@ -1,7 +1,10 @@
+import { BigNumber } from "ethers";
 import { type ClientSession } from "mongoose";
+import { Logger } from "pino";
 import { rootLogger } from "../rootLogger";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
-import { BigNumber, DataType, IContract, IEventHandler, IOwnable, IUserBalance, Log, Logger } from "./types";
+
+type IEventHandler = (session: ClientSession, args: any[], blockNumber: number, eventName: string) => Promise<void>;
 
 /**
  * Generic contract loader. Used for loading initial contracts state, keeping
@@ -10,7 +13,7 @@ import { BigNumber, DataType, IContract, IEventHandler, IOwnable, IUserBalance, 
  * When a document already exists, it will sync all events from the last checkpoint
  * to the latest block number before watching new blocks.
  */
-export abstract class AbstractLoader<T extends IContract> {
+export abstract class AbstractHandler<T extends IContract> {
   readonly chainId: number;
   readonly address: string;
   protected readonly dataType: DataType;
@@ -24,7 +27,7 @@ export abstract class AbstractLoader<T extends IContract> {
     chainId: number,
     address: string,
     blockchain: AbstractBlockchainRepository,
-  ) => AbstractLoader<any>;
+  ) => AbstractHandler<any>;
 
   lastState: T | undefined;
 
@@ -44,7 +47,7 @@ export abstract class AbstractLoader<T extends IContract> {
       chainId: number,
       address: string,
       blockchain: AbstractBlockchainRepository,
-    ) => AbstractLoader<any>,
+    ) => AbstractHandler<any>,
   ) {
     this.chainId = chainId;
     this.blockchain = blockchain;

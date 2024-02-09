@@ -1,10 +1,9 @@
 import { WebSocket } from "ws";
 import { BlockchainRepository } from "./blockchain/BlockchainRepository";
+import { Config } from "./config";
 import { AbstractBroker } from "./core/AbstractBroker";
 import { AbstractDbRepository } from "./core/AbstractDbRepository";
 import { ContractsWatcher } from "./core/ContractsWatcher";
-import { Directory } from "./core/Directory";
-import { Config, ProviderStatus, WorkerStatus } from "./globals";
 import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";
 import { subscribeToUserBalancesLoading } from "./subscriptions/subscribeToUserBalances";
@@ -13,18 +12,6 @@ import { AutoWebSocketProvider } from "./util/AutoWebSocketProvider";
 const log = rootLogger.child({ name: "worker" });
 
 const WsStatus = ["CONNECTING", "OPEN", "CLOSING", "CLOSED"];
-
-export interface ChainHealth {
-  index: number;
-  rpc: string;
-  directory: string;
-  name?: string;
-  chainId?: number;
-  providerStatus: ProviderStatus;
-  workerStatus: WorkerStatus;
-  wsStatus: string;
-  restartCount: number;
-}
 
 export class ChainWorker {
   readonly index: number;
@@ -43,14 +30,12 @@ export class ChainWorker {
   provider: AutoWebSocketProvider | undefined;
   worker: Promise<void> | undefined;
 
-  directory: Directory | undefined;
-
-  providerStatus: ProviderStatus = ProviderStatus.STARTING;
+  providerStatus: ProviderStatus = "STARTING";
   wsStatus: string = "STARTING";
   wsWatch: NodeJS.Timeout | undefined;
   pingInterval: NodeJS.Timeout | undefined;
   pongTimeout: NodeJS.Timeout | undefined;
-  workerStatus: WorkerStatus = WorkerStatus.WAITING;
+  workerStatus: WorkerStatus = "WAITING";
 
   constructor(
     index: number,
@@ -110,7 +95,7 @@ export class ChainWorker {
         args,
         chainId: this.chainId,
       });
-      this.providerStatus = ProviderStatus.DISCONNECTED;
+      this.providerStatus = "DISCONNECTED";
       this.stop();
     });
     this.provider.on("debug", (...args) => {
@@ -130,7 +115,7 @@ export class ChainWorker {
         }
 
         this.name = network.name;
-        this.providerStatus = ProviderStatus.CONNECTED;
+        this.providerStatus = "CONNECTED";
 
         return network;
       })
@@ -140,7 +125,7 @@ export class ChainWorker {
           err,
           chainId: this.chainId,
         });
-        this.providerStatus = ProviderStatus.DISCONNECTED;
+        this.providerStatus = "DISCONNECTED";
         this.wsStatus = WsStatus[WebSocket.CLOSED];
         Metrics.connectionFailed(this.chainId);
         this.stop();
@@ -155,21 +140,21 @@ export class ChainWorker {
       if (this.wsStatus !== prevWsStatus) {
         prevWsStatus = this.wsStatus;
 
-        if (this.providerStatus !== ProviderStatus.DISCONNECTED && ["CLOSING", "CLOSED"].includes(this.wsStatus)) {
+        if (this.providerStatus !== "DISCONNECTED" && ["CLOSING", "CLOSED"].includes(this.wsStatus)) {
           log.warn({
             msg: `Websocket crashed : ${this.name}`,
             chainId: this.chainId,
           });
         }
 
-        if (this.providerStatus !== ProviderStatus.CONNECTING && this.wsStatus === "CONNECTING") {
+        if (this.providerStatus !== "CONNECTING" && this.wsStatus === "CONNECTING") {
           log.info({
             msg: `Websocket connecting : ${this.name}`,
             chainId: this.chainId,
           });
         }
 
-        if (this.providerStatus !== ProviderStatus.CONNECTED && this.wsStatus === "OPEN") {
+        if (this.providerStatus !== "CONNECTED" && this.wsStatus === "OPEN") {
           log.info({
             msg: `Websocket connected : ${this.name}`,
             chainId: this.chainId,
@@ -198,7 +183,7 @@ export class ChainWorker {
 
     this.worker = this.provider.ready
       .then(async () => {
-        this.workerStatus = WorkerStatus.STARTED;
+        this.workerStatus = "STARTED";
 
         Metrics.workerStarted(this.chainId);
 
@@ -208,7 +193,7 @@ export class ChainWorker {
               msg: `Worker stopped itself on network ${this.name}`,
               chainId: this.chainId,
             });
-            this.workerStatus = WorkerStatus.CRASHED;
+            this.workerStatus = "CRASHED";
             this.stop();
           })
           .catch((err: any) => {
@@ -217,7 +202,7 @@ export class ChainWorker {
               err,
               chainId: this.chainId,
             });
-            this.workerStatus = WorkerStatus.CRASHED;
+            this.workerStatus = "CRASHED";
             this.stop();
           });
       })
@@ -256,7 +241,7 @@ export class ChainWorker {
   }
 
   private async stop() {
-    if (this.providerStatus === ProviderStatus.DEAD && this.workerStatus === WorkerStatus.DEAD) return;
+    if (this.providerStatus === "DEAD" && this.workerStatus === "DEAD") return;
 
     Metrics.workerStopped(this.chainId);
 
@@ -265,7 +250,6 @@ export class ChainWorker {
     this.blockchain?.destroy();
     this.blockchain = undefined;
 
-    this.directory = undefined;
     this.provider?.removeAllListeners();
     this.worker = undefined;
 
@@ -289,8 +273,8 @@ export class ChainWorker {
 
     await this.db.deletePendingAndFailedEvents(this.chainId);
 
-    this.providerStatus = ProviderStatus.DEAD;
-    this.workerStatus = WorkerStatus.DEAD;
+    this.providerStatus = "DEAD";
+    this.workerStatus = "DEAD";
     this.restartCount++;
   }
 }

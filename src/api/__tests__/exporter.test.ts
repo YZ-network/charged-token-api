@@ -1,8 +1,7 @@
 import { OnRequestEventPayload } from "@whatwg-node/server";
-import { eventsExporterFactory } from "../exporter";
-import { EventHandlerStatus, IEvent } from "../core";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
 import { MockDbRepository } from "../core/__mocks__/MockDbRepository";
+import { eventsExporterFactory } from "../exporter";
 
 jest.mock("../db");
 
@@ -31,7 +30,7 @@ describe("Events exporter", () => {
         blockNumber: 15,
         txIndex: 1,
         logIndex: 1,
-        status: EventHandlerStatus.SUCCESS,
+        status: "SUCCESS",
         contract: "Contract",
         address: "0xADDR",
         name: "EventName",
@@ -45,7 +44,7 @@ describe("Events exporter", () => {
         blockNumber: 15,
         txIndex: 1,
         logIndex: 2,
-        status: EventHandlerStatus.SUCCESS,
+        status: "SUCCESS",
         contract: "Contract",
         address: "0xADDR",
         name: "EventName",

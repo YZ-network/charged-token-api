@@ -1,17 +1,16 @@
 import mongoose from "mongoose";
-import { ProviderStatus, WorkerStatus } from "../globals";
 import { AbstractBroker } from "../core/AbstractBroker";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
 import { Directory } from "../core/Directory";
 import { MockBroker } from "../core/__mocks__/MockBroker";
 import { MockDbRepository } from "../core/__mocks__/MockDbRepository";
 import { Metrics } from "../metrics";
-import { subscribeToUserBalancesLoading } from "../subscriptions";
-import { AutoWebSocketProvider } from "../util";
+import { subscribeToUserBalancesLoading } from "../subscriptions/subscribeToUserBalances";
+import { AutoWebSocketProvider } from "../util/AutoWebSocketProvider";
 import { ChainWorker } from "../worker";
 
 jest.mock("../topics");
-jest.mock("../globals/config");
+jest.mock("../config");
 jest.mock("../util/AutoWebSocketProvider");
 jest.mock("../core/Directory");
 jest.mock("../db");
@@ -62,7 +61,7 @@ describe("ChainWorker", () => {
 
     const waitPromise = new Promise((resolve, reject) => {
       const interval = setInterval(() => {
-        if (worker.providerStatus === ProviderStatus.CONNECTED && worker.workerStatus === WorkerStatus.STARTED) {
+        if (worker.providerStatus === "CONNECTED" && worker.workerStatus === "STARTED") {
           clearInterval(interval);
           resolve(undefined);
         }
@@ -106,7 +105,7 @@ describe("ChainWorker", () => {
 
     const waitPromise = new Promise((resolve, reject) => {
       const interval = setInterval(() => {
-        if (worker.providerStatus === ProviderStatus.DEAD && worker.workerStatus === WorkerStatus.DEAD) {
+        if (worker.providerStatus === "DEAD" && worker.workerStatus === "DEAD") {
           clearInterval(interval);
           resolve(undefined);
         }
@@ -151,8 +150,8 @@ describe("ChainWorker", () => {
       directory: DIRECTORY,
       name: undefined,
       chainId: CHAIN_ID,
-      providerStatus: ProviderStatus.STARTING,
-      workerStatus: WorkerStatus.WAITING,
+      providerStatus: "STARTING",
+      workerStatus: "WAITING",
       wsStatus: "CONNECTING",
       restartCount: 0,
     });
@@ -177,8 +176,8 @@ describe("ChainWorker", () => {
       directory: DIRECTORY,
       name: "test",
       chainId: CHAIN_ID,
-      providerStatus: ProviderStatus.CONNECTED,
-      workerStatus: WorkerStatus.STARTED,
+      providerStatus: "CONNECTED",
+      workerStatus: "STARTED",
       wsStatus: "OPEN",
       restartCount: 0,
     });
@@ -315,8 +314,8 @@ describe("ChainWorker", () => {
       directory: DIRECTORY,
       name: "test",
       chainId: CHAIN_ID,
-      providerStatus: ProviderStatus.CONNECTED,
-      workerStatus: WorkerStatus.STARTED,
+      providerStatus: "CONNECTED",
+      workerStatus: "STARTED",
       wsStatus: "OPEN",
       restartCount: 0,
     });

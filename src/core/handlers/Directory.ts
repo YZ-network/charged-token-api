@@ -1,8 +1,8 @@
-import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
-import { AbstractLoader } from "./AbstractLoader";
-import { DataType, IDirectory, type ClientSession } from "./types";
+import { type ClientSession } from "../../vendor";
+import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
+import { AbstractHandler } from "../AbstractHandler";
 
-export class Directory extends AbstractLoader<IDirectory> {
+export class Directory extends AbstractHandler<IDirectory> {
   constructor(
     chainId: number,
     blockchain: AbstractBlockchainRepository,
@@ -12,9 +12,9 @@ export class Directory extends AbstractLoader<IDirectory> {
       chainId: number,
       address: string,
       blockchain: AbstractBlockchainRepository,
-    ) => AbstractLoader<any>,
+    ) => AbstractHandler<any>,
   ) {
-    super(chainId, blockchain, address, DataType.Directory, loaderFactory);
+    super(chainId, blockchain, address, "Directory", loaderFactory);
   }
 
   async onUserFunctionsAreDisabledEvent(
@@ -60,10 +60,10 @@ export class Directory extends AbstractLoader<IDirectory> {
     };
 
     await this.blockchain.registerContract(
-      DataType.ChargedToken,
+      "ChargedToken",
       contract,
       blockNumber,
-      this.loaderFactory(DataType.ChargedToken, this.chainId, contract, this.blockchain),
+      this.loaderFactory("ChargedToken", this.chainId, contract, this.blockchain),
     );
 
     await this.applyUpdateAndNotify(updates, blockNumber, eventName, session);
@@ -93,7 +93,7 @@ export class Directory extends AbstractLoader<IDirectory> {
       address: contract,
     });
 
-    await this.blockchain.unregisterContract(DataType.ChargedToken, contract, true, session);
+    await this.blockchain.unregisterContract("ChargedToken", contract, true, session);
 
     await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
   }

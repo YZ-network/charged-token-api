@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { IChargedToken } from "../core/types";
 
 const chargedTokenSchema = new mongoose.Schema<IChargedToken, mongoose.Model<IChargedToken>>({
   // contract

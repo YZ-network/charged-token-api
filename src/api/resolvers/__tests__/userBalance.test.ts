@@ -1,5 +1,4 @@
 import { Repeater } from "graphql-yoga";
-import { DataType, IUserBalance } from "../../../core";
 import { AbstractBroker } from "../../../core/AbstractBroker";
 import { AbstractDbRepository } from "../../../core/AbstractDbRepository";
 import { MockBroker } from "../../../core/__mocks__/MockBroker";
@@ -10,7 +9,7 @@ import {
   UserBalanceSubscriptionResolverFactory,
 } from "../userBalance";
 
-jest.mock("../../../globals/config");
+jest.mock("../../../config");
 jest.mock("../../../db");
 
 describe("User balance query resolver", () => {
@@ -98,7 +97,7 @@ describe("User balance query resolver", () => {
 
     expect(repeater).toBeDefined();
     expect(repeater).toBeInstanceOf(Repeater);
-    expect(broker.subscribeUpdatesByAddress).toBeCalledWith(DataType.UserBalance, chainId, user);
+    expect(broker.subscribeUpdatesByAddress).toBeCalledWith("UserBalance", chainId, user);
 
     expect(await repeater.next()).toEqual({ value: ["zeroValue"], done: false });
     expect(await repeater.next()).toEqual({ value: "firstValue", done: false });

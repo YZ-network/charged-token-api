@@ -2,19 +2,9 @@ import { EventFilter, ethers } from "ethers";
 import { AbstractBlockchainRepository } from "../core/AbstractBlockchainRepository";
 import { AbstractBroker } from "../core/AbstractBroker";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
-import { AbstractLoader } from "../core/AbstractLoader";
-import {
-  ClientSession,
-  DataType,
-  EMPTY_ADDRESS,
-  IChargedToken,
-  IContract,
-  IDelegableToLT,
-  IDirectory,
-  IInterfaceProjectToken,
-  IUserBalance,
-} from "../core/types";
+import { AbstractHandler } from "../core/AbstractHandler";
 import { rootLogger } from "../rootLogger";
+import { ClientSession, EMPTY_ADDRESS } from "../vendor";
 import { EventListener } from "./EventListener";
 import { contracts } from "./contracts";
 import topicsMap from "./topics";
@@ -30,7 +20,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
   private readonly instances: Record<string, ethers.Contract> = {};
   private readonly interfaces: Record<string, ethers.utils.Interface> = {};
-  private readonly core: Record<string, AbstractLoader<any>> = {};
+  private readonly core: Record<string, AbstractHandler<any>> = {};
 
   constructor(
     chainId: number,
@@ -50,16 +40,16 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   private getInstance(dataType: DataType, address: string): ethers.Contract {
     if (this.instances[address] === undefined) {
       switch (dataType) {
-        case DataType.ChargedToken:
+        case "ChargedToken":
           this.instances[address] = new ethers.Contract(address, contracts.LiquidityToken.abi, this.provider);
           break;
-        case DataType.InterfaceProjectToken:
+        case "InterfaceProjectToken":
           this.instances[address] = new ethers.Contract(address, contracts.InterfaceProjectToken.abi, this.provider);
           break;
-        case DataType.Directory:
+        case "Directory":
           this.instances[address] = new ethers.Contract(address, contracts.ContractsDirectory.abi, this.provider);
           break;
-        case DataType.DelegableToLT:
+        case "DelegableToLT":
           this.instances[address] = new ethers.Contract(address, contracts.DelegableToLT.abi, this.provider);
           break;
         default:
@@ -72,16 +62,16 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   private getInterface(dataType: DataType): ethers.utils.Interface {
     if (this.interfaces[dataType] === undefined) {
       switch (dataType) {
-        case DataType.ChargedToken:
+        case "ChargedToken":
           this.interfaces[dataType] = new ethers.utils.Interface(contracts.LiquidityToken.abi);
           break;
-        case DataType.InterfaceProjectToken:
+        case "InterfaceProjectToken":
           this.interfaces[dataType] = new ethers.utils.Interface(contracts.InterfaceProjectToken.abi);
           break;
-        case DataType.Directory:
+        case "Directory":
           this.interfaces[dataType] = new ethers.utils.Interface(contracts.ContractsDirectory.abi);
           break;
-        case DataType.DelegableToLT:
+        case "DelegableToLT":
           this.interfaces[dataType] = new ethers.utils.Interface(contracts.DelegableToLT.abi);
           break;
         default:
@@ -104,7 +94,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   }
 
   private async loadDirectory(address: string, blockNumber: number): Promise<IDirectory> {
-    const ins = this.getInstance(DataType.Directory, address);
+    const ins = this.getInstance("Directory", address);
 
     const whitelistCount = (await ins.countWhitelistedProjectOwners()).toNumber();
     const whitelistedProjectOwners: string[] = [];
@@ -142,7 +132,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   }
 
   private async loadChargedToken(address: string, blockNumber: number): Promise<IChargedToken> {
-    const ins = this.getInstance(DataType.ChargedToken, address);
+    const ins = this.getInstance("ChargedToken", address);
 
     const fundraisingFields = {
       isFundraisingContract: false,
@@ -205,25 +195,25 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   }
 
   async getUserBalancePT(ptAddress: string, user: string): Promise<string> {
-    return (await this.getInstance(DataType.DelegableToLT, ptAddress).balanceOf(user)).toString();
+    return (await this.getInstance("DelegableToLT", ptAddress).balanceOf(user)).toString();
   }
 
   async getChargedTokenFundraisingStatus(address: string): Promise<boolean> {
-    return await this.getInstance(DataType.ChargedToken, address).isFundraisingActive();
+    return await this.getInstance("ChargedToken", address).isFundraisingActive();
   }
 
   async getProjectRelatedToLT(address: string, contract: string): Promise<string> {
-    return await this.getInstance(DataType.Directory, address).projectRelatedToLT(contract);
+    return await this.getInstance("Directory", address).projectRelatedToLT(contract);
   }
 
   async getUserLiquiToken(address: string, user: string): Promise<{ dateOfPartiallyCharged: number }> {
-    return (await this.getInstance(DataType.ChargedToken, address).userLiquiToken(user)) as {
+    return (await this.getInstance("ChargedToken", address).userLiquiToken(user)) as {
       dateOfPartiallyCharged: number;
     };
   }
 
   private async loadInterfaceProjectToken(address: string, blockNumber: number): Promise<IInterfaceProjectToken> {
-    const ins = this.getInstance(DataType.InterfaceProjectToken, address);
+    const ins = this.getInstance("InterfaceProjectToken", address);
 
     return {
       // contract
@@ -242,7 +232,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   }
 
   private async loadDelegableToLT(address: string, blockNumber: number): Promise<IDelegableToLT> {
-    const ins = this.getInstance(DataType.DelegableToLT, address);
+    const ins = this.getInstance("DelegableToLT", address);
 
     const validatedInterfaceProjectToken: string[] = [];
     const validatedInterfaceCount = (await ins.countValidatedInterfaceProjectToken()).toNumber();
@@ -277,10 +267,10 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   ): Promise<IUserBalance> {
     this.log.info({ msg: "Loading user balances", user, ctAddress, interfaceAddress, ptAddress });
 
-    const ctInstance = this.getInstance(DataType.ChargedToken, ctAddress);
+    const ctInstance = this.getInstance("ChargedToken", ctAddress);
     const ifaceInstance =
-      interfaceAddress !== undefined ? this.getInstance(DataType.InterfaceProjectToken, interfaceAddress) : undefined;
-    const ptInstance = ptAddress !== undefined ? this.getInstance(DataType.DelegableToLT, ptAddress) : undefined;
+      interfaceAddress !== undefined ? this.getInstance("InterfaceProjectToken", interfaceAddress) : undefined;
+    const ptInstance = ptAddress !== undefined ? this.getInstance("DelegableToLT", ptAddress) : undefined;
 
     const balance = (await ctInstance.balanceOf(user)).toString();
     const fullyChargedBalance = (await ctInstance.getUserFullyChargedBalanceLiquiToken(user)).toString();
@@ -307,7 +297,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     dataType: DataType,
     address: string,
     startBlock: number,
-    loader: AbstractLoader<any>,
+    loader: AbstractHandler<any>,
   ): Promise<void> {
     let missedEvents: ethers.Event[] = [];
 
@@ -469,7 +459,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     return filteredEvents;
   }
 
-  subscribeToEvents(dataType: DataType, address: string, loader: AbstractLoader<any>): void {
+  subscribeToEvents(dataType: DataType, address: string, loader: AbstractHandler<any>): void {
     const eventFilter: EventFilter = {
       address,
     };
@@ -501,10 +491,10 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     dataType: DataType,
     address: string,
     blockNumber: number,
-    loader: AbstractLoader<T>,
+    loader: AbstractHandler<T>,
     session?: ClientSession,
   ): Promise<T> {
-    if (dataType === DataType.Directory) {
+    if (dataType === "Directory") {
       if (this.directory !== undefined) {
         throw new Error("ContractsDirectory already registered !");
       }
@@ -570,13 +560,13 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     blockNumber: number,
   ): Promise<T> {
     switch (dataType) {
-      case DataType.Directory:
+      case "Directory":
         return (await this.loadDirectory(address, blockNumber)) as unknown as T;
-      case DataType.ChargedToken:
+      case "ChargedToken":
         return (await this.loadChargedToken(address, blockNumber)) as unknown as T;
-      case DataType.InterfaceProjectToken:
+      case "InterfaceProjectToken":
         return (await this.loadInterfaceProjectToken(address, blockNumber)) as unknown as T;
-      case DataType.DelegableToLT:
+      case "DelegableToLT":
         return (await this.loadDelegableToLT(address, blockNumber)) as unknown as T;
       default:
         throw new Error("Unexpected dataType !");
@@ -598,20 +588,20 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     }
 
     switch (dataType) {
-      case DataType.ChargedToken:
+      case "ChargedToken":
         const interfaceAddress = (lastState as IChargedToken).interfaceProjectToken;
         if (interfaceAddress !== EMPTY_ADDRESS) {
-          await this.unregisterContract(DataType.InterfaceProjectToken, interfaceAddress, remove);
+          await this.unregisterContract("InterfaceProjectToken", interfaceAddress, remove);
         }
         if (remove) {
-          await this.db.delete(DataType.UserBalance, this.chainId, address);
+          await this.db.delete("UserBalance", this.chainId, address);
         }
         break;
 
-      case DataType.InterfaceProjectToken:
+      case "InterfaceProjectToken":
         const ptAddress = (lastState as IInterfaceProjectToken).projectToken;
         if (ptAddress !== EMPTY_ADDRESS && !this.isDelegableStillReferenced(ptAddress)) {
-          await this.unregisterContract(DataType.DelegableToLT, ptAddress, remove);
+          await this.unregisterContract("DelegableToLT", ptAddress, remove);
         }
         break;
     }
@@ -643,14 +633,14 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
     const startDate = new Date().getTime();
 
-    const lastDirectory = await this.getLastState<IDirectory>(DataType.Directory, this.directory);
+    const lastDirectory = await this.getLastState<IDirectory>("Directory", this.directory);
     if (lastDirectory === null) {
       throw new Error("No directory");
     }
 
     const results: IUserBalance[] = [];
     for (const ctAddress of lastDirectory.directory) {
-      const lastCt = await this.getLastState<IChargedToken>(DataType.ChargedToken, ctAddress);
+      const lastCt = await this.getLastState<IChargedToken>("ChargedToken", ctAddress);
       let interfaceAddress: string | undefined;
       let ptAddress: string | undefined;
 
@@ -660,7 +650,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
         interfaceAddress = lastCt.interfaceProjectToken;
 
         const lastInterface = await this.getLastState<IInterfaceProjectToken>(
-          DataType.InterfaceProjectToken,
+          "InterfaceProjectToken",
           interfaceAddress,
         );
 
@@ -696,7 +686,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
         address,
       });
 
-      this.broker.notifyUpdate(DataType.UserBalance, this.chainId, user, saved);
+      this.broker.notifyUpdate("UserBalance", this.chainId, user, saved);
     } else {
       this.log.warn({
         msg: `Error while reloading balances after save for user ${user}`,
@@ -744,7 +734,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     let fieldsToCheck: string[];
 
     switch (dataType) {
-      case DataType.ChargedToken:
+      case "ChargedToken":
         fieldsToCheck = [
           "totalSupply",
           "maxInitialTokenAllocation",
@@ -758,11 +748,11 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
         ];
         break;
 
-      case DataType.DelegableToLT:
+      case "DelegableToLT":
         fieldsToCheck = ["totalSupply"];
         break;
 
-      case DataType.UserBalance:
+      case "UserBalance":
         fieldsToCheck = [
           "balance",
           "balancePT",
@@ -773,7 +763,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
         ];
         break;
 
-      case DataType.Directory:
+      case "Directory":
       default:
         fieldsToCheck = [];
     }
@@ -848,6 +838,8 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
           balancePT: userPTBalances[balance.user],
         },
         blockNumber,
+        undefined,
+        undefined,
         session,
       );
     }
@@ -862,7 +854,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     eventName?: string,
     session?: ClientSession,
   ): Promise<void> {
-    this.checkUpdateAmounts(DataType.UserBalance, balanceUpdates);
+    this.checkUpdateAmounts("UserBalance", balanceUpdates);
 
     this.log.info({
       msg: "applying update to balance",
@@ -919,7 +911,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
         chainId: this.chainId,
       });
 
-      this.broker.notifyUpdate(DataType.UserBalance, this.chainId, user, [newBalance]);
+      this.broker.notifyUpdate("UserBalance", this.chainId, user, [newBalance]);
     } else {
       const updatedBalances = await this.db.getBalancesByProjectToken(this.chainId, ptAddress, user, session);
 
@@ -933,7 +925,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
         });
 
         for (const b of updatedBalances) {
-          this.broker.notifyUpdate(DataType.UserBalance, this.chainId, user, [b]);
+          this.broker.notifyUpdate("UserBalance", this.chainId, user, [b]);
         }
       } catch (err) {
         this.log.error({

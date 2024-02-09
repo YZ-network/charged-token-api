@@ -1,7 +1,7 @@
 import { Wallet, ethers } from "ethers";
 import fs from "fs/promises";
 import request from "request";
-import { contracts } from "../src/contracts";
+import { contracts } from "../src/blockchain/contracts";
 
 // TODO : the directory address should be updated according to the loadinit script result
 const DIRECTORY = "0xE6476703330518ceB4a2577b9eBCa730B2cdD0F7";

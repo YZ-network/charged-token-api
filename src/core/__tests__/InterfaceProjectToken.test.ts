@@ -1,5 +1,6 @@
 import { BigNumber, ethers } from "ethers";
 import { ClientSession } from "mongodb";
+import { EMPTY_ADDRESS } from "../../vendor";
 import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractBroker } from "../AbstractBroker";
 import { AbstractDbRepository } from "../AbstractDbRepository";
@@ -10,9 +11,8 @@ import { InterfaceProjectToken } from "../InterfaceProjectToken";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { MockBroker } from "../__mocks__/MockBroker";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
-import { DataType, EMPTY_ADDRESS, IUserBalance } from "../types";
 
-jest.mock("../../globals/config");
+jest.mock("../../config");
 jest.mock("../../topics");
 jest.mock("../../db");
 jest.mock("../Directory");
@@ -110,7 +110,7 @@ describe("InterfaceProjectToken loader", () => {
     expect(loader.lastState).toEqual(graphqlModel);
 
     expect(db.get).toBeCalledTimes(2);
-    expect(db.get).toHaveBeenNthCalledWith(2, DataType.InterfaceProjectToken, CHAIN_ID, ADDRESS);
+    expect(db.get).toHaveBeenNthCalledWith(2, "InterfaceProjectToken", CHAIN_ID, ADDRESS);
     expect(db.save).toHaveBeenCalledTimes(1);
 
     expect(loader.projectToken).toBeDefined();
@@ -152,7 +152,7 @@ describe("InterfaceProjectToken loader", () => {
     // expectations
     expect(loader.lastState).toEqual(loadedModel);
 
-    expect(db.get).toHaveBeenNthCalledWith(1, DataType.InterfaceProjectToken, CHAIN_ID, ADDRESS);
+    expect(db.get).toHaveBeenNthCalledWith(1, "InterfaceProjectToken", CHAIN_ID, ADDRESS);
     expect(db.save).toHaveBeenCalledTimes(0);
 
     expect(loader.projectToken).toBeDefined();
@@ -201,7 +201,7 @@ describe("InterfaceProjectToken loader", () => {
     expect(loader.projectToken?.subscribeToEvents).toBeCalledTimes(1);
     expect(blockchain.subscribeToEvents).toHaveBeenNthCalledWith(
       1,
-      DataType.InterfaceProjectToken,
+      "InterfaceProjectToken",
       ADDRESS,
       expect.anything(),
     );
@@ -250,7 +250,7 @@ describe("InterfaceProjectToken loader", () => {
     expect(loader.projectToken?.subscribeToEvents).not.toBeCalled();
     expect(blockchain.subscribeToEvents).toHaveBeenNthCalledWith(
       1,
-      DataType.InterfaceProjectToken,
+      "InterfaceProjectToken",
       ADDRESS,
       expect.anything(),
     );
@@ -308,7 +308,7 @@ describe("InterfaceProjectToken loader", () => {
 
     expect(db.get).toBeCalledTimes(1);
     expect(db.exists).toBeCalledTimes(1);
-    expect(db.update).toHaveBeenCalledWith(DataType.InterfaceProjectToken, {
+    expect(db.update).toHaveBeenCalledWith("InterfaceProjectToken", {
       chainId: CHAIN_ID,
       address: ADDRESS,
       lastUpdateBlock: BLOCK_NUMBER,
@@ -316,7 +316,7 @@ describe("InterfaceProjectToken loader", () => {
       dateEndCliff: dateEndCliff.toString(),
     });
 
-    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.InterfaceProjectToken, CHAIN_ID, ADDRESS, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith("InterfaceProjectToken", CHAIN_ID, ADDRESS, loadedModel);
   });
 
   test("ProjectTokenReceived", async () => {

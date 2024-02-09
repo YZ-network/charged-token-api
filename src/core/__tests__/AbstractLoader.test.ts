@@ -7,13 +7,12 @@ import { Directory } from "../Directory";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { MockBroker } from "../__mocks__/MockBroker";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
-import { DataType } from "../types";
 
-jest.mock("../../globals/config");
+jest.mock("../../config");
 jest.mock("../../topics");
 jest.mock("../../db");
 
-describe("AbstractLoader: common core features", () => {
+describe("AbstractHandler: common core features", () => {
   const CHAIN_ID = 1337;
   const ADDRESS = "0xADDRESS";
 
@@ -143,7 +142,7 @@ describe("AbstractLoader: common core features", () => {
       lastUpdateBlock: blockNumber,
     });
     expect(getBalance).toBeCalledWith(session, ADDRESS, "0xUSER");
-    expect(broker.notifyUpdate).toBeCalledWith(DataType.UserBalance, 1337, "0xUSER", [jsonBalance]);
+    expect(broker.notifyUpdate).toBeCalledWith("UserBalance", 1337, "0xUSER", [jsonBalance]);
   });
 
   it("should propagate changes to the PT balance and notify", async () => {
@@ -179,6 +178,6 @@ describe("AbstractLoader: common core features", () => {
       lastUpdateBlock: blockNumber,
     });
     expect(getBalancesByPT).toBeCalledWith(session, "0xPT", "0xUSER");
-    expect(broker.notifyUpdate).toBeCalledWith(DataType.UserBalance, 1337, "0xUSER", [jsonBalance]);
+    expect(broker.notifyUpdate).toBeCalledWith("UserBalance", 1337, "0xUSER", [jsonBalance]);
   });
 });

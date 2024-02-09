@@ -1,5 +1,4 @@
 import { Repeater } from "graphql-yoga";
-import { DataType } from "./types";
 
 export abstract class AbstractBroker {
   abstract notifyUpdate(dataType: DataType, chainId: number, address: string, data: any): void;

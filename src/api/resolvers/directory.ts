@@ -1,5 +1,5 @@
-import { toGraphQL } from "../../globals";
 import { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import { toGraphQL } from "./functions";
 
 export type DirectoryQueryResolver = (_: any, { chainId }: { chainId: number }) => Promise<any>;
 

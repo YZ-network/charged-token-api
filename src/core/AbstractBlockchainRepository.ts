@@ -1,5 +1,5 @@
-import { AbstractLoader } from "./AbstractLoader";
-import { ClientSession, DataType, IContract, IUserBalance } from "./types";
+import { ClientSession } from "../vendor";
+import { AbstractHandler } from "./AbstractHandler";
 
 export abstract class AbstractBlockchainRepository {
   abstract getBlockNumber(): Promise<number>;
@@ -24,12 +24,12 @@ export abstract class AbstractBlockchainRepository {
   ): Promise<IUserBalance>;
   abstract loadAllUserBalances(user: string, blockNumber: number, address?: string): Promise<IUserBalance[]>;
 
-  abstract subscribeToEvents(dataType: DataType, address: string, loader: AbstractLoader<any>): void;
+  abstract subscribeToEvents(dataType: DataType, address: string, loader: AbstractHandler<any>): void;
   abstract registerContract<T extends IContract>(
     dataType: DataType,
     address: string,
     blockNumber: number,
-    loader: AbstractLoader<T>,
+    loader: AbstractHandler<T>,
     session?: ClientSession,
   ): Promise<T>;
   abstract unregisterContract(

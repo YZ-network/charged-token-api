@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { IDirectory } from "../core/types";
 
 const { Schema } = mongoose;
 

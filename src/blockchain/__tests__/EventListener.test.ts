@@ -2,10 +2,10 @@ import { ethers } from "ethers";
 import { ClientSession } from "mongodb";
 import mongoose from "mongoose";
 import { EventListener } from "../../blockchain/EventListener";
-import { AbstractDbRepository, EventHandlerStatus, type AbstractLoader } from "../../core";
+import { AbstractDbRepository, type AbstractHandler } from "../../core";
 import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 
-jest.mock("../../globals/config");
+jest.mock("../../config");
 jest.mock("../../db");
 
 describe("EventListener", () => {
@@ -45,7 +45,7 @@ describe("EventListener", () => {
     const log = sampleLog();
     const decodedArgs = new Map([["a", "b"]]);
 
-    const mockAbstractLoader = {
+    const mockAbstractHandler = {
       chainId: 1337,
       address: "0xaddr",
     };
@@ -66,15 +66,15 @@ describe("EventListener", () => {
     await listener.queueLog(
       "SampleEvent",
       log,
-      mockAbstractLoader as unknown as AbstractLoader<any>,
+      mockAbstractHandler as unknown as AbstractHandler<any>,
       mockInterface as unknown as ethers.utils.Interface,
     );
 
     expect(listener.queue.length).toBe(1);
     expect(db.existsEvent).toHaveBeenNthCalledWith(
       1,
-      mockAbstractLoader.chainId,
-      mockAbstractLoader.address,
+      mockAbstractHandler.chainId,
+      mockAbstractHandler.address,
       log.blockNumber,
       log.transactionIndex,
       log.logIndex,
@@ -83,9 +83,9 @@ describe("EventListener", () => {
     expect(db.saveEvent).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        status: EventHandlerStatus.QUEUED,
-        chainId: mockAbstractLoader.chainId,
-        address: mockAbstractLoader.address,
+        status: "QUEUED",
+        chainId: mockAbstractHandler.chainId,
+        address: mockAbstractHandler.address,
         blockNumber: log.blockNumber,
         txHash: log.transactionHash,
         txIndex: log.transactionIndex,
@@ -103,7 +103,7 @@ describe("EventListener", () => {
   it("should fail queuing twice an existing event", async () => {
     const log = sampleLog();
 
-    const mockAbstractLoader = {
+    const mockAbstractHandler = {
       chainId: 1337,
       address: "0xaddr",
     };
@@ -121,7 +121,7 @@ describe("EventListener", () => {
     await listener.queueLog(
       "SampleEvent",
       log,
-      mockAbstractLoader as unknown as AbstractLoader<any>,
+      mockAbstractHandler as unknown as AbstractHandler<any>,
       mockInterface as unknown as ethers.utils.Interface,
     );
 
@@ -155,7 +155,7 @@ describe("EventListener", () => {
     const log = sampleLog();
     const decodedArgs = new Map([["a", "b"]]);
 
-    const mockAbstractLoader = {
+    const mockAbstractHandler = {
       chainId: 1337,
       address: "0xaddr",
       onEvent: jest.fn(),
@@ -181,7 +181,7 @@ describe("EventListener", () => {
     await listener.queueLog(
       "SampleEvent",
       log,
-      mockAbstractLoader as unknown as AbstractLoader<any>,
+      mockAbstractHandler as unknown as AbstractHandler<any>,
       mockInterface as unknown as ethers.utils.Interface,
     );
     await waitForEventsLoopToComplete(listener);
@@ -189,7 +189,7 @@ describe("EventListener", () => {
     expect(mongoose.startSession).toBeCalledTimes(1);
     expect(mockSession.startTransaction).toBeCalledTimes(1);
 
-    expect(mockAbstractLoader.onEvent).toHaveBeenNthCalledWith(
+    expect(mockAbstractHandler.onEvent).toHaveBeenNthCalledWith(
       1,
       mockSession,
       "SampleEvent",
@@ -200,13 +200,13 @@ describe("EventListener", () => {
     expect(db.updateEventStatus).toHaveBeenNthCalledWith(
       1,
       {
-        chainId: mockAbstractLoader.chainId,
+        chainId: mockAbstractHandler.chainId,
         address: log.address,
         blockNumber: log.blockNumber,
         txIndex: log.transactionIndex,
         logIndex: log.logIndex,
       },
-      EventHandlerStatus.SUCCESS,
+      "SUCCESS",
     );
 
     expect(mockSession.commitTransaction).toBeCalledTimes(1);
@@ -219,7 +219,7 @@ describe("EventListener", () => {
     const log = sampleLog();
     const decodedArgs = new Map([["a", "b"]]);
 
-    const mockAbstractLoader = {
+    const mockAbstractHandler = {
       chainId: 1337,
       address: "0xaddr",
       onEvent: jest.fn(() => {
@@ -249,7 +249,7 @@ describe("EventListener", () => {
     await listener.queueLog(
       "SampleEvent",
       log,
-      mockAbstractLoader as unknown as AbstractLoader<any>,
+      mockAbstractHandler as unknown as AbstractHandler<any>,
       mockInterface as unknown as ethers.utils.Interface,
     );
     await listener.executePendingLogs();
@@ -260,7 +260,7 @@ describe("EventListener", () => {
     expect(mongoose.startSession).toBeCalledTimes(1);
     expect(mockSession.startTransaction).toBeCalledTimes(1);
 
-    expect(mockAbstractLoader.onEvent).toHaveBeenNthCalledWith(
+    expect(mockAbstractHandler.onEvent).toHaveBeenNthCalledWith(
       1,
       mockSession,
       "SampleEvent",

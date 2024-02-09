@@ -1,8 +1,8 @@
 import { AbstractBlockchainRepository } from "../core/AbstractBlockchainRepository";
 import { AbstractBroker } from "../core/AbstractBroker";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
-import { DataType, EMPTY_ADDRESS, IChargedToken, IInterfaceProjectToken } from "../core/types";
 import { rootLogger } from "../rootLogger";
+import { EMPTY_ADDRESS } from "../vendor";
 
 const log = rootLogger.child({ name: "subscribeToUserBalancesLoading" });
 
@@ -38,7 +38,7 @@ export async function subscribeToUserBalancesLoading(
 
       await Promise.all(
         directory.directory.map(async (address) => {
-          const lastState = await blockchain.getLastState<IChargedToken>(DataType.ChargedToken, address);
+          const lastState = await blockchain.getLastState<IChargedToken>("ChargedToken", address);
           let interfaceAddress: string | undefined;
           let ptAddress: string | undefined;
 
@@ -46,7 +46,7 @@ export async function subscribeToUserBalancesLoading(
             if (lastState.interfaceProjectToken !== EMPTY_ADDRESS) {
               interfaceAddress = lastState.interfaceProjectToken;
               const lastInterface = await blockchain.getLastState<IInterfaceProjectToken>(
-                DataType.InterfaceProjectToken,
+                "InterfaceProjectToken",
                 interfaceAddress,
               );
 

@@ -1,7 +1,6 @@
 import { Repeater } from "graphql-yoga";
 import { AbstractBroker } from "../../core/AbstractBroker";
 import { AbstractDbRepository } from "../../core/AbstractDbRepository";
-import { DataType, IUserBalance } from "../../core/types";
 import { rootLogger } from "../../rootLogger";
 
 const log = rootLogger.child({ name: "userBalance" });
@@ -38,7 +37,7 @@ export const UserBalanceQueryResolverFactory =
 
 export const UserBalanceSubscriptionResolverFactory = (db: AbstractDbRepository, broker: AbstractBroker) => ({
   subscribe: (_: any, { chainId, user }: { chainId: number; user: string }) => {
-    const sub = broker.subscribeUpdatesByAddress(DataType.UserBalance, chainId, user);
+    const sub = broker.subscribeUpdatesByAddress("UserBalance", chainId, user);
 
     return new Repeater(async (push, stop) => {
       stop.then((err) => {

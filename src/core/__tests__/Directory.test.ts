@@ -8,9 +8,7 @@ import { Directory } from "../Directory";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { MockBroker } from "../__mocks__/MockBroker";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
-import { DataType, IInterfaceProjectToken, IUserBalance } from "../types";
-
-jest.mock("../../globals/config");
+jest.mock("../../config");
 jest.mock("../../topics");
 jest.mock("../../db");
 jest.mock("../ChargedToken");
@@ -94,7 +92,7 @@ describe("Directory loader", () => {
     expect(loader.lastState).toEqual(graphqlModel);
 
     expect(db.exists).toBeCalledTimes(1);
-    expect(db.get).toHaveBeenNthCalledWith(2, DataType.Directory, CHAIN_ID, ADDRESS);
+    expect(db.get).toHaveBeenNthCalledWith(2, "Directory", CHAIN_ID, ADDRESS);
     expect(db.save).toHaveBeenCalledTimes(1);
 
     expect(blockchain.loadDirectory).toBeCalledTimes(1);
@@ -135,7 +133,7 @@ describe("Directory loader", () => {
     expect(loader.lastState).toEqual(loadedModel);
 
     expect(db.exists).toBeCalledTimes(0);
-    expect(db.get).toHaveBeenNthCalledWith(1, DataType.Directory, CHAIN_ID, ADDRESS);
+    expect(db.get).toHaveBeenNthCalledWith(1, "Directory", CHAIN_ID, ADDRESS);
     expect(db.save).toHaveBeenCalledTimes(0);
 
     expect(blockchain.loadDirectory).toBeCalledTimes(0);
@@ -243,7 +241,7 @@ describe("Directory loader", () => {
     loader.subscribeToEvents();
 
     // expectations
-    expect(blockchain.subscribeToEvents).toHaveBeenNthCalledWith(1, DataType.Directory, ADDRESS, expect.anything());
+    expect(blockchain.subscribeToEvents).toHaveBeenNthCalledWith(1, "Directory", ADDRESS, expect.anything());
 
     expect(ct.subscribeToEvents).toBeCalledTimes(1);
   });
@@ -287,13 +285,13 @@ describe("Directory loader", () => {
 
     expect(db.exists).toBeCalledTimes(1);
     expect(db.get).toBeCalledTimes(1);
-    expect(db.update).toHaveBeenCalledWith(DataType.Directory, {
+    expect(db.update).toHaveBeenCalledWith("Directory", {
       chainId: CHAIN_ID,
       address: ADDRESS,
       lastUpdateBlock: BLOCK_NUMBER,
       areUserFunctionsDisabled: true,
     });
-    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.Directory, CHAIN_ID, ADDRESS, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith("Directory", CHAIN_ID, ADDRESS, loadedModel);
   });
 
   test("ProjectOwnerWhitelisted", async () => {
@@ -322,7 +320,7 @@ describe("Directory loader", () => {
 
     expect(db.exists).toBeCalledTimes(1);
     expect(db.get).toBeCalledTimes(2);
-    expect(db.update).toHaveBeenCalledWith(DataType.Directory, {
+    expect(db.update).toHaveBeenCalledWith("Directory", {
       chainId: CHAIN_ID,
       address: ADDRESS,
       lastUpdateBlock: BLOCK_NUMBER,
@@ -334,7 +332,7 @@ describe("Directory loader", () => {
         [PROJECT_OWNER]: PROJECT_NAME,
       },
     });
-    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.Directory, CHAIN_ID, ADDRESS, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith("Directory", CHAIN_ID, ADDRESS, loadedModel);
   });
 
   test("AddedLTContract", async () => {
@@ -374,7 +372,7 @@ describe("Directory loader", () => {
     // applyUpdateAndNotify
     expect(db.exists).toBeCalledTimes(1);
     expect(db.get).toBeCalledTimes(3);
-    expect(db.update).toHaveBeenCalledWith(DataType.Directory, {
+    expect(db.update).toHaveBeenCalledWith("Directory", {
       chainId: CHAIN_ID,
       address: ADDRESS,
       lastUpdateBlock: BLOCK_NUMBER,
@@ -384,7 +382,7 @@ describe("Directory loader", () => {
         [CONTRACT]: PROJECT,
       },
     });
-    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.Directory, CHAIN_ID, ADDRESS, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith("Directory", CHAIN_ID, ADDRESS, loadedModel);
   });
 
   test("OwnershipTransferred", async () => {
@@ -431,14 +429,14 @@ describe("Directory loader", () => {
     expect(db.get).toBeCalledTimes(2);
     expect(db.getInterfaceByChargedToken).toBeCalledTimes(1);
     expect(loader.ct[ctAddress]).toBeUndefined();
-    expect(db.delete).toHaveBeenNthCalledWith(1, DataType.ChargedToken, CHAIN_ID, ctAddress);
+    expect(db.delete).toHaveBeenNthCalledWith(1, "ChargedToken", CHAIN_ID, ctAddress);
 
     expect(db.getInterfaceByChargedToken).toHaveBeenNthCalledWith(1, CHAIN_ID, ctAddress);
-    expect(db.delete).toHaveBeenNthCalledWith(2, DataType.InterfaceProjectToken, CHAIN_ID, loadedInterface.address);
+    expect(db.delete).toHaveBeenNthCalledWith(2, "InterfaceProjectToken", CHAIN_ID, loadedInterface.address);
 
-    expect(db.delete).toHaveBeenNthCalledWith(3, DataType.DelegableToLT, CHAIN_ID, loadedInterface.projectToken);
+    expect(db.delete).toHaveBeenNthCalledWith(3, "DelegableToLT", CHAIN_ID, loadedInterface.projectToken);
 
-    expect(db.delete).toHaveBeenNthCalledWith(4, DataType.UserBalance, CHAIN_ID, [
+    expect(db.delete).toHaveBeenNthCalledWith(4, "UserBalance", CHAIN_ID, [
       ctAddress,
       loadedInterface.address,
       loadedInterface.projectToken,

@@ -1,8 +1,8 @@
-import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
-import { AbstractLoader } from "./AbstractLoader";
-import { BigNumber, ClientSession, DataType, EMPTY_ADDRESS, IChargedToken, IInterfaceProjectToken } from "./types";
+import { BigNumber, ClientSession, EMPTY_ADDRESS } from "../../vendor";
+import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
+import { AbstractHandler } from "../AbstractHandler";
 
-export class ChargedToken extends AbstractLoader<IChargedToken> {
+export class ChargedToken extends AbstractHandler<IChargedToken> {
   constructor(
     chainId: number,
     blockchain: AbstractBlockchainRepository,
@@ -12,9 +12,9 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       chainId: number,
       address: string,
       blockchain: AbstractBlockchainRepository,
-    ) => AbstractLoader<any>,
+    ) => AbstractHandler<any>,
   ) {
-    super(chainId, blockchain, address, DataType.ChargedToken, loaderFactory);
+    super(chainId, blockchain, address, "ChargedToken", loaderFactory);
   }
 
   async onTransferEvent(
@@ -132,7 +132,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     eventName?: string,
   ): Promise<void> {
     await this.blockchain.applyUpdateAndNotify(
-      DataType.ChargedToken,
+      "ChargedToken",
       this.address,
       { areUserFunctionsDisabled },
       blockNumber,
@@ -148,15 +148,15 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     eventName?: string,
   ): Promise<void> {
     await this.blockchain.registerContract(
-      DataType.InterfaceProjectToken,
+      "InterfaceProjectToken",
       interfaceProjectToken,
       blockNumber,
-      this.loaderFactory(DataType.InterfaceProjectToken, this.chainId, interfaceProjectToken, this.blockchain),
+      this.loaderFactory("InterfaceProjectToken", this.chainId, interfaceProjectToken, this.blockchain),
       session,
     );
 
     const lastState = await this.blockchain.getLastState<IInterfaceProjectToken>(
-      DataType.InterfaceProjectToken,
+      "InterfaceProjectToken",
       interfaceProjectToken,
       session,
     );

@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { IUserBalance } from "../core/types";
 
 const userBalanceSchema = new mongoose.Schema<IUserBalance, mongoose.Model<IUserBalance>>({
   chainId: { type: Number, required: true },

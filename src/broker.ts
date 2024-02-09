@@ -1,6 +1,5 @@
 import { Repeater, createPubSub } from "graphql-yoga";
 import { AbstractBroker } from "./core/AbstractBroker";
-import { DataType } from "./core/types";
 
 const HEALTH_CHANNEL = "Health";
 
@@ -12,7 +11,7 @@ export class Broker extends AbstractBroker {
   }
 
   private getBalanceLoadingChannel(chainId: number): string {
-    return `${DataType.UserBalance}.${chainId}/load`;
+    return `${"UserBalance"}.${chainId}/load`;
   }
 
   notifyUpdate(dataType: DataType, chainId: number, address: string, data: any): void {

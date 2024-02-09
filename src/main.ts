@@ -2,10 +2,10 @@ import { Server } from "http";
 import mongoose from "mongoose";
 import { configureApiServer } from "./api/server";
 import { Broker } from "./broker";
+import { Config } from "./config";
 import { DbRepository } from "./db/DbRepository";
-import { Config, WorkerStatus } from "./globals";
 import { rootLogger } from "./rootLogger";
-import { ChainHealth, ChainWorker } from "./worker";
+import { ChainWorker } from "./worker";
 
 const log = rootLogger.child({ name: "Main" });
 
@@ -38,7 +38,7 @@ export class MainClass {
 
       this.keepAlive = setInterval(() => {
         for (const worker of this.workers) {
-          if (worker.workerStatus === WorkerStatus.DEAD) {
+          if (worker.workerStatus === "DEAD") {
             log.info({
               msg: `Restarting worker on rpc ${worker.rpc} and chain ${worker.name} ${worker.chainId}`,
               chainId: worker.chainId,

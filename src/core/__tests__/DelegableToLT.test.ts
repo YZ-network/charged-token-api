@@ -1,5 +1,6 @@
 import { ClientSession } from "mongodb";
 import { FlattenMaps } from "mongoose";
+import { EMPTY_ADDRESS } from "../../vendor";
 import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractBroker } from "../AbstractBroker";
 import { AbstractDbRepository } from "../AbstractDbRepository";
@@ -9,9 +10,8 @@ import { Directory } from "../Directory";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { MockBroker } from "../__mocks__/MockBroker";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
-import { DataType, EMPTY_ADDRESS, IDelegableToLT } from "../types";
 
-jest.mock("../../globals/config");
+jest.mock("../../config");
 jest.mock("../../topics");
 jest.mock("../../api");
 jest.mock("../../db");
@@ -94,7 +94,7 @@ describe("DelegableToLT loader", () => {
     // expectations
     expect(loader.lastState).toEqual(graphqlModel);
 
-    expect(db.get).toHaveBeenNthCalledWith(2, DataType.DelegableToLT, CHAIN_ID, ADDRESS);
+    expect(db.get).toHaveBeenNthCalledWith(2, "DelegableToLT", CHAIN_ID, ADDRESS);
     expect(db.save).toHaveBeenCalledTimes(1);
 
     expect(blockchain.loadDelegableToLT).toBeCalledTimes(1);
@@ -134,7 +134,7 @@ describe("DelegableToLT loader", () => {
     // expectations
     expect(loader.lastState).toEqual(loadedModel);
 
-    expect(db.get).toHaveBeenNthCalledWith(1, DataType.DelegableToLT, CHAIN_ID, ADDRESS);
+    expect(db.get).toHaveBeenNthCalledWith(1, "DelegableToLT", CHAIN_ID, ADDRESS);
     expect(db.save).toHaveBeenCalledTimes(0);
 
     expect(blockchain.loadDelegableToLT).toBeCalledTimes(0);

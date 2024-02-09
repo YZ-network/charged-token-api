@@ -1,8 +1,8 @@
-import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
-import { AbstractLoader } from "./AbstractLoader";
-import { BigNumber, DataType, EMPTY_ADDRESS, IDelegableToLT, type ClientSession } from "./types";
+import { BigNumber, EMPTY_ADDRESS, type ClientSession } from "../../vendor";
+import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
+import { AbstractHandler } from "../AbstractHandler";
 
-export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
+export class DelegableToLT extends AbstractHandler<IDelegableToLT> {
   constructor(
     chainId: number,
     blockchain: AbstractBlockchainRepository,
@@ -12,9 +12,9 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
       chainId: number,
       address: string,
       blockchain: AbstractBlockchainRepository,
-    ) => AbstractLoader<any>,
+    ) => AbstractHandler<any>,
   ) {
-    super(chainId, blockchain, address, DataType.DelegableToLT, loaderFactory);
+    super(chainId, blockchain, address, "DelegableToLT", loaderFactory);
   }
 
   async onTransferEvent(

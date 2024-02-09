@@ -1,8 +1,8 @@
 import pino from "pino";
 import { rootLogger } from "../rootLogger";
+import { EMPTY_ADDRESS } from "../vendor";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
-import { loaderFactory } from "./loaderFactory";
-import { DataType, EMPTY_ADDRESS, IChargedToken, IDirectory, IInterfaceProjectToken } from "./types";
+import { handlerFactory } from "./handlers/factory";
 
 export class ContractsWatcher {
   readonly chainId: number;
@@ -23,14 +23,9 @@ export class ContractsWatcher {
     this.log.info({ msg: "Registering directory", address, chainId: this.chainId });
 
     const blockNumber = await this.blockchain.getBlockNumber();
-    const loader = loaderFactory(DataType.Directory, this.chainId, address, this.blockchain);
+    const loader = handlerFactory("Directory", this.chainId, address, this.blockchain);
 
-    const lastState = await this.blockchain.registerContract<IDirectory>(
-      DataType.Directory,
-      address,
-      blockNumber,
-      loader,
-    );
+    const lastState = await this.blockchain.registerContract<IDirectory>("Directory", address, blockNumber, loader);
 
     if (lastState.directory.length > 0) {
       this.log.info({ msg: "Directory has charged tokens", address, chainId: this.chainId });
@@ -42,19 +37,19 @@ export class ContractsWatcher {
   }
 
   async unregisterDirectory(address: string): Promise<void> {
-    const lastState = await this.blockchain.getLastState<IDirectory>(DataType.Directory, address);
+    const lastState = await this.blockchain.getLastState<IDirectory>("Directory", address);
 
     if (lastState === null) {
       this.log.info({
         msg: "Tried to unregister inexisting contract",
-        dataType: DataType.Directory,
+        dataType: "Directory",
         address,
         chainId: this.chainId,
       });
       return;
     }
 
-    await this.blockchain.unregisterContract(DataType.Directory, address);
+    await this.blockchain.unregisterContract("Directory", address);
 
     for (const ctAddress of lastState.directory) {
       await this.unregisterChargedToken(ctAddress);
@@ -64,9 +59,9 @@ export class ContractsWatcher {
   async registerChargedToken(address: string, blockNumber: number): Promise<void> {
     this.log.info({ msg: "Registering charged token", address, chainId: this.chainId });
 
-    const loader = loaderFactory(DataType.ChargedToken, this.chainId, address, this.blockchain);
+    const loader = handlerFactory("ChargedToken", this.chainId, address, this.blockchain);
 
-    const lastState = await this.blockchain.registerContract(DataType.ChargedToken, address, blockNumber, loader);
+    const lastState = await this.blockchain.registerContract("ChargedToken", address, blockNumber, loader);
 
     if (lastState.interfaceProjectToken !== EMPTY_ADDRESS) {
       await this.registerInterfaceProjectToken(lastState.interfaceProjectToken, blockNumber);
@@ -74,19 +69,19 @@ export class ContractsWatcher {
   }
 
   async unregisterChargedToken(address: string): Promise<void> {
-    const lastState = await this.blockchain.getLastState<IChargedToken>(DataType.ChargedToken, address);
+    const lastState = await this.blockchain.getLastState<IChargedToken>("ChargedToken", address);
 
     if (lastState === null) {
       this.log.info({
         msg: "Tried to unregister inexisting contract",
-        dataType: DataType.ChargedToken,
+        dataType: "ChargedToken",
         address,
         chainId: this.chainId,
       });
       return;
     }
 
-    await this.blockchain.unregisterContract(DataType.ChargedToken, address);
+    await this.blockchain.unregisterContract("ChargedToken", address);
 
     if (lastState.interfaceProjectToken !== EMPTY_ADDRESS) {
       await this.unregisterInterfaceProjectToken(lastState.interfaceProjectToken);
@@ -96,14 +91,9 @@ export class ContractsWatcher {
   async registerInterfaceProjectToken(address: string, blockNumber: number): Promise<void> {
     this.log.info({ msg: "Registering interface", address, chainId: this.chainId });
 
-    const loader = loaderFactory(DataType.InterfaceProjectToken, this.chainId, address, this.blockchain);
+    const loader = handlerFactory("InterfaceProjectToken", this.chainId, address, this.blockchain);
 
-    const lastState = await this.blockchain.registerContract(
-      DataType.InterfaceProjectToken,
-      address,
-      blockNumber,
-      loader,
-    );
+    const lastState = await this.blockchain.registerContract("InterfaceProjectToken", address, blockNumber, loader);
 
     if (lastState.projectToken !== EMPTY_ADDRESS) {
       if (!this.blockchain.isContractRegistered(lastState.projectToken)) {
@@ -117,22 +107,19 @@ export class ContractsWatcher {
   }
 
   async unregisterInterfaceProjectToken(address: string): Promise<void> {
-    const lastState = await this.blockchain.getLastState<IInterfaceProjectToken>(
-      DataType.InterfaceProjectToken,
-      address,
-    );
+    const lastState = await this.blockchain.getLastState<IInterfaceProjectToken>("InterfaceProjectToken", address);
 
     if (lastState === null) {
       this.log.info({
         msg: "Tried to unregister inexisting contract",
-        dataType: DataType.InterfaceProjectToken,
+        dataType: "InterfaceProjectToken",
         address,
         chainId: this.chainId,
       });
       return;
     }
 
-    await this.blockchain.unregisterContract(DataType.InterfaceProjectToken, address);
+    await this.blockchain.unregisterContract("InterfaceProjectToken", address);
 
     if (lastState.projectToken !== EMPTY_ADDRESS) {
       await this.unregisterDelegableToLT(lastState.projectToken);
@@ -142,14 +129,14 @@ export class ContractsWatcher {
   async registerDelegableToLT(address: string, blockNumber: number): Promise<void> {
     this.log.info({ msg: "Registering project token", address, chainId: this.chainId });
 
-    const loader = loaderFactory(DataType.DelegableToLT, this.chainId, address, this.blockchain);
+    const loader = handlerFactory("DelegableToLT", this.chainId, address, this.blockchain);
 
-    await this.blockchain.registerContract(DataType.DelegableToLT, address, blockNumber, loader);
+    await this.blockchain.registerContract("DelegableToLT", address, blockNumber, loader);
   }
 
   async unregisterDelegableToLT(address: string): Promise<void> {
     if (!(await this.blockchain.isDelegableStillReferenced(address))) {
-      await this.blockchain.unregisterContract(DataType.DelegableToLT, address);
+      await this.blockchain.unregisterContract("DelegableToLT", address);
     }
   }
 }

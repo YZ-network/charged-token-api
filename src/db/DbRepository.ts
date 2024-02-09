@@ -1,23 +1,13 @@
-import mongoose from "mongoose";
-import { EventHandlerStatus } from "../globals";
+import mongoose, { Document, Model } from "mongoose";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
-import {
-  ClientSession,
-  DataType,
-  IContract,
-  IDirectory,
-  IEvent,
-  IInterfaceProjectToken,
-  IUserBalance,
-} from "../core/types";
 import { rootLogger } from "../rootLogger";
+import { ClientSession } from "../vendor";
 import { ChargedTokenModel } from "./ChargedToken";
 import { DelegableToLTModel } from "./DelegableToLT";
 import { DirectoryModel } from "./Directory";
 import { EventModel } from "./Event";
 import { InterfaceProjectTokenModel } from "./InterfaceProjectToken";
 import { UserBalanceModel } from "./UserBalances";
-import { IModel } from "./types";
 
 export class DbRepository extends AbstractDbRepository {
   private readonly log = rootLogger.child({ name: "DbRepository" });
@@ -108,7 +98,7 @@ export class DbRepository extends AbstractDbRepository {
 
     const result = await model.find(filter);
 
-    return result.map((doc) => doc.toJSON());
+    return result.map((doc: Document) => doc.toJSON()) as T[];
   }
 
   async getDirectory(chainId: number): Promise<IDirectory | null> {
@@ -255,7 +245,7 @@ export class DbRepository extends AbstractDbRepository {
     data: Partial<IUserBalance> & Pick<IUserBalance, "user" | "chainId" | "address" | "lastUpdateBlock">,
     session: ClientSession | null = null,
   ): Promise<void> {
-    if (!(await this.exists(DataType.UserBalance, data.chainId, data.address, session))) {
+    if (!(await this.exists("UserBalance", data.chainId, data.address, session))) {
       throw new Error("Tried updating a non-existing document !");
     }
 
@@ -302,11 +292,11 @@ export class DbRepository extends AbstractDbRepository {
   async deletePendingAndFailedEvents(chainId: number): Promise<void> {
     const pendingEvents = await EventModel.find({
       chainId,
-      status: EventHandlerStatus.QUEUED,
+      status: "QUEUED",
     });
     const failedEvents = await EventModel.find({
       chainId,
-      status: EventHandlerStatus.FAILURE,
+      status: "FAILURE",
     });
     if (pendingEvents.length > 0) {
       this.log.warn({
@@ -323,21 +313,21 @@ export class DbRepository extends AbstractDbRepository {
     }
     await EventModel.deleteMany({
       chainId,
-      status: { $in: [EventHandlerStatus.QUEUED, EventHandlerStatus.FAILURE] },
+      status: { $in: ["QUEUED", "FAILURE"] },
     });
   }
 
-  private getModelByDataType(dataType: DataType): IModel<any> {
+  private getModelByDataType(dataType: DataType): Model<any> {
     switch (dataType) {
-      case DataType.ChargedToken:
+      case "ChargedToken":
         return ChargedTokenModel;
-      case DataType.InterfaceProjectToken:
+      case "InterfaceProjectToken":
         return InterfaceProjectTokenModel;
-      case DataType.Directory:
+      case "Directory":
         return DirectoryModel;
-      case DataType.DelegableToLT:
+      case "DelegableToLT":
         return DelegableToLTModel;
-      case DataType.UserBalance:
+      case "UserBalance":
         return UserBalanceModel;
       default:
         throw new Error(`Unhandled data type : ${dataType}`);

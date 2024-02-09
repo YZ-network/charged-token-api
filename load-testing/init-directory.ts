@@ -1,5 +1,5 @@
 import { Wallet, ethers } from "ethers";
-import { contracts } from "../src/contracts";
+import { contracts } from "../src/blockchain/contracts";
 
 // don't check invalid type definitions for solc
 const { linkBytecode, findLinkReferences } = require("solc/linker");

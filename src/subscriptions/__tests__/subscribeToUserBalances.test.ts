@@ -10,7 +10,7 @@ import { MockBroker } from "../../core/__mocks__/MockBroker";
 import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 import subscribeToUserBalancesLoading from "../subscribeToUserBalances";
 
-jest.mock("../../globals/config");
+jest.mock("../../config");
 jest.mock("../../core/Directory");
 
 describe("User balances subscriptions", () => {

@@ -1,6 +1,6 @@
 import { stringify } from "csv-stringify/sync";
 import { type Plugin } from "graphql-yoga";
-import { AbstractDbRepository } from "./core/AbstractDbRepository";
+import { AbstractDbRepository } from "../core/AbstractDbRepository";
 
 export const eventsExporterFactory = (db: AbstractDbRepository) =>
   function useEventsExporter(): Plugin {

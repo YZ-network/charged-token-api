@@ -1,18 +1,22 @@
-import { ethers } from "ethers";
-import { ClientSession } from "mongoose";
-import { EventHandlerStatus } from "../globals";
+type DataType = "ChargedToken" | "Directory" | "InterfaceProjectToken" | "DelegableToLT" | "UserBalance" | "Event";
 
-export interface IContract {
+type EventHandlerStatus = "QUEUED" | "SUCCESS" | "FAILURE";
+
+type ProviderStatus = "STARTING" | "CONNECTING" | "CONNECTED" | "DISCONNECTED" | "DEAD";
+
+type WorkerStatus = "WAITING" | "STARTED" | "CRASHED" | "DEAD";
+
+interface IContract {
   chainId: number;
   address: string;
   lastUpdateBlock: number;
 }
 
-export interface IOwnable extends IContract {
+interface IOwnable extends IContract {
   owner: string;
 }
 
-export interface IErc20 extends IOwnable {
+interface IErc20 extends IOwnable {
   name: string;
   symbol: string;
   decimals: string;
@@ -51,7 +55,7 @@ interface IChargedTokenFundraising {
   isFundraisingActive: boolean;
 }
 
-export interface IChargedToken
+interface IChargedToken
   extends IChargedTokenConstants,
     IChargedTokenToggles,
     IChargedTokenStaking,
@@ -67,12 +71,12 @@ export interface IChargedToken
   isFundraisingContract: boolean;
 }
 
-export interface IDelegableToLT extends IErc20 {
+interface IDelegableToLT extends IErc20 {
   validatedInterfaceProjectToken: string[];
   isListOfInterfaceProjectTokenComplete: boolean;
 }
 
-export interface IDirectory extends IOwnable {
+interface IDirectory extends IOwnable {
   directory: string[];
   whitelistedProjectOwners: string[];
   projects: string[];
@@ -81,7 +85,7 @@ export interface IDirectory extends IOwnable {
   areUserFunctionsDisabled: boolean;
 }
 
-export interface IInterfaceProjectToken extends IOwnable {
+interface IInterfaceProjectToken extends IOwnable {
   liquidityToken: string;
   projectToken: string;
   dateLaunch: string;
@@ -89,7 +93,7 @@ export interface IInterfaceProjectToken extends IOwnable {
   claimFeesPerThousandForPT: string;
 }
 
-export interface IChargedTokenBalance {
+interface IChargedTokenBalance {
   balance: string;
   balancePT: string;
   fullyChargedBalance: string;
@@ -99,7 +103,7 @@ export interface IChargedTokenBalance {
   valueProjectTokenToFullRecharge: string;
 }
 
-export interface IUserBalance extends IChargedTokenBalance {
+interface IUserBalance extends IChargedTokenBalance {
   chainId: number;
   lastUpdateBlock: number;
   user: string;
@@ -107,7 +111,7 @@ export interface IUserBalance extends IChargedTokenBalance {
   ptAddress: string;
 }
 
-export interface IEvent {
+interface IEvent {
   status: EventHandlerStatus;
   chainId: number;
   address: string;
@@ -122,28 +126,65 @@ export interface IEvent {
   args: string[];
 }
 
-export enum DataType {
-  ChargedToken = "ChargedToken",
-  Directory = "Directory",
-  InterfaceProjectToken = "InterfaceProjectToken",
-  DelegableToLT = "DelegableToLT",
-  UserBalance = "UserBalance",
-  Event = "Event",
+interface ChainHealth {
+  index: number;
+  rpc: string;
+  directory: string;
+  name?: string;
+  chainId?: number;
+  providerStatus: ProviderStatus;
+  workerStatus: WorkerStatus;
+  wsStatus: string;
+  restartCount: number;
 }
 
-export const EMPTY_ADDRESS = "0x0000000000000000000000000000000000000000";
+interface JsonDbConfig {
+  uri: string;
+}
 
-export { BigNumber } from "ethers";
+interface JsonApiConfig {
+  bindAddress: string;
+  bindPort: number;
+  corsOrigins: string;
+  logLevel: string;
+  enableGraphiql: boolean;
+}
 
-export { type Logger } from "pino";
+interface JsonNetworkConfig {
+  chainId: number;
+  uri: string;
+  directory: string;
+}
 
-export { type ClientSession } from "mongoose";
+interface JsonDelaysConfig {
+  healthPublishDelayMs: number;
+  workerRestartDelayMs: number;
+  rpcMaxParallelRequests: number;
+  rpcMaxRetryCount: number;
+  rpcPingDelayMs: number;
+  rpcPongMaxWaitMs: number;
+  rpcRetryDelayMs: number;
+}
 
-export type IEventHandler = (
-  session: ClientSession,
-  args: any[],
-  blockNumber: number,
-  eventName: string,
-) => Promise<void>;
+interface JsonConfig {
+  db: JsonDbConfig;
+  api: JsonApiConfig;
+  networks: JsonNetworkConfig[];
+  delays: JsonDelaysConfig;
+}
 
-export type Log = ethers.providers.Log;
+interface Log {
+  blockNumber: number;
+  blockHash: string;
+  transactionIndex: number;
+
+  removed: boolean;
+
+  address: string;
+  data: string;
+
+  topics: Array<string>;
+
+  transactionHash: string;
+  logIndex: number;
+}

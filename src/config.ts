@@ -1,38 +1,3 @@
-interface JsonDbConfig {
-  uri: string;
-}
-
-interface JsonApiConfig {
-  bindAddress: string;
-  bindPort: number;
-  corsOrigins: string;
-  logLevel: string;
-  enableGraphiql: boolean;
-}
-
-export interface JsonNetworkConfig {
-  chainId: number;
-  uri: string;
-  directory: string;
-}
-
-interface JsonDelaysConfig {
-  healthPublishDelayMs: number;
-  workerRestartDelayMs: number;
-  rpcMaxParallelRequests: number;
-  rpcMaxRetryCount: number;
-  rpcPingDelayMs: number;
-  rpcPongMaxWaitMs: number;
-  rpcRetryDelayMs: number;
-}
-
-export interface JsonConfig {
-  db: JsonDbConfig;
-  api: JsonApiConfig;
-  networks: JsonNetworkConfig[];
-  delays: JsonDelaysConfig;
-}
-
 const configDefaults: JsonConfig = {
   db: {
     uri: "mongodb://127.0.0.1:27017/test?replicaSet=rs0",

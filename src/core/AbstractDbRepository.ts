@@ -1,5 +1,4 @@
-import { EventHandlerStatus } from "../globals";
-import { ClientSession, DataType, IContract, IDirectory, IEvent, IInterfaceProjectToken, IUserBalance } from "./types";
+import { ClientSession } from "../vendor";
 
 export abstract class AbstractDbRepository {
   abstract startSession(): Promise<ClientSession>;

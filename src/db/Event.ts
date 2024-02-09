@@ -1,11 +1,9 @@
 import mongoose from "mongoose";
-import { IEvent } from "../core/types";
-import { EventHandlerStatus } from "../globals";
 
 const { Schema } = mongoose;
 
 const eventSchema = new Schema<IEvent, mongoose.Model<IEvent>>({
-  status: { type: String, required: true, enum: EventHandlerStatus },
+  status: { type: String, required: true },
   chainId: { type: Number, required: true },
   address: { type: String, required: true },
   blockNumber: { type: Number, required: true },

@@ -1,10 +1,10 @@
 import { type ethers } from "ethers";
 import { type Logger } from "pino";
-import { EventHandlerStatus, getBlockDate } from "../globals";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
-import { type AbstractLoader } from "../core/AbstractLoader";
-import { ClientSession } from "../core/types";
+import { type AbstractHandler } from "../core/AbstractHandler";
 import { rootLogger } from "../rootLogger";
+import { ClientSession } from "../vendor";
+import { getBlockDate } from "./functions";
 
 type EventQueue = Array<{
   eventName: string;
@@ -12,7 +12,7 @@ type EventQueue = Array<{
   tx: number;
   ev: number;
   log: ethers.providers.Log;
-  loader: AbstractLoader<any>;
+  loader: AbstractHandler<any>;
   iface: ethers.utils.Interface;
 }>;
 
@@ -70,7 +70,7 @@ export class EventListener {
   async queueLog(
     eventName: string,
     log: ethers.providers.Log,
-    loader: AbstractLoader<any>,
+    loader: AbstractHandler<any>,
     iface: ethers.utils.Interface,
   ) {
     const decodedLog = iface.parseLog(log);
@@ -109,7 +109,7 @@ export class EventListener {
     this.pushEventAndSort(loader, iface, eventName, log);
 
     await this.db.saveEvent({
-      status: EventHandlerStatus.QUEUED,
+      status: "QUEUED",
       chainId: loader.chainId,
       address: log.address,
       blockNumber: log.blockNumber,
@@ -125,7 +125,7 @@ export class EventListener {
   }
 
   private pushEventAndSort(
-    loader: AbstractLoader<any>,
+    loader: AbstractHandler<any>,
     iface: ethers.utils.Interface,
     eventName: string,
     log: ethers.providers.Log,
@@ -238,7 +238,7 @@ export class EventListener {
 
       try {
         await loader.onEvent(session, eventName, args, log.blockNumber, log);
-        await this.updateEventStatus(session, log, loader.chainId, EventHandlerStatus.SUCCESS);
+        await this.updateEventStatus(session, log, loader.chainId, "SUCCESS");
         await session.commitTransaction();
       } catch (err) {
         this.log.error({

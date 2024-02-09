@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { IDelegableToLT } from "../core/types";
 
 const delegableToLTSchema = new mongoose.Schema<IDelegableToLT, mongoose.Model<IDelegableToLT>>({
   // contract

@@ -2,14 +2,14 @@ import { buildHTTPExecutor } from "@graphql-tools/executor-http";
 import gql from "graphql-tag";
 import mongoose from "mongoose";
 import { Socket } from "net";
-import { Config, WorkerStatus } from "../globals";
+import { Config } from "../config";
 import { MainClass } from "../main";
 import { ChainWorker } from "../worker";
 
 jest.unmock("ws");
 jest.unmock("ethers");
 
-jest.mock("../globals/config");
+jest.mock("../config");
 jest.mock("../graphql");
 jest.mock("../exporter");
 jest.mock("../worker");
@@ -148,7 +148,7 @@ describe("Main class", () => {
     expect(main.workers.length).toBe(1);
     expect(main.workers[0].start).toBeCalledTimes(0);
 
-    main.workers[0].workerStatus = WorkerStatus.DEAD;
+    main.workers[0].workerStatus = "DEAD";
 
     await waitForWorkerToRestart(main.workers[0]);
 

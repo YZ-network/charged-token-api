@@ -1,5 +1,6 @@
 import { ClientSession } from "mongodb";
 import { FlattenMaps } from "mongoose";
+import { EMPTY_ADDRESS } from "../../vendor";
 import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractBroker } from "../AbstractBroker";
 import { AbstractDbRepository } from "../AbstractDbRepository";
@@ -8,9 +9,8 @@ import { Directory } from "../Directory";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { MockBroker } from "../__mocks__/MockBroker";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
-import { DataType, EMPTY_ADDRESS, IChargedToken, IUserBalance } from "../types";
 
-jest.mock("../../globals/config");
+jest.mock("../../config");
 jest.mock("../../topics");
 jest.mock("../../db");
 jest.mock("../Directory");
@@ -116,7 +116,7 @@ describe("ChargedToken loader", () => {
     expect(loader.lastState).toEqual(graphqlModel);
 
     expect(db.exists).toBeCalledTimes(1);
-    expect(db.get).toHaveBeenNthCalledWith(2, DataType.ChargedToken, CHAIN_ID, ADDRESS);
+    expect(db.get).toHaveBeenNthCalledWith(2, "ChargedToken", CHAIN_ID, ADDRESS);
     expect(db.save).toHaveBeenCalledTimes(1);
 
     expect(loader.interface).toBeDefined();
@@ -145,7 +145,7 @@ describe("ChargedToken loader", () => {
     expect(loader.lastState).toEqual(loadedModel);
 
     expect(db.exists).toBeCalledTimes(0);
-    expect(db.get).toHaveBeenNthCalledWith(1, DataType.ChargedToken, CHAIN_ID, ADDRESS);
+    expect(db.get).toHaveBeenNthCalledWith(1, "ChargedToken", CHAIN_ID, ADDRESS);
     expect(db.save).toHaveBeenCalledTimes(0);
 
     expect(loader.interface).toBeDefined();
@@ -272,13 +272,13 @@ describe("ChargedToken loader", () => {
 
     expect(db.exists).toBeCalledTimes(1);
     expect(db.get).toBeCalledTimes(1);
-    expect(db.update).toHaveBeenCalledWith(DataType.ChargedToken, {
+    expect(db.update).toHaveBeenCalledWith("ChargedToken", {
       chainId: CHAIN_ID,
       address: ADDRESS,
       lastUpdateBlock: BLOCK_NUMBER,
       isInterfaceProjectTokenLocked: true,
     });
-    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.ChargedToken, CHAIN_ID, ADDRESS, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith("ChargedToken", CHAIN_ID, ADDRESS, loadedModel);
   });
 
   test("IncreasedTotalTokenAllocated", async () => {
@@ -291,13 +291,13 @@ describe("ChargedToken loader", () => {
 
     expect(db.exists).toBeCalledTimes(1);
     expect(db.get).toBeCalledTimes(2);
-    expect(db.update).toHaveBeenCalledWith(DataType.ChargedToken, {
+    expect(db.update).toHaveBeenCalledWith("ChargedToken", {
       chainId: CHAIN_ID,
       address: ADDRESS,
       lastUpdateBlock: BLOCK_NUMBER,
       totalTokenAllocated: "25",
     });
-    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.ChargedToken, CHAIN_ID, ADDRESS, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith("ChargedToken", CHAIN_ID, ADDRESS, loadedModel);
   });
 
   test("UserFunctionsAreDisabled", async () => {
@@ -823,7 +823,7 @@ describe("ChargedToken loader", () => {
     );
 
     expect(db.get).toBeCalledTimes(1);
-    expect(db.update).toHaveBeenCalledWith(DataType.ChargedToken, {
+    expect(db.update).toHaveBeenCalledWith("ChargedToken", {
       chainId: CHAIN_ID,
       address: ADDRESS,
       lastUpdateBlock: BLOCK_NUMBER,
@@ -831,7 +831,7 @@ describe("ChargedToken loader", () => {
       fundraisingTokenSymbol: "YYY",
       priceTokenPer1e18: "55",
     });
-    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.ChargedToken, CHAIN_ID, ADDRESS, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith("ChargedToken", CHAIN_ID, ADDRESS, loadedModel);
   });
 
   test("FundraisingStatusChanged", async () => {
@@ -845,13 +845,13 @@ describe("ChargedToken loader", () => {
 
     expect(blockchain.getChargedTokenFundraisingStatus).toBeCalledTimes(1);
     expect(db.get).toBeCalledTimes(1);
-    expect(db.update).toHaveBeenCalledWith(DataType.ChargedToken, {
+    expect(db.update).toHaveBeenCalledWith("ChargedToken", {
       chainId: CHAIN_ID,
       address: ADDRESS,
       lastUpdateBlock: BLOCK_NUMBER,
       isFundraisingActive: true,
     });
-    expect(broker.notifyUpdate).toHaveBeenCalledWith(DataType.ChargedToken, CHAIN_ID, ADDRESS, loadedModel);
+    expect(broker.notifyUpdate).toHaveBeenCalledWith("ChargedToken", CHAIN_ID, ADDRESS, loadedModel);
   });
 
   // extraneous events
