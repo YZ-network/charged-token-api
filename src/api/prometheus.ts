@@ -1,5 +1,5 @@
 import { type Plugin } from "graphql-yoga";
-import { Metrics } from "./metrics";
+import { Metrics } from "../metrics";
 
 export function usePrometheus(): Plugin {
   return {

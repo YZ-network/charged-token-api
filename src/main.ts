@@ -1,19 +1,13 @@
-import { useServer } from "graphql-ws/lib/use/ws";
-import { createYoga } from "graphql-yoga";
-import { createServer } from "http";
+import { Server } from "http";
 import mongoose from "mongoose";
-import { WebSocketServer } from "ws";
+import { configureApiServer } from "./api/server";
 import { Broker } from "./broker";
-import { eventsExporterFactory } from "./exporter";
+import { DbRepository } from "./db/DbRepository";
 import { Config, WorkerStatus } from "./globals";
-import { schemaFactory } from "./graphql";
-import { DbRepository } from "./db";
-import { usePrometheus } from "./prometheus";
 import { rootLogger } from "./rootLogger";
 import { ChainHealth, ChainWorker } from "./worker";
 
 const log = rootLogger.child({ name: "Main" });
-// const yogaLog = log.child({ name: "yoga" });
 
 export class MainClass {
   readonly networks = Config.networks;
@@ -25,95 +19,10 @@ export class MainClass {
   readonly broker: Broker = new Broker();
   readonly workers: ChainWorker[] = [];
 
-  readonly yoga = createYoga({
-    schema: schemaFactory(this.db, this.broker),
-    graphiql: Config.api.enableGraphiql
-      ? {
-          subscriptionsProtocol: "WS",
-        }
-      : false,
-    cors: (request) => {
-      const requestOrigin = request.headers.get("origin") as string;
-      return {
-        origin: requestOrigin,
-        methods: ["POST", "OPTIONS"],
-      };
-    },
-    /* {
-      origin: Config.api.corsOrigins,
-      methods: ["POST", "OPTIONS"],
-    }
-    logging: {
-      debug(...args) {
-        yogaLog.trace({ yogaLevel: "debug", args });
-      },
-      info(...args) {
-        yogaLog.trace({ yogaLevel: "info", args });
-      },
-      warn(...args) {
-        yogaLog.trace({ yogaLevel: "warn", args });
-      },
-      error(...args) {
-        yogaLog.trace({ yogaLevel: "error", args });
-      },
-    },
-     */
-    plugins: [
-      /*
-      useLogger({
-        logFn: (eventName, args) => {
-          yogaLog.trace({ eventName, args });
-        },
-      }),
-      */
-      usePrometheus(),
-      eventsExporterFactory(this.db)(),
-    ],
-  });
-
-  // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  readonly httpServer = createServer(this.yoga);
-  readonly wsServer = new WebSocketServer({
-    server: this.httpServer,
-    path: this.yoga.graphqlEndpoint,
-  });
+  readonly httpServer: Server = configureApiServer(this.db, this.broker);
 
   readonly bindAddress = Config.api.bindAddress;
   readonly bindPort = Config.api.bindPort;
-
-  init(): void {
-    useServer(
-      {
-        execute: (args: any) => args.rootValue.execute(args),
-        subscribe: (args: any) => args.rootValue.subscribe(args),
-        onSubscribe: async (ctx, msg) => {
-          const { schema, execute, subscribe, contextFactory, parse, validate } = Main.yoga.getEnveloped({
-            ...ctx,
-            req: ctx.extra.request,
-            socket: ctx.extra.socket,
-            params: msg.payload,
-          });
-
-          const args = {
-            schema,
-            operationName: msg.payload.operationName,
-            document: parse(msg.payload.query),
-            variableValues: msg.payload.variables,
-            contextValue: await contextFactory(),
-            rootValue: {
-              execute,
-              subscribe,
-            },
-          };
-
-          const errors = validate(args.schema, args.document);
-          if (errors.length !== undefined && errors.length > 0) return errors;
-          return args;
-        },
-      },
-      this.wsServer,
-    );
-  }
 
   async start(): Promise<void> {
     log.info(`Connecting to MongoDB at ${Config.db.uri}`);
