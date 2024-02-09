@@ -1,12 +1,12 @@
 import { Repeater } from "graphql-yoga";
-import { DataType, IContract } from "../../../loaders";
-import { AbstractBroker } from "../../../loaders/AbstractBroker";
-import { AbstractDbRepository } from "../../../loaders/AbstractDbRepository";
-import { MockBroker } from "../../../loaders/__mocks__/MockBroker";
-import { MockDbRepository } from "../../../loaders/__mocks__/MockDbRepository";
+import { DataType, IContract } from "../../../core";
+import { AbstractBroker } from "../../../core/AbstractBroker";
+import { AbstractDbRepository } from "../../../core/AbstractDbRepository";
+import { MockBroker } from "../../../core/__mocks__/MockBroker";
+import { MockDbRepository } from "../../../core/__mocks__/MockDbRepository";
 import { ResolverFactory } from "../factory";
 
-jest.mock("../../../models");
+jest.mock("../../../db");
 
 describe("Generic query resolver factory", () => {
   let db: jest.Mocked<AbstractDbRepository>;

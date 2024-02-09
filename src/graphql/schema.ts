@@ -1,7 +1,7 @@
 import { createSchema } from "graphql-yoga";
 
-import { AbstractBroker } from "../loaders/AbstractBroker";
-import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
+import { AbstractBroker } from "../core/AbstractBroker";
+import { AbstractDbRepository } from "../core/AbstractDbRepository";
 import resolversFactory from "./resolvers";
 
 const schemaFactory = (db: AbstractDbRepository, broker: AbstractBroker) =>

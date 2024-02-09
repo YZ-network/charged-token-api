@@ -11,9 +11,9 @@ import { DataType } from "../types";
 
 jest.mock("../../globals/config");
 jest.mock("../../topics");
-jest.mock("../../models");
+jest.mock("../../db");
 
-describe("AbstractLoader: common loaders features", () => {
+describe("AbstractLoader: common core features", () => {
   const CHAIN_ID = 1337;
   const ADDRESS = "0xADDRESS";
 

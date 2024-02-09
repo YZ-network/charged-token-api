@@ -14,7 +14,7 @@ import { DataType, EMPTY_ADDRESS, IUserBalance } from "../types";
 
 jest.mock("../../globals/config");
 jest.mock("../../topics");
-jest.mock("../../models");
+jest.mock("../../db");
 jest.mock("../Directory");
 jest.mock("../ChargedToken");
 jest.mock("../DelegableToLT");

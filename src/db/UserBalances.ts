@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { IUserBalance } from "../loaders/types";
+import { IUserBalance } from "../core/types";
 import { IModel } from "./types";
 
 const userBalanceSchema = new mongoose.Schema<IUserBalance, IModel<IUserBalance>>({

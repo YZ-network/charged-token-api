@@ -1,10 +1,10 @@
 import { WebSocket } from "ws";
 import { BlockchainRepository } from "./blockchain";
 import { Config, ProviderStatus, WorkerStatus } from "./globals";
-import { AbstractBroker } from "./loaders/AbstractBroker";
-import { AbstractDbRepository } from "./loaders/AbstractDbRepository";
-import { ContractsWatcher } from "./loaders/ContractsWatcher";
-import { Directory } from "./loaders/Directory";
+import { AbstractBroker } from "./core/AbstractBroker";
+import { AbstractDbRepository } from "./core/AbstractDbRepository";
+import { ContractsWatcher } from "./core/ContractsWatcher";
+import { Directory } from "./core/Directory";
 import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";
 import { subscribeToUserBalancesLoading } from "./subscriptions";

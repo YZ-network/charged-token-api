@@ -1,9 +1,9 @@
-import { IDirectory } from "../../../loaders";
-import { AbstractDbRepository } from "../../../loaders/AbstractDbRepository";
-import { MockDbRepository } from "../../../loaders/__mocks__/MockDbRepository";
+import { IDirectory } from "../../../core";
+import { AbstractDbRepository } from "../../../core/AbstractDbRepository";
+import { MockDbRepository } from "../../../core/__mocks__/MockDbRepository";
 import { DirectoryQueryResolver, DirectoryQueryResolverFactory } from "../directory";
 
-jest.mock("../../../models");
+jest.mock("../../../db");
 
 describe("Directory query resolver", () => {
   let db: jest.Mocked<AbstractDbRepository>;

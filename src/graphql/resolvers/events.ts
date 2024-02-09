@@ -1,4 +1,4 @@
-import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
+import { AbstractDbRepository } from "../../core/AbstractDbRepository";
 
 export type EventsQueryResolver = (
   _: any,

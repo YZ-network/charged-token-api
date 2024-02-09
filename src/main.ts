@@ -7,7 +7,7 @@ import { Broker } from "./broker";
 import { eventsExporterFactory } from "./exporter";
 import { Config, WorkerStatus } from "./globals";
 import { schemaFactory } from "./graphql";
-import { DbRepository } from "./models";
+import { DbRepository } from "./db";
 import { usePrometheus } from "./prometheus";
 import { rootLogger } from "./rootLogger";
 import { ChainHealth, ChainWorker } from "./worker";

@@ -12,7 +12,7 @@ import { DataType, EMPTY_ADDRESS, IChargedToken, IUserBalance } from "../types";
 
 jest.mock("../../globals/config");
 jest.mock("../../topics");
-jest.mock("../../models");
+jest.mock("../../db");
 jest.mock("../Directory");
 jest.mock("../InterfaceProjectToken");
 

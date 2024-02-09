@@ -1,9 +1,9 @@
 import { Repeater } from "graphql-yoga";
-import { DataType, IUserBalance } from "../../../loaders";
-import { AbstractBroker } from "../../../loaders/AbstractBroker";
-import { AbstractDbRepository } from "../../../loaders/AbstractDbRepository";
-import { MockBroker } from "../../../loaders/__mocks__/MockBroker";
-import { MockDbRepository } from "../../../loaders/__mocks__/MockDbRepository";
+import { DataType, IUserBalance } from "../../../core";
+import { AbstractBroker } from "../../../core/AbstractBroker";
+import { AbstractDbRepository } from "../../../core/AbstractDbRepository";
+import { MockBroker } from "../../../core/__mocks__/MockBroker";
+import { MockDbRepository } from "../../../core/__mocks__/MockDbRepository";
 import {
   UserBalanceQueryResolver,
   UserBalanceQueryResolverFactory,
@@ -11,7 +11,7 @@ import {
 } from "../userBalance";
 
 jest.mock("../../../globals/config");
-jest.mock("../../../models");
+jest.mock("../../../db");
 
 describe("User balance query resolver", () => {
   const chainId = 129;

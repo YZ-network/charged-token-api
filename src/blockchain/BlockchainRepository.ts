@@ -1,8 +1,8 @@
 import { EventFilter, ethers } from "ethers";
-import { AbstractBlockchainRepository } from "../loaders/AbstractBlockchainRepository";
-import { AbstractBroker } from "../loaders/AbstractBroker";
-import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
-import { AbstractLoader } from "../loaders/AbstractLoader";
+import { AbstractBlockchainRepository } from "../core/AbstractBlockchainRepository";
+import { AbstractBroker } from "../core/AbstractBroker";
+import { AbstractDbRepository } from "../core/AbstractDbRepository";
+import { AbstractLoader } from "../core/AbstractLoader";
 import {
   ClientSession,
   DataType,
@@ -13,7 +13,7 @@ import {
   IDirectory,
   IInterfaceProjectToken,
   IUserBalance,
-} from "../loaders/types";
+} from "../core/types";
 import { rootLogger } from "../rootLogger";
 import { EventListener } from "./EventListener";
 import { contracts } from "./contracts";
@@ -30,7 +30,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
   private readonly instances: Record<string, ethers.Contract> = {};
   private readonly interfaces: Record<string, ethers.utils.Interface> = {};
-  private readonly loaders: Record<string, AbstractLoader<any>> = {};
+  private readonly core: Record<string, AbstractLoader<any>> = {};
 
   constructor(
     chainId: number,
@@ -515,7 +515,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
       throw new Error("Duplicate contract registration !");
     }
 
-    this.loaders[address] = loader;
+    this.core[address] = loader;
 
     let lastState = await this.db.get<T>(dataType, this.chainId, address, session);
 
@@ -544,7 +544,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
         });
       }
 
-      await this.loadAndSyncEvents(dataType, address, eventsStartBlock, this.loaders[address]);
+      await this.loadAndSyncEvents(dataType, address, eventsStartBlock, this.core[address]);
     } else {
       this.log.info({
         msg: "First time loading",
@@ -592,7 +592,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     const lastState = await this.getLastState(dataType, address, session);
 
     this.unsubscribeEvents(address);
-    delete this.loaders[address];
+    delete this.core[address];
     if (remove) {
       await this.db.delete(dataType, this.chainId, address, session);
     }
@@ -622,7 +622,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   }
 
   isContractRegistered(address: string): boolean {
-    return this.loaders[address] !== undefined;
+    return this.core[address] !== undefined;
   }
 
   async isDelegableStillReferenced(address: string): Promise<boolean> {

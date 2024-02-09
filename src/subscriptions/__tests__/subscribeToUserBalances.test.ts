@@ -1,17 +1,17 @@
 import { Repeater } from "graphql-yoga";
 import { ClientSession } from "mongodb";
 import mongoose from "mongoose";
-import { AbstractBlockchainRepository } from "../../loaders/AbstractBlockchainRepository";
-import { AbstractBroker } from "../../loaders/AbstractBroker";
-import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
-import { Directory } from "../../loaders/Directory";
-import { MockBlockchainRepository } from "../../loaders/__mocks__/MockBlockchainRepository";
-import { MockBroker } from "../../loaders/__mocks__/MockBroker";
-import { MockDbRepository } from "../../loaders/__mocks__/MockDbRepository";
+import { AbstractBlockchainRepository } from "../../core/AbstractBlockchainRepository";
+import { AbstractBroker } from "../../core/AbstractBroker";
+import { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import { Directory } from "../../core/Directory";
+import { MockBlockchainRepository } from "../../core/__mocks__/MockBlockchainRepository";
+import { MockBroker } from "../../core/__mocks__/MockBroker";
+import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 import subscribeToUserBalancesLoading from "../subscribeToUserBalances";
 
 jest.mock("../../globals/config");
-jest.mock("../../loaders/Directory");
+jest.mock("../../core/Directory");
 
 describe("User balances subscriptions", () => {
   let generatorCount = 0;

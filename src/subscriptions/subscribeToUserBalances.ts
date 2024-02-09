@@ -1,7 +1,7 @@
-import { AbstractBlockchainRepository } from "../loaders/AbstractBlockchainRepository";
-import { AbstractBroker } from "../loaders/AbstractBroker";
-import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
-import { DataType, EMPTY_ADDRESS, IChargedToken, IInterfaceProjectToken } from "../loaders/types";
+import { AbstractBlockchainRepository } from "../core/AbstractBlockchainRepository";
+import { AbstractBroker } from "../core/AbstractBroker";
+import { AbstractDbRepository } from "../core/AbstractDbRepository";
+import { DataType, EMPTY_ADDRESS, IChargedToken, IInterfaceProjectToken } from "../core/types";
 import { rootLogger } from "../rootLogger";
 
 const log = rootLogger.child({ name: "subscribeToUserBalancesLoading" });

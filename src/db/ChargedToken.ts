@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { IChargedToken } from "../loaders/types";
+import { IChargedToken } from "../core/types";
 import { IModel } from "./types";
 
 const chargedTokenSchema = new mongoose.Schema<IChargedToken, IModel<IChargedToken>>({

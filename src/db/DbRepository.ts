@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { EventHandlerStatus } from "../globals";
-import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
+import { AbstractDbRepository } from "../core/AbstractDbRepository";
 import {
   ClientSession,
   DataType,
@@ -9,7 +9,7 @@ import {
   IEvent,
   IInterfaceProjectToken,
   IUserBalance,
-} from "../loaders/types";
+} from "../core/types";
 import { rootLogger } from "../rootLogger";
 import { ChargedTokenModel } from "./ChargedToken";
 import { DelegableToLTModel } from "./DelegableToLT";

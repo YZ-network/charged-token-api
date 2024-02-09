@@ -1,4 +1,4 @@
-import { ClientSession } from "./loaders/types";
+import { ClientSession } from "./core/types";
 
 export interface IEntry {
   key: string;

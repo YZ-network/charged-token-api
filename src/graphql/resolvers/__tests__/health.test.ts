@@ -1,10 +1,10 @@
 import { Repeater } from "graphql-yoga";
-import { AbstractBroker } from "../../../loaders/AbstractBroker";
-import { MockBroker } from "../../../loaders/__mocks__/MockBroker";
+import { AbstractBroker } from "../../../core/AbstractBroker";
+import { MockBroker } from "../../../core/__mocks__/MockBroker";
 import { HealthQueryResolverFactory, HealthSubscriptionResolverFactory } from "../health";
 
 jest.mock("../../../globals");
-jest.mock("../../../models");
+jest.mock("../../../db");
 jest.mock("../../../main");
 
 describe("Health check query resolver", () => {

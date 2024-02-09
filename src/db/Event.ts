@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { EventHandlerStatus } from "../globals";
-import { IEvent } from "../loaders/types";
+import { IEvent } from "../core/types";
 import { IModel } from "./types";
 
 const { Schema } = mongoose;

@@ -2,11 +2,11 @@ import { ethers } from "ethers";
 import { ClientSession } from "mongodb";
 import mongoose from "mongoose";
 import { EventListener } from "../../blockchain/EventListener";
-import { AbstractDbRepository, EventHandlerStatus, type AbstractLoader } from "../../loaders";
-import { MockDbRepository } from "../../loaders/__mocks__/MockDbRepository";
+import { AbstractDbRepository, EventHandlerStatus, type AbstractLoader } from "../../core";
+import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 
 jest.mock("../../globals/config");
-jest.mock("../../models");
+jest.mock("../../db");
 
 describe("EventListener", () => {
   let db: jest.Mocked<AbstractDbRepository>;

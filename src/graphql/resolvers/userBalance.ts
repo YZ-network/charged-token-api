@@ -1,7 +1,7 @@
 import { Repeater } from "graphql-yoga";
-import { AbstractBroker } from "../../loaders/AbstractBroker";
-import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
-import { DataType, IUserBalance } from "../../loaders/types";
+import { AbstractBroker } from "../../core/AbstractBroker";
+import { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import { DataType, IUserBalance } from "../../core/types";
 import { rootLogger } from "../../rootLogger";
 
 const log = rootLogger.child({ name: "userBalance" });

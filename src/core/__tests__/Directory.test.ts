@@ -12,7 +12,7 @@ import { DataType, IInterfaceProjectToken, IUserBalance } from "../types";
 
 jest.mock("../../globals/config");
 jest.mock("../../topics");
-jest.mock("../../models");
+jest.mock("../../db");
 jest.mock("../ChargedToken");
 
 describe("Directory loader", () => {

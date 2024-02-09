@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { GraphQLSchema } from "graphql";
-import { MockBroker } from "../../loaders/__mocks__/MockBroker";
-import { MockDbRepository } from "../../loaders/__mocks__/MockDbRepository";
+import { MockBroker } from "../../core/__mocks__/MockBroker";
+import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 import schemaFactory from "../schema";
 
 jest.mock("../resolvers");

@@ -1,4 +1,4 @@
-import { AbstractBroker } from "../../loaders/AbstractBroker";
+import { AbstractBroker } from "../../core/AbstractBroker";
 import { rootLogger } from "../../rootLogger";
 
 const log = rootLogger.child({ name: "health" });

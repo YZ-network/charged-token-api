@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { IDirectory } from "../loaders/types";
+import { IDirectory } from "../core/types";
 import { IModel } from "./types";
 
 const { Schema } = mongoose;

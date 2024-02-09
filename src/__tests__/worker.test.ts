@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
 import { ProviderStatus, WorkerStatus } from "../globals";
-import { AbstractBroker } from "../loaders/AbstractBroker";
-import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
-import { Directory } from "../loaders/Directory";
-import { MockBroker } from "../loaders/__mocks__/MockBroker";
-import { MockDbRepository } from "../loaders/__mocks__/MockDbRepository";
+import { AbstractBroker } from "../core/AbstractBroker";
+import { AbstractDbRepository } from "../core/AbstractDbRepository";
+import { Directory } from "../core/Directory";
+import { MockBroker } from "../core/__mocks__/MockBroker";
+import { MockDbRepository } from "../core/__mocks__/MockDbRepository";
 import { Metrics } from "../metrics";
 import { subscribeToUserBalancesLoading } from "../subscriptions";
 import { AutoWebSocketProvider } from "../util";
@@ -13,8 +13,8 @@ import { ChainWorker } from "../worker";
 jest.mock("../topics");
 jest.mock("../globals/config");
 jest.mock("../util/AutoWebSocketProvider");
-jest.mock("../loaders/Directory");
-jest.mock("../models");
+jest.mock("../core/Directory");
+jest.mock("../db");
 jest.mock("../subscriptions");
 
 describe("ChainWorker", () => {
