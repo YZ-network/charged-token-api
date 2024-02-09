@@ -1,12 +1,20 @@
-import { BigNumber } from "ethers";
-import { type ClientSession } from "mongoose";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { AbstractLoader } from "./AbstractLoader";
-import { DataType, EMPTY_ADDRESS, IDelegableToLT } from "./types";
+import { BigNumber, DataType, EMPTY_ADDRESS, IDelegableToLT, type ClientSession } from "./types";
 
 export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
-  constructor(chainId: number, blockchain: AbstractBlockchainRepository, address: string) {
-    super(chainId, blockchain, address, DataType.DelegableToLT);
+  constructor(
+    chainId: number,
+    blockchain: AbstractBlockchainRepository,
+    address: string,
+    loaderFactory: (
+      dataType: DataType,
+      chainId: number,
+      address: string,
+      blockchain: AbstractBlockchainRepository,
+    ) => AbstractLoader<any>,
+  ) {
+    super(chainId, blockchain, address, DataType.DelegableToLT, loaderFactory);
   }
 
   async onTransferEvent(
@@ -28,7 +36,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
 
     if (from !== EMPTY_ADDRESS) {
       // p2p transfers are not covered by other events
-      const oldBalance = await this.getPTBalance(from);
+      const oldBalance = await this.getPTBalance(from, session);
 
       if (oldBalance !== null) {
         const balancePT = BigNumber.from(oldBalance).sub(BigNumber.from(value)).toString();
@@ -41,12 +49,13 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
           blockNumber,
           eventName,
           this.address,
+          session,
         );
       }
     }
     if (to !== EMPTY_ADDRESS) {
       // p2p transfers are not covered by other events
-      const oldBalance = await this.getPTBalance(to);
+      const oldBalance = await this.getPTBalance(to, session);
 
       if (oldBalance !== null) {
         const balancePT = BigNumber.from(oldBalance).add(BigNumber.from(value)).toString();
@@ -59,24 +68,25 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
           blockNumber,
           eventName,
           this.address,
+          session,
         );
       }
     }
     if (from === EMPTY_ADDRESS) {
       // minting project tokens
-      const jsonModel = await this.getLastState();
+      const jsonModel = await this.getLastState(session);
       const update = {
         totalSupply: BigNumber.from(jsonModel.totalSupply).add(BigNumber.from(value)).toString(),
       };
-      await this.applyUpdateAndNotify(update, blockNumber, eventName);
+      await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
     }
     if (to === EMPTY_ADDRESS) {
       // burning project tokens
-      const jsonModel = await this.getLastState();
+      const jsonModel = await this.getLastState(session);
       const update = {
         totalSupply: BigNumber.from(jsonModel.totalSupply).sub(BigNumber.from(value)).toString(),
       };
-      await this.applyUpdateAndNotify(update, blockNumber, eventName);
+      await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
     }
   }
 
@@ -102,13 +112,13 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = await this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     const update = {
       validatedInterfaceProjectToken: [...jsonModel.validatedInterfaceProjectToken, interfaceProjectToken],
     };
 
-    await this.applyUpdateAndNotify(update, blockNumber, eventName);
+    await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
   }
 
   async onListOfValidatedInterfaceProjectTokenIsFinalizedEvent(
@@ -123,6 +133,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
       },
       blockNumber,
       eventName,
+      session,
     );
   }
 
@@ -132,7 +143,7 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = await this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     const update = {
       validatedInterfaceProjectToken: jsonModel.validatedInterfaceProjectToken.filter(
@@ -140,6 +151,6 @@ export class DelegableToLT extends AbstractLoader<IDelegableToLT> {
       ),
     };
 
-    await this.applyUpdateAndNotify(update, blockNumber, eventName);
+    await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
   }
 }

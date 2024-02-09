@@ -1,11 +1,7 @@
-import {
-  AbstractBlockchainRepository,
-  AbstractDbRepository,
-  EMPTY_ADDRESS,
-  IChargedToken,
-  IInterfaceProjectToken,
-} from "../loaders";
+import { AbstractBlockchainRepository } from "../loaders/AbstractBlockchainRepository";
 import { AbstractBroker } from "../loaders/AbstractBroker";
+import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
+import { DataType, EMPTY_ADDRESS, IChargedToken, IInterfaceProjectToken } from "../loaders/types";
 import { rootLogger } from "../rootLogger";
 
 const log = rootLogger.child({ name: "subscribeToUserBalancesLoading" });
@@ -30,40 +26,42 @@ export async function subscribeToUserBalancesLoading(
     });
 
     const blockNumber = await blockchain.getBlockNumber();
-    let addresses: string[] = [];
 
-    if (address !== undefined) {
-      addresses.push(address);
+    if (address === undefined) {
+      await blockchain.loadAllUserBalances(user, blockNumber);
     } else {
       const directory = await db.getDirectory(chainId);
 
-      if (directory !== null) {
-        addresses = directory.directory;
+      if (directory === null) {
+        throw new Error("No directory !");
       }
-    }
 
-    await Promise.all(
-      addresses.map(async (address) => {
-        const lastState = blockchain.getLastState<IChargedToken>(address);
-        let interfaceAddress: string | undefined;
-        let ptAddress: string | undefined;
+      await Promise.all(
+        directory.directory.map(async (address) => {
+          const lastState = await blockchain.getLastState<IChargedToken>(DataType.ChargedToken, address);
+          let interfaceAddress: string | undefined;
+          let ptAddress: string | undefined;
 
-        if (lastState !== undefined) {
-          if (lastState.interfaceProjectToken !== EMPTY_ADDRESS) {
-            interfaceAddress = lastState.interfaceProjectToken;
-            const lastInterface = blockchain.getLastState<IInterfaceProjectToken>(interfaceAddress);
+          if (lastState !== null) {
+            if (lastState.interfaceProjectToken !== EMPTY_ADDRESS) {
+              interfaceAddress = lastState.interfaceProjectToken;
+              const lastInterface = await blockchain.getLastState<IInterfaceProjectToken>(
+                DataType.InterfaceProjectToken,
+                interfaceAddress,
+              );
 
-            if (lastInterface !== undefined && lastInterface.projectToken !== EMPTY_ADDRESS) {
-              ptAddress = lastInterface.projectToken;
+              if (lastInterface !== null && lastInterface.projectToken !== EMPTY_ADDRESS) {
+                ptAddress = lastInterface.projectToken;
+              }
             }
+
+            const balance = await blockchain.loadUserBalances(blockNumber, user, address, interfaceAddress, ptAddress);
+
+            await db.saveBalance(balance);
           }
-
-          const balance = await blockchain.loadUserBalances(blockNumber, user, address, interfaceAddress, ptAddress);
-
-          await db.saveBalance(balance);
-        }
-      }),
-    );
+        }),
+      );
+    }
   }
 }
 

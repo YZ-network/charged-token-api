@@ -1,10 +1,8 @@
-import { BigNumber, ethers } from "ethers";
 import { type ClientSession } from "mongoose";
-import { type Logger } from "pino";
 import { rootLogger } from "../rootLogger";
 import { IEventHandler } from "../types";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
-import { DataType, IOwnable, IUserBalance } from "./types";
+import { BigNumber, DataType, IContract, IOwnable, IUserBalance, Log, Logger } from "./types";
 
 /**
  * Generic contract loader. Used for loading initial contracts state, keeping
@@ -13,7 +11,7 @@ import { DataType, IOwnable, IUserBalance } from "./types";
  * When a document already exists, it will sync all events from the last checkpoint
  * to the latest block number before watching new blocks.
  */
-export abstract class AbstractLoader<T extends IOwnable> {
+export abstract class AbstractLoader<T extends IContract> {
   readonly chainId: number;
   readonly address: string;
   protected readonly dataType: DataType;
@@ -22,6 +20,12 @@ export abstract class AbstractLoader<T extends IOwnable> {
   }>;
 
   protected readonly blockchain: AbstractBlockchainRepository;
+  protected readonly loaderFactory: (
+    dataType: DataType,
+    chainId: number,
+    address: string,
+    blockchain: AbstractBlockchainRepository,
+  ) => AbstractLoader<any>;
 
   lastState: T | undefined;
 
@@ -36,11 +40,18 @@ export abstract class AbstractLoader<T extends IOwnable> {
     blockchain: AbstractBlockchainRepository,
     address: string,
     dataType: DataType,
+    loaderFactory: (
+      dataType: DataType,
+      chainId: number,
+      address: string,
+      blockchain: AbstractBlockchainRepository,
+    ) => AbstractLoader<any>,
   ) {
     this.chainId = chainId;
     this.blockchain = blockchain;
     this.address = address;
     this.dataType = dataType;
+    this.loaderFactory = loaderFactory;
 
     this.log = rootLogger.child({
       chainId,
@@ -49,12 +60,19 @@ export abstract class AbstractLoader<T extends IOwnable> {
     });
   }
 
-  protected getLastState(): T {
-    return this.blockchain.getLastState<T>(this.address);
+  protected async getLastState(session?: ClientSession): Promise<T> {
+    const lastState = await this.blockchain.getLastState<T>(this.dataType, this.address, session);
+    if (lastState === null) throw new Error("Last state not found !");
+    return lastState;
   }
 
-  protected async applyUpdateAndNotify(data: Partial<T>, blockNumber: number, eventName?: string): Promise<void> {
-    await this.blockchain.applyUpdateAndNotify(this.dataType, this.address, data, blockNumber, eventName);
+  protected async applyUpdateAndNotify(
+    data: Partial<T>,
+    blockNumber: number,
+    eventName?: string,
+    session?: ClientSession,
+  ): Promise<void> {
+    await this.blockchain.applyUpdateAndNotify(this.dataType, this.address, data, blockNumber, eventName, session);
   }
 
   protected async updateBalanceAndNotify(
@@ -63,25 +81,20 @@ export abstract class AbstractLoader<T extends IOwnable> {
     blockNumber: number,
     eventName?: string,
     ptAddress?: string,
+    session?: ClientSession,
   ): Promise<void> {
-    await this.blockchain.updateBalanceAndNotify(this.address, user, data, blockNumber, ptAddress, eventName);
+    await this.blockchain.updateBalanceAndNotify(this.address, user, data, blockNumber, ptAddress, eventName, session);
   }
 
-  protected async getBalance(user: string): Promise<IUserBalance | null> {
-    return await this.blockchain.getUserBalance(this.address, user);
+  protected async getBalance(user: string, session?: ClientSession): Promise<IUserBalance | null> {
+    return await this.blockchain.getUserBalance(this.address, user, session);
   }
 
-  protected async getPTBalance(user: string): Promise<string | null> {
-    return await this.blockchain.getUserPTBalanceFromDb(this.address, user);
+  protected async getPTBalance(user: string, session?: ClientSession): Promise<string | null> {
+    return await this.blockchain.getUserPTBalanceFromDb(this.address, user, session);
   }
 
-  async onEvent(
-    session: ClientSession,
-    name: string,
-    args: any[],
-    blockNumber: number,
-    log: ethers.providers.Log,
-  ): Promise<void> {
+  async onEvent(session: ClientSession, name: string, args: any[], blockNumber: number, log: Log): Promise<void> {
     const eventHandlerName = `on${name}Event` as keyof this;
 
     try {
@@ -141,7 +154,7 @@ export abstract class AbstractLoader<T extends IOwnable> {
     // common handler for all ownable contracts
     // we do nothing since it happens only when a ChargedToken is added, which will be read in the same session
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const data = { owner } as Partial<T>;
-    await this.blockchain.applyUpdateAndNotify(this.dataType, this.address, data, blockNumber, eventName);
+    const data = { owner } as Partial<IOwnable>;
+    await this.blockchain.applyUpdateAndNotify(this.dataType, this.address, data, blockNumber, eventName, session);
   }
 }

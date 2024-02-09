@@ -1,12 +1,20 @@
-import { type ClientSession } from "mongodb";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { AbstractLoader } from "./AbstractLoader";
-import { ChargedToken } from "./ChargedToken";
-import { DataType, IDirectory } from "./types";
+import { DataType, IDirectory, type ClientSession } from "./types";
 
 export class Directory extends AbstractLoader<IDirectory> {
-  constructor(chainId: number, blockchain: AbstractBlockchainRepository, address: string) {
-    super(chainId, blockchain, address, DataType.Directory);
+  constructor(
+    chainId: number,
+    blockchain: AbstractBlockchainRepository,
+    address: string,
+    loaderFactory: (
+      dataType: DataType,
+      chainId: number,
+      address: string,
+      blockchain: AbstractBlockchainRepository,
+    ) => AbstractLoader<any>,
+  ) {
+    super(chainId, blockchain, address, DataType.Directory, loaderFactory);
   }
 
   async onUserFunctionsAreDisabledEvent(
@@ -15,7 +23,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    await this.applyUpdateAndNotify({ areUserFunctionsDisabled }, blockNumber, eventName);
+    await this.applyUpdateAndNotify({ areUserFunctionsDisabled }, blockNumber, eventName, session);
   }
 
   async onProjectOwnerWhitelistedEvent(
@@ -24,7 +32,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     const updates = {
       projects: [...jsonModel.projects, project],
@@ -32,7 +40,7 @@ export class Directory extends AbstractLoader<IDirectory> {
       whitelist: { ...jsonModel.whitelist, [projectOwner]: project },
     };
 
-    await this.applyUpdateAndNotify(updates, blockNumber, eventName);
+    await this.applyUpdateAndNotify(updates, blockNumber, eventName, session);
   }
 
   async onAddedLTContractEvent(
@@ -41,7 +49,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     const updates = {
       directory: [...jsonModel.directory, contract],
@@ -55,10 +63,10 @@ export class Directory extends AbstractLoader<IDirectory> {
       DataType.ChargedToken,
       contract,
       blockNumber,
-      new ChargedToken(this.chainId, this.blockchain, contract),
+      this.loaderFactory(DataType.ChargedToken, this.chainId, contract, this.blockchain),
     );
 
-    await this.applyUpdateAndNotify(updates, blockNumber, eventName);
+    await this.applyUpdateAndNotify(updates, blockNumber, eventName, session);
   }
 
   async onRemovedLTContractEvent(
@@ -67,7 +75,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     const update = {
       directory: jsonModel.directory.filter((address) => address !== contract),
@@ -85,9 +93,9 @@ export class Directory extends AbstractLoader<IDirectory> {
       address: contract,
     });
 
-    await this.blockchain.unregisterContract(DataType.ChargedToken, contract, true);
+    await this.blockchain.unregisterContract(DataType.ChargedToken, contract, true, session);
 
-    await this.applyUpdateAndNotify(update, blockNumber, eventName);
+    await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
   }
 
   async onRemovedProjectByAdminEvent(
@@ -96,7 +104,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     const update = {
       projects: jsonModel.projects.filter((_, index) => jsonModel.whitelistedProjectOwners[index] !== projectOwner),
@@ -106,7 +114,7 @@ export class Directory extends AbstractLoader<IDirectory> {
 
     delete update.whitelist[projectOwner];
 
-    await this.applyUpdateAndNotify(update, blockNumber, eventName);
+    await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
   }
 
   async onChangedProjectOwnerAccountEvent(
@@ -115,7 +123,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = await this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     const update = {
       whitelistedProjectOwners: [
@@ -128,7 +136,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     update.whitelist[projectOwnerNew] = update.whitelist[projectOwnerOld];
     delete update.whitelist[projectOwnerOld];
 
-    await this.applyUpdateAndNotify(update, blockNumber, eventName);
+    await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
   }
 
   async onChangedProjectNameEvent(
@@ -137,13 +145,13 @@ export class Directory extends AbstractLoader<IDirectory> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     const update = {
       projects: [...jsonModel.projects.filter((name) => name !== oldProjectName), newProjectName],
     };
 
-    await this.applyUpdateAndNotify(update, blockNumber, eventName);
+    await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
   }
 
   async onAllocatedLTToProjectEvent(
@@ -152,7 +160,7 @@ export class Directory extends AbstractLoader<IDirectory> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     const update = {
       projectRelatedToLT: {
@@ -161,7 +169,7 @@ export class Directory extends AbstractLoader<IDirectory> {
       },
     };
 
-    await this.applyUpdateAndNotify(update, blockNumber, eventName);
+    await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
   }
 
   async onAllocatedProjectOwnerToProjectEvent(
@@ -170,12 +178,12 @@ export class Directory extends AbstractLoader<IDirectory> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     const update = {
       whitelist: { ...jsonModel.whitelist, [projectOwner]: project },
     };
 
-    await this.applyUpdateAndNotify(update, blockNumber, eventName);
+    await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
   }
 }

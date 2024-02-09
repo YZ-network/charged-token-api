@@ -1,4 +1,4 @@
-import { type ClientSession } from "mongoose";
+import { ClientSession } from "./loaders/types";
 
 export interface IEntry {
   key: string;

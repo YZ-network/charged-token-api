@@ -1,8 +1,8 @@
 import { Repeater } from "graphql-yoga";
 import { toGraphQL } from "../../globals";
-import { DataType, IContract } from "../../loaders";
 import { AbstractBroker } from "../../loaders/AbstractBroker";
 import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
+import { DataType, IContract } from "../../loaders/types";
 import { rootLogger } from "../../rootLogger";
 
 const log = rootLogger.child({ name: "resolverFactory" });
@@ -65,8 +65,8 @@ export const ResolverFactory = {
 
           try {
             const lastValue = await db.getAllMatching(dataType, { chainId });
-            if (lastValue !== null) {
-              await push(toGraphQL(lastValue));
+            if (lastValue !== null && lastValue.length > 0) {
+              await push(toGraphQL(lastValue[0]));
             }
 
             for await (const value of sub) {

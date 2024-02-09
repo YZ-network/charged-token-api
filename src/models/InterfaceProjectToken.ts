@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { IInterfaceProjectToken } from "../loaders";
+import { IInterfaceProjectToken } from "../loaders/types";
 import { IModel } from "./types";
 
 const interfaceProjectTokenSchema = new mongoose.Schema<IInterfaceProjectToken, IModel<IInterfaceProjectToken>>({

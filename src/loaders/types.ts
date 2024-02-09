@@ -1,3 +1,6 @@
+import { ethers } from "ethers";
+import { EventHandlerStatus } from "../globals";
+
 export interface IContract {
   chainId: number;
   address: string;
@@ -103,12 +106,6 @@ export interface IUserBalance extends IChargedTokenBalance {
   ptAddress: string;
 }
 
-export enum EventHandlerStatus {
-  QUEUED = "QUEUED",
-  SUCCESS = "SUCCESS",
-  FAILURE = "FAILURE",
-}
-
 export interface IEvent {
   status: EventHandlerStatus;
   chainId: number;
@@ -134,3 +131,11 @@ export enum DataType {
 }
 
 export const EMPTY_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+export { BigNumber } from "ethers";
+
+export { type Logger } from "pino";
+
+export { type ClientSession } from "mongoose";
+
+export type Log = ethers.providers.Log;

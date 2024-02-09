@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
+import { rootLogger } from "../rootLogger";
 import { contracts } from "./contracts";
-import { rootLogger } from "./rootLogger";
 
 const log = rootLogger.child({ name: "encodeEvents" });
 

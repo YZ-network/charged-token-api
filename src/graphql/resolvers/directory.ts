@@ -9,7 +9,7 @@ export const DirectoryQueryResolverFactory =
     const directory = await db.getDirectory(chainId);
 
     if (directory === null) {
-      return null;
+      throw new Error("Directory not found !");
     }
 
     return toGraphQL(directory);

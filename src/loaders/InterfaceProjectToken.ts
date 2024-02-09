@@ -1,12 +1,20 @@
-import { BigNumber } from "ethers";
-import { type ClientSession } from "mongoose";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { AbstractLoader } from "./AbstractLoader";
-import { DataType, IInterfaceProjectToken } from "./types";
+import { BigNumber, DataType, IInterfaceProjectToken, type ClientSession } from "./types";
 
 export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken> {
-  constructor(chainId: number, blockchain: AbstractBlockchainRepository, address: string) {
-    super(chainId, blockchain, address, DataType.InterfaceProjectToken);
+  constructor(
+    chainId: number,
+    blockchain: AbstractBlockchainRepository,
+    address: string,
+    loaderFactory: (
+      dataType: DataType,
+      chainId: number,
+      address: string,
+      blockchain: AbstractBlockchainRepository,
+    ) => AbstractLoader<any>,
+  ) {
+    super(chainId, blockchain, address, DataType.InterfaceProjectToken, loaderFactory);
   }
 
   async onStartSetEvent(
@@ -22,6 +30,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       },
       blockNumber,
       eventName,
+      session,
     );
   }
 
@@ -40,8 +49,8 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const oldBalance = await this.getBalance(user);
-    const lastState = this.getLastState();
+    const oldBalance = await this.getBalance(user, session);
+    const lastState = await this.getLastState(session);
 
     if (oldBalance !== null) {
       const valueProjectTokenToFullRecharge = BigNumber.from(oldBalance.valueProjectTokenToFullRecharge)
@@ -58,6 +67,8 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         },
         blockNumber,
         eventName,
+        undefined,
+        session,
       );
     }
   }
@@ -68,7 +79,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const oldBalance = await this.getBalance(user);
+    const oldBalance = await this.getBalance(user, session);
 
     if (oldBalance !== null) {
       const valueProjectTokenToFullRecharge = BigNumber.from(oldBalance.valueProjectTokenToFullRecharge)
@@ -82,6 +93,8 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
         },
         blockNumber,
         eventName,
+        undefined,
+        session,
       );
     }
   }
@@ -98,6 +111,7 @@ export class InterfaceProjectToken extends AbstractLoader<IInterfaceProjectToken
       },
       blockNumber,
       eventName,
+      session,
     );
   }
 }

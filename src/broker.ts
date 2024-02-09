@@ -1,5 +1,6 @@
 import { Repeater, createPubSub } from "graphql-yoga";
-import { AbstractBroker, DataType } from "./loaders";
+import { AbstractBroker } from "./loaders/AbstractBroker";
+import { DataType } from "./loaders/types";
 
 const HEALTH_CHANNEL = "Health";
 

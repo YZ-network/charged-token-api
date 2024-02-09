@@ -1,9 +1,9 @@
 import { WebSocket } from "ws";
 import { BlockchainRepository } from "./blockchain";
 import { Config, ProviderStatus, WorkerStatus } from "./globals";
-import { ContractsWatcher } from "./loaders";
 import { AbstractBroker } from "./loaders/AbstractBroker";
 import { AbstractDbRepository } from "./loaders/AbstractDbRepository";
+import { ContractsWatcher } from "./loaders/ContractsWatcher";
 import { Directory } from "./loaders/Directory";
 import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";

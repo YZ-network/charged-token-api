@@ -1,12 +1,17 @@
 import { AbstractLoader } from "./AbstractLoader";
-import { DataType, IContract, IUserBalance } from "./types";
+import { ClientSession, DataType, IContract, IUserBalance } from "./types";
 
 export abstract class AbstractBlockchainRepository {
   abstract getBlockNumber(): Promise<number>;
-  abstract getUserBalance(address: string, user: string): Promise<IUserBalance | null>;
+  abstract getUserBalance(address: string, user: string, session?: ClientSession): Promise<IUserBalance | null>;
   abstract getUserBalancePT(ptAddress: string, user: string): Promise<string>;
-  abstract getUserPTBalanceFromDb(ptAddress: string, user: string): Promise<string | null>;
-  abstract setProjectTokenAddressOnBalances(address: string, ptAddress: string, blockNumber: number): Promise<void>;
+  abstract getUserPTBalanceFromDb(ptAddress: string, user: string, session?: ClientSession): Promise<string | null>;
+  abstract setProjectTokenAddressOnBalances(
+    address: string,
+    ptAddress: string,
+    blockNumber: number,
+    session?: ClientSession,
+  ): Promise<void>;
   abstract getChargedTokenFundraisingStatus(address: string): Promise<boolean>;
   abstract getProjectRelatedToLT(address: string, contract: string): Promise<string>;
   abstract getUserLiquiToken(address: string, user: string): Promise<{ dateOfPartiallyCharged: number }>;
@@ -17,6 +22,7 @@ export abstract class AbstractBlockchainRepository {
     interfaceAddress?: string,
     ptAddress?: string,
   ): Promise<IUserBalance>;
+  abstract loadAllUserBalances(user: string, blockNumber: number, address?: string): Promise<IUserBalance[]>;
 
   abstract subscribeToEvents(dataType: DataType, address: string, loader: AbstractLoader<any>): void;
   abstract registerContract<T extends IContract>(
@@ -24,11 +30,17 @@ export abstract class AbstractBlockchainRepository {
     address: string,
     blockNumber: number,
     loader: AbstractLoader<T>,
+    session?: ClientSession,
   ): Promise<T>;
-  abstract unregisterContract(dataType: DataType, address: string, remove?: boolean): Promise<void>;
+  abstract unregisterContract(
+    dataType: DataType,
+    address: string,
+    remove?: boolean,
+    session?: ClientSession,
+  ): Promise<void>;
   abstract isContractRegistered(address: string): boolean;
-  abstract getLastState<T>(address: string): T;
-  abstract isDelegableStillReferenced(address: string): boolean;
+  abstract getLastState<T>(dataType: DataType, address: string, session?: ClientSession): Promise<T | null>;
+  abstract isDelegableStillReferenced(address: string): Promise<boolean>;
   abstract unsubscribeEvents(address: string): void;
   abstract applyUpdateAndNotify<T>(
     dataType: DataType,
@@ -36,6 +48,7 @@ export abstract class AbstractBlockchainRepository {
     data: Partial<T>,
     blockNumber: number,
     eventName?: string,
+    session?: ClientSession,
   ): Promise<void>;
   abstract updateBalanceAndNotify(
     address: string,
@@ -44,5 +57,6 @@ export abstract class AbstractBlockchainRepository {
     blockNumber: number,
     ptAddress?: string,
     eventName?: string,
+    session?: ClientSession,
   ): Promise<void>;
 }

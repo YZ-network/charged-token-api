@@ -1,10 +1,9 @@
 import { type ethers } from "ethers";
-import mongoose, { type ClientSession } from "mongoose";
 import { type Logger } from "pino";
-import { getBlockDate } from "../globals";
-import { EventHandlerStatus } from "../loaders";
+import { EventHandlerStatus, getBlockDate } from "../globals";
 import { AbstractDbRepository } from "../loaders/AbstractDbRepository";
 import { type AbstractLoader } from "../loaders/AbstractLoader";
+import { ClientSession } from "../loaders/types";
 import { rootLogger } from "../rootLogger";
 
 type EventQueue = Array<{
@@ -173,7 +172,7 @@ export class EventListener {
 
     this._running = true;
 
-    const session = await mongoose.startSession();
+    const session = await this.db.startSession();
 
     let lastBlockNumber = 0;
     while (this.queue.length > 0) {
@@ -191,6 +190,8 @@ export class EventListener {
         queueSize: this.queue.length,
       });
 
+      session.startTransaction();
+
       if (
         !(await this.db.existsEvent(
           loader.chainId,
@@ -198,6 +199,7 @@ export class EventListener {
           log.blockNumber,
           log.transactionIndex,
           log.logIndex,
+          session,
         ))
       ) {
         this.log.warn({
@@ -235,11 +237,8 @@ export class EventListener {
       const args = [...decodedLog.args.values()];
 
       try {
-        session.startTransaction();
-
         await loader.onEvent(session, eventName, args, log.blockNumber, log);
         await this.updateEventStatus(session, log, loader.chainId, EventHandlerStatus.SUCCESS);
-
         await session.commitTransaction();
       } catch (err) {
         this.log.error({
@@ -286,6 +285,7 @@ export class EventListener {
         logIndex: log.logIndex,
       },
       status,
+      session,
     );
   }
 }

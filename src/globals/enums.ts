@@ -12,3 +12,9 @@ export enum WorkerStatus {
   CRASHED = "CRASHED",
   DEAD = "DEAD",
 }
+
+export enum EventHandlerStatus {
+  QUEUED = "QUEUED",
+  SUCCESS = "SUCCESS",
+  FAILURE = "FAILURE",
+}

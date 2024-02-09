@@ -15,7 +15,9 @@ export function toGraphQL(record: Record<string, any> | Record<string, any>[]): 
   const copy = { ...record };
   for (const key in record) {
     if (typeof record[key] === "object" && !(record[key] instanceof Array)) {
+      console.warn("encoding record to entry list", key, record[key]);
       copy[key] = recordToEntryList(record[key]);
+      console.warn("resulted in following array", copy[key]);
     }
   }
 

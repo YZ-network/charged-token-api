@@ -1,7 +1,7 @@
 import { Repeater } from "graphql-yoga";
-import { DataType, IUserBalance } from "../../loaders";
 import { AbstractBroker } from "../../loaders/AbstractBroker";
 import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
+import { DataType, IUserBalance } from "../../loaders/types";
 import { rootLogger } from "../../rootLogger";
 
 const log = rootLogger.child({ name: "userBalance" });
@@ -17,11 +17,10 @@ export const UserBalanceQueryResolverFactory =
     log.debug({ msg: "checking existing balances", chainId, user, address });
 
     if (address !== undefined) {
-      if (await db.existsBalance(chainId, address, user)) {
-        const balance = await db.getBalance(chainId, address, user);
-        return balance!;
-      }
-    } else if (await db.isUserBalancesLoaded(chainId, user)) {
+      return await db.getBalance(chainId, address, user);
+    }
+
+    if (await db.isUserBalancesLoaded(chainId, user)) {
       log.debug(`returning cached balances for ${chainId} ${user}`);
       return await db.getBalances(chainId, user);
     }

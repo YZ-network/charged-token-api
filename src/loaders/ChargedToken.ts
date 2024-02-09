@@ -1,13 +1,20 @@
-import { BigNumber } from "ethers";
-import { type ClientSession } from "mongoose";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { AbstractLoader } from "./AbstractLoader";
-import { InterfaceProjectToken } from "./InterfaceProjectToken";
-import { DataType, EMPTY_ADDRESS, IChargedToken, IInterfaceProjectToken } from "./types";
+import { BigNumber, ClientSession, DataType, EMPTY_ADDRESS, IChargedToken, IInterfaceProjectToken } from "./types";
 
 export class ChargedToken extends AbstractLoader<IChargedToken> {
-  constructor(chainId: number, blockchain: AbstractBlockchainRepository, address: string) {
-    super(chainId, blockchain, address, DataType.ChargedToken);
+  constructor(
+    chainId: number,
+    blockchain: AbstractBlockchainRepository,
+    address: string,
+    loaderFactory: (
+      dataType: DataType,
+      chainId: number,
+      address: string,
+      blockchain: AbstractBlockchainRepository,
+    ) => AbstractLoader<any>,
+  ) {
+    super(chainId, blockchain, address, DataType.ChargedToken, loaderFactory);
   }
 
   async onTransferEvent(
@@ -30,12 +37,12 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     if (from !== EMPTY_ADDRESS) {
       if (from === this.address) {
         // withdrawing staked charged tokens
-        const jsonModel = this.getLastState();
-        const totalLocked = BigNumber.from(jsonModel!.totalLocked).sub(BigNumber.from(value)).toString();
-        await this.applyUpdateAndNotify({ totalLocked }, blockNumber, eventName);
+        const jsonModel = await this.getLastState(session);
+        const totalLocked = BigNumber.from(jsonModel.totalLocked).sub(BigNumber.from(value)).toString();
+        await this.applyUpdateAndNotify({ totalLocked }, blockNumber, eventName, session);
       } else {
         // p2p transfer
-        const balanceFrom = await this.getBalance(from);
+        const balanceFrom = await this.getBalance(from, session);
         if (balanceFrom !== null) {
           const balance = BigNumber.from(balanceFrom.balance).sub(BigNumber.from(value)).toString();
           await this.updateBalanceAndNotify(
@@ -45,6 +52,8 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
             },
             blockNumber,
             eventName,
+            undefined,
+            session,
           );
         } else {
           this.log.info({
@@ -59,12 +68,12 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     if (to !== EMPTY_ADDRESS) {
       if (to === this.address) {
         // depositing charged tokens for staking
-        const jsonModel = this.getLastState();
-        const totalLocked = BigNumber.from(jsonModel!.totalLocked).add(BigNumber.from(value)).toString();
-        await this.applyUpdateAndNotify({ totalLocked }, blockNumber, eventName);
+        const jsonModel = await this.getLastState(session);
+        const totalLocked = BigNumber.from(jsonModel.totalLocked).add(BigNumber.from(value)).toString();
+        await this.applyUpdateAndNotify({ totalLocked }, blockNumber, eventName, session);
       } else {
         // p2p transfer
-        const balanceTo = await this.getBalance(to);
+        const balanceTo = await this.getBalance(to, session);
 
         if (balanceTo !== null) {
           const balance = BigNumber.from(balanceTo.balance).add(BigNumber.from(value)).toString();
@@ -76,6 +85,8 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
             },
             blockNumber,
             eventName,
+            undefined,
+            session,
           );
         } else {
           this.log.info({
@@ -89,19 +100,19 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     }
     if (from === EMPTY_ADDRESS) {
       // minting charged tokens
-      const jsonModel = this.getLastState();
+      const jsonModel = await this.getLastState(session);
       const update = {
         totalSupply: BigNumber.from(jsonModel.totalSupply).add(BigNumber.from(value)).toString(),
       };
-      await this.applyUpdateAndNotify(update, blockNumber, eventName);
+      await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
     }
     if (to === EMPTY_ADDRESS) {
       // burning charged tokens
-      const jsonModel = this.getLastState();
+      const jsonModel = await this.getLastState(session);
       const update = {
         totalSupply: BigNumber.from(jsonModel.totalSupply).sub(BigNumber.from(value)).toString(),
       };
-      await this.applyUpdateAndNotify(update, blockNumber, eventName);
+      await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
     }
   }
 
@@ -126,6 +137,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       { areUserFunctionsDisabled },
       blockNumber,
       eventName,
+      session,
     );
   }
 
@@ -139,14 +151,23 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       DataType.InterfaceProjectToken,
       interfaceProjectToken,
       blockNumber,
-      new InterfaceProjectToken(this.chainId, this.blockchain, interfaceProjectToken),
+      this.loaderFactory(DataType.InterfaceProjectToken, this.chainId, interfaceProjectToken, this.blockchain),
+      session,
     );
 
-    const lastState = this.blockchain.getLastState<IInterfaceProjectToken>(interfaceProjectToken);
+    const lastState = await this.blockchain.getLastState<IInterfaceProjectToken>(
+      DataType.InterfaceProjectToken,
+      interfaceProjectToken,
+      session,
+    );
 
-    await this.blockchain.setProjectTokenAddressOnBalances(this.address, lastState.projectToken, blockNumber);
+    if (lastState === null) {
+      throw new Error("Interface not found !");
+    }
 
-    await this.applyUpdateAndNotify({ interfaceProjectToken }, blockNumber, eventName);
+    await this.blockchain.setProjectTokenAddressOnBalances(this.address, lastState.projectToken, blockNumber, session);
+
+    await this.applyUpdateAndNotify({ interfaceProjectToken }, blockNumber, eventName, session);
   }
 
   async onInterfaceProjectTokenIsLockedEvent(
@@ -161,6 +182,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       },
       blockNumber,
       eventName,
+      session,
     );
   }
 
@@ -170,7 +192,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const oldBalance = await this.getBalance(user);
+    const oldBalance = await this.getBalance(user, session);
 
     if (oldBalance !== null) {
       const fullyChargedBalance = BigNumber.from(oldBalance.fullyChargedBalance).add(BigNumber.from(value)).toString();
@@ -182,6 +204,8 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         },
         blockNumber,
         eventName,
+        undefined,
+        session,
       );
     }
   }
@@ -201,7 +225,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     await this.applyUpdateAndNotify(
       {
@@ -209,6 +233,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       },
       blockNumber,
       eventName,
+      session,
     );
   }
 
@@ -218,7 +243,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     await this.applyUpdateAndNotify(
       {
@@ -226,6 +251,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       },
       blockNumber,
       eventName,
+      session,
     );
   }
 
@@ -241,6 +267,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       },
       blockNumber,
       eventName,
+      session,
     );
   }
 
@@ -250,7 +277,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const oldBalance = await this.getBalance(user);
+    const oldBalance = await this.getBalance(user, session);
 
     if (oldBalance !== null) {
       const fullyChargedBalance = BigNumber.from(oldBalance.fullyChargedBalance).sub(BigNumber.from(value)).toString();
@@ -262,10 +289,12 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         },
         blockNumber,
         eventName,
+        undefined,
+        session,
       );
     }
 
-    const jsonModel = this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     await this.applyUpdateAndNotify(
       {
@@ -273,6 +302,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       },
       blockNumber,
       eventName,
+      session,
     );
   }
 
@@ -291,7 +321,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const oldBalance = await this.getBalance(user);
+    const oldBalance = await this.getBalance(user, session);
 
     if (oldBalance !== null) {
       await this.updateBalanceAndNotify(
@@ -301,6 +331,8 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         },
         blockNumber,
         eventName,
+        undefined,
+        session,
       );
     }
   }
@@ -318,6 +350,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       },
       blockNumber,
       eventName,
+      session,
     );
   }
 
@@ -327,7 +360,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     const update = {
       currentRewardPerShare1e18: BigNumber.from(jsonModel.currentRewardPerShare1e18)
@@ -335,7 +368,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         .toString(),
     };
 
-    await this.applyUpdateAndNotify(update, blockNumber, eventName);
+    await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
   }
 
   async onLTDepositedEvent(
@@ -353,7 +386,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const jsonModel = this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     const bnRewards = BigNumber.from(rewards);
 
@@ -371,7 +404,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         */
     };
 
-    await this.applyUpdateAndNotify(update, blockNumber, eventName);
+    await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
   }
 
   async onWithdrawalFeesUpdatedEvent(
@@ -386,6 +419,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       },
       blockNumber,
       eventName,
+      session,
     );
   }
 
@@ -401,6 +435,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       },
       blockNumber,
       eventName,
+      session,
     );
   }
 
@@ -410,7 +445,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const oldBalance = await this.getBalance(user);
+    const oldBalance = await this.getBalance(user, session);
 
     if (oldBalance !== null) {
       const partiallyChargedBalance = BigNumber.from(oldBalance.partiallyChargedBalance)
@@ -424,6 +459,8 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         },
         blockNumber,
         eventName,
+        undefined,
+        session,
       );
     }
   }
@@ -435,13 +472,13 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     eventName?: string,
   ): Promise<void> {
     // dateOfPartiallyCharged updated by TokensDischargedEvent
-    const jsonModel = this.getLastState();
+    const jsonModel = await this.getLastState(session);
 
     const update = {
       stakedLT: BigNumber.from(jsonModel.stakedLT).sub(BigNumber.from(value)).toString(),
     };
 
-    await this.applyUpdateAndNotify(update, blockNumber, eventName);
+    await this.applyUpdateAndNotify(update, blockNumber, eventName, session);
   }
 
   async onTokensDischargedEvent(
@@ -450,7 +487,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const oldBalance = await this.getBalance(user);
+    const oldBalance = await this.getBalance(user, session);
 
     if (oldBalance !== null) {
       await this.updateBalanceAndNotify(
@@ -461,6 +498,8 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
         },
         blockNumber,
         eventName,
+        undefined,
+        session,
       );
     }
   }
@@ -480,6 +519,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       },
       blockNumber,
       eventName,
+      session,
     );
   }
 
@@ -502,6 +542,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       },
       blockNumber,
       eventName,
+      session,
     );
   }
 
@@ -522,6 +563,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       },
       blockNumber,
       eventName,
+      session,
     );
   }
 
@@ -544,6 +586,7 @@ export class ChargedToken extends AbstractLoader<IChargedToken> {
       },
       blockNumber,
       eventName,
+      session,
     );
   }
 }

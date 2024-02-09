@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { IDelegableToLT } from "../loaders";
+import { IDelegableToLT } from "../loaders/types";
 import { IModel } from "./types";
 
 const delegableToLTSchema = new mongoose.Schema<IDelegableToLT, IModel<IDelegableToLT>>({

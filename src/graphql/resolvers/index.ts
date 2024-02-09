@@ -1,6 +1,6 @@
-import { DataType } from "../../loaders";
 import { AbstractBroker } from "../../loaders/AbstractBroker";
 import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
+import { DataType } from "../../loaders/types";
 import { DirectoryQueryResolverFactory } from "./directory";
 import { EventsCountQueryResolverFactory, EventsQueryResolverFactory } from "./events";
 import { ResolverFactory } from "./factory";

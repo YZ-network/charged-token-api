@@ -1,8 +1,9 @@
 import { Repeater } from "graphql-yoga";
 import { ClientSession } from "mongodb";
 import mongoose from "mongoose";
-import { AbstractBlockchainRepository, AbstractDbRepository } from "../../loaders";
+import { AbstractBlockchainRepository } from "../../loaders/AbstractBlockchainRepository";
 import { AbstractBroker } from "../../loaders/AbstractBroker";
+import { AbstractDbRepository } from "../../loaders/AbstractDbRepository";
 import { Directory } from "../../loaders/Directory";
 import { MockBlockchainRepository } from "../../loaders/__mocks__/MockBlockchainRepository";
 import { MockBroker } from "../../loaders/__mocks__/MockBroker";
