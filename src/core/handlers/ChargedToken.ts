@@ -131,14 +131,7 @@ export class ChargedToken extends AbstractHandler<IChargedToken> {
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    await this.blockchain.applyUpdateAndNotify(
-      "ChargedToken",
-      this.address,
-      { areUserFunctionsDisabled },
-      blockNumber,
-      eventName,
-      session,
-    );
+    await this.applyUpdateAndNotify({ areUserFunctionsDisabled }, blockNumber, eventName, session);
   }
 
   async onInterfaceProjectTokenSetEvent(

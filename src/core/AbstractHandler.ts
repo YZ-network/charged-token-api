@@ -97,7 +97,7 @@ export abstract class AbstractHandler<T extends IContract> {
   }
 
   async onEvent(session: ClientSession, name: string, args: any[], blockNumber: number, log: Log): Promise<void> {
-    const eventHandlerName = `on${name}Event` as keyof this;
+    const eventHandlerName = `on${name}Event` as string;
 
     try {
       this.log.info({
@@ -112,12 +112,7 @@ export abstract class AbstractHandler<T extends IContract> {
         txHash: log.transactionHash,
       });
 
-      await (this[eventHandlerName] as IEventHandler).apply(this, [
-        session,
-        args,
-        blockNumber,
-        `${this.constructor.name}.${String(eventHandlerName)}`,
-      ]);
+      await (this[eventHandlerName as keyof this] as IEventHandler).apply(this, [session, args, blockNumber, name]);
 
       this.log.info({
         msg: `Event handler for ${name} executed`,
@@ -156,7 +151,7 @@ export abstract class AbstractHandler<T extends IContract> {
     // common handler for all ownable contracts
     // we do nothing since it happens only when a ChargedToken is added, which will be read in the same session
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const data = { owner } as Partial<IOwnable>;
-    await this.blockchain.applyUpdateAndNotify(this.dataType, this.address, data, blockNumber, eventName, session);
+    const data = { owner } as unknown as Partial<T>;
+    await this.applyUpdateAndNotify(data, blockNumber, eventName, session);
   }
 }

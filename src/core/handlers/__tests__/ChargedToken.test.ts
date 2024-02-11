@@ -2,10 +2,8 @@ import { ClientSession } from "mongodb";
 import { EMPTY_ADDRESS } from "../../../vendor";
 import { AbstractBlockchainRepository } from "../../AbstractBlockchainRepository";
 import { AbstractBroker } from "../../AbstractBroker";
-import { AbstractDbRepository } from "../../AbstractDbRepository";
 import { MockBlockchainRepository } from "../../__mocks__/MockBlockchainRepository";
 import { MockBroker } from "../../__mocks__/MockBroker";
-import { MockDbRepository } from "../../__mocks__/MockDbRepository";
 import { ChargedToken } from "../ChargedToken";
 import { InterfaceProjectToken } from "../InterfaceProjectToken";
 
@@ -19,7 +17,6 @@ describe("ChargedToken loader", () => {
   const BLOCK_NUMBER = 15;
 
   let blockchain: jest.Mocked<AbstractBlockchainRepository>;
-  let db: jest.Mocked<AbstractDbRepository>;
   let broker: jest.Mocked<AbstractBroker>;
 
   let loader: ChargedToken;
@@ -28,7 +25,6 @@ describe("ChargedToken loader", () => {
 
   beforeEach(() => {
     blockchain = new MockBlockchainRepository() as jest.Mocked<AbstractBlockchainRepository>;
-    db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
     broker = new MockBroker() as jest.Mocked<AbstractBroker>;
     loaderFactory = jest.fn();
     loader = new ChargedToken(CHAIN_ID, blockchain, ADDRESS, loaderFactory);
