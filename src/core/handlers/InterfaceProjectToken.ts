@@ -49,8 +49,8 @@ export class InterfaceProjectToken extends AbstractHandler<IInterfaceProjectToke
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const oldBalance = await this.getBalance(user, session);
     const lastState = await this.getLastState(session);
+    const oldBalance = await this.blockchain.getUserBalance(lastState.liquidityToken, user, session);
 
     if (oldBalance !== null) {
       const valueProjectTokenToFullRecharge = BigNumber.from(oldBalance.valueProjectTokenToFullRecharge)
@@ -59,15 +59,16 @@ export class InterfaceProjectToken extends AbstractHandler<IInterfaceProjectToke
 
       const { dateOfPartiallyCharged } = await this.blockchain.getUserLiquiToken(lastState.liquidityToken, user);
 
-      await this.updateBalanceAndNotify(
+      await this.blockchain.updateBalanceAndNotify(
+        lastState.liquidityToken,
         user,
         {
           valueProjectTokenToFullRecharge,
           dateOfPartiallyCharged: dateOfPartiallyCharged.toString(),
         },
         blockNumber,
-        eventName,
         undefined,
+        eventName,
         session,
       );
     }
@@ -79,21 +80,23 @@ export class InterfaceProjectToken extends AbstractHandler<IInterfaceProjectToke
     blockNumber: number,
     eventName?: string,
   ): Promise<void> {
-    const oldBalance = await this.getBalance(user, session);
+    const lastState = await this.getLastState(session);
+    const oldBalance = await this.blockchain.getUserBalance(lastState.liquidityToken, user, session);
 
     if (oldBalance !== null) {
       const valueProjectTokenToFullRecharge = BigNumber.from(oldBalance.valueProjectTokenToFullRecharge)
         .sub(BigNumber.from(valueProjectToken))
         .toString();
 
-      await this.updateBalanceAndNotify(
+      await this.blockchain.updateBalanceAndNotify(
+        lastState.liquidityToken,
         user,
         {
           valueProjectTokenToFullRecharge,
         },
         blockNumber,
-        eventName,
         undefined,
+        eventName,
         session,
       );
     }
