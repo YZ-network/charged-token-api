@@ -6,10 +6,7 @@ import { DelegableToLT } from "../DelegableToLT";
 
 describe("DelegableToLT loader", () => {
   const CHAIN_ID = 1337;
-  const OWNER = "0x493942A95Bc6Db03CE8Cc22ff5a0441Dcc581f45";
   const ADDRESS = "0xF79A6c67E99b2135E09C3Ba0d06AE60977C1f393";
-  const NAME = "Test CT";
-  const SYMBOL = "TCT";
 
   let blockchain: jest.Mocked<AbstractBlockchainRepository>;
   let loaderFactory: jest.Mock;
