@@ -913,28 +913,70 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
       this.broker.notifyUpdate("UserBalance", this.chainId, user, [newBalance]);
     } else {
-      const updatedBalances = await this.db.getBalancesByProjectToken(this.chainId, ptAddress, user, session);
+      await this.notifyBalancesUpdateByProjectToken(ptAddress, user, session);
+    }
+  }
 
-      try {
-        this.log.trace({
-          msg: "sending multiple balance updates :",
-          data: updatedBalances,
-          contract: this.constructor.name,
-          ptAddress,
-          chainId: this.chainId,
-        });
+  async updatePTBalanceAndNotify(
+    ptAddress: string,
+    user: string,
+    balanceUpdates: Pick<IUserBalance, "balancePT">,
+    blockNumber: number,
+    eventName?: string,
+    session?: ClientSession,
+  ): Promise<void> {
+    this.checkUpdateAmounts("UserBalance", balanceUpdates);
 
-        for (const b of updatedBalances) {
-          this.broker.notifyUpdate("UserBalance", this.chainId, user, [b]);
-        }
-      } catch (err) {
-        this.log.error({
-          msg: "Error loading updated balances after pt balance changed",
-          err,
-          chainId: this.chainId,
-          ptAddress,
-        });
+    this.log.info({
+      msg: "applying update to PT balances",
+      ptAddress,
+      user,
+      balanceUpdates,
+      eventName,
+      contract: this.constructor.name,
+      chainId: this.chainId,
+    });
+
+    await this.db.updatePTBalances(
+      {
+        ...balanceUpdates,
+        ptAddress,
+        chainId: this.chainId,
+        user,
+        lastUpdateBlock: blockNumber,
+      },
+      session,
+    );
+
+    await this.notifyBalancesUpdateByProjectToken(ptAddress, user, session);
+  }
+
+  private async notifyBalancesUpdateByProjectToken(
+    ptAddress: string,
+    user: string,
+    session?: ClientSession,
+  ): Promise<void> {
+    const updatedBalances = await this.db.getBalancesByProjectToken(this.chainId, ptAddress, user, session);
+
+    try {
+      this.log.trace({
+        msg: "sending multiple balance updates :",
+        data: updatedBalances,
+        contract: this.constructor.name,
+        ptAddress,
+        chainId: this.chainId,
+      });
+
+      for (const b of updatedBalances) {
+        this.broker.notifyUpdate("UserBalance", this.chainId, user, [b]);
       }
+    } catch (err) {
+      this.log.error({
+        msg: "Error loading updated balances after pt balance changed",
+        err,
+        chainId: this.chainId,
+        ptAddress,
+      });
     }
   }
 

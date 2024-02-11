@@ -21,5 +21,6 @@ export const MockBlockchainRepository: jest.Mock<AbstractBlockchainRepository> =
     unsubscribeEvents: jest.fn(),
     applyUpdateAndNotify: jest.fn(),
     updateBalanceAndNotify: jest.fn(),
+    updatePTBalanceAndNotify: jest.fn(),
   };
 });

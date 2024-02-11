@@ -249,7 +249,18 @@ export class DbRepository extends AbstractDbRepository {
       throw new Error("Tried updating a non-existing document !");
     }
 
-    await UserBalanceModel.updateOne({ chainId: data.chainId, address: data.address }, data, { session });
+    await UserBalanceModel.updateOne({ chainId: data.chainId, address: data.address, user: data.user }, data, {
+      session,
+    });
+  }
+
+  async updatePTBalances(
+    data: Partial<IUserBalance> & Pick<IUserBalance, "user" | "chainId" | "ptAddress" | "lastUpdateBlock">,
+    session?: ClientSession,
+  ): Promise<void> {
+    await UserBalanceModel.updateMany({ chainId: data.chainId, ptAddress: data.ptAddress, user: data.user }, data, {
+      session,
+    });
   }
 
   async updateOtherBalancesByProjectToken(

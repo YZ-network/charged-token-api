@@ -62,6 +62,10 @@ export abstract class AbstractDbRepository {
     data: Partial<IUserBalance> & Pick<IUserBalance, "user" | "chainId" | "address" | "lastUpdateBlock">,
     session?: ClientSession,
   ): Promise<void>;
+  abstract updatePTBalances(
+    data: Partial<IUserBalance> & Pick<IUserBalance, "user" | "chainId" | "ptAddress" | "lastUpdateBlock">,
+    session?: ClientSession,
+  ): Promise<void>;
   abstract updateOtherBalancesByProjectToken(
     addressToExclude: string,
     data: Partial<IUserBalance> & Pick<IUserBalance, "user" | "chainId" | "lastUpdateBlock" | "ptAddress">,

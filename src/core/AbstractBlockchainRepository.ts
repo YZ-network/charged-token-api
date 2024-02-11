@@ -59,4 +59,12 @@ export abstract class AbstractBlockchainRepository {
     eventName?: string,
     session?: ClientSession,
   ): Promise<void>;
+  abstract updatePTBalanceAndNotify(
+    ptAddress: string,
+    user: string,
+    balanceUpdates: Pick<IUserBalance, "balancePT">,
+    blockNumber: number,
+    eventName?: string,
+    session?: ClientSession,
+  ): Promise<void>;
 }

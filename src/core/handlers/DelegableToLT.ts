@@ -41,14 +41,14 @@ export class DelegableToLT extends AbstractHandler<IDelegableToLT> {
       if (oldBalance !== null) {
         const balancePT = BigNumber.from(oldBalance).sub(BigNumber.from(value)).toString();
 
-        await this.updateBalanceAndNotify(
+        await this.blockchain.updatePTBalanceAndNotify(
+          this.address,
           from,
           {
             balancePT,
           },
           blockNumber,
           eventName,
-          this.address,
           session,
         );
       }
@@ -60,14 +60,14 @@ export class DelegableToLT extends AbstractHandler<IDelegableToLT> {
       if (oldBalance !== null) {
         const balancePT = BigNumber.from(oldBalance).add(BigNumber.from(value)).toString();
 
-        await this.updateBalanceAndNotify(
+        await this.blockchain.updatePTBalanceAndNotify(
+          this.address,
           to,
           {
             balancePT,
           },
           blockNumber,
           eventName,
-          this.address,
           session,
         );
       }
