@@ -1,4 +1,4 @@
-export default {
+const topicsMap = {
   Directory: {
     "0x2b4800c6e3782a86d7e9ab678e5331d9581d15aa8817ac5e31333efa631c6797": "AddedLTContract",
     "0x90cac61ae39d59971fdfbb6f5f70dd15406b1bb72f049d9978d1393a558441ba": "AllocatedLTToProject",
@@ -60,3 +60,5 @@ export default {
     "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef": "Transfer",
   },
 };
+
+export default topicsMap;

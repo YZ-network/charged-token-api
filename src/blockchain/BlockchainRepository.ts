@@ -17,12 +17,12 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   private readonly provider: ethers.providers.JsonRpcProvider;
   private readonly db: AbstractDbRepository;
   private readonly broker: AbstractBroker;
-  private readonly eventListener: EventListener;
+  readonly eventListener: EventListener;
   private readonly log = rootLogger.child({ name: "BlockchainRepository" });
 
   private readonly instances: Record<string, ethers.Contract> = {};
   private readonly interfaces: Record<string, ethers.utils.Interface> = {};
-  private readonly core: Record<string, AbstractHandler<any>> = {};
+  private readonly handlers: Record<string, AbstractHandler<any>> = {};
 
   constructor(
     chainId: number,
@@ -39,7 +39,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     this.eventListener = new EventListener(db, provider, startEventLoop);
   }
 
-  private getInstance(dataType: DataType, address: string): ethers.Contract {
+  getInstance(dataType: DataType, address: string): ethers.Contract {
     if (this.instances[address] === undefined) {
       switch (dataType) {
         case "ChargedToken":
@@ -61,7 +61,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     return this.instances[address];
   }
 
-  private getInterface(dataType: DataType): ethers.utils.Interface {
+  getInterface(dataType: DataType): ethers.utils.Interface {
     if (this.interfaces[dataType] === undefined) {
       switch (dataType) {
         case "ChargedToken":
@@ -322,7 +322,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     const instance = this.getInstance(dataType, address);
 
     instance.on(eventFilter, (log: ethers.providers.Log) => {
-      const eventName = topicsMap[this.constructor.name][log.topics[0]];
+      const eventName = topicsMap[dataType][log.topics[0]];
 
       this.eventListener.queueLog(eventName, log, loader, this.getInterface(dataType)).catch((err) => {
         this.log.error({
@@ -360,7 +360,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
       throw new Error("Duplicate contract registration !");
     }
 
-    this.core[address] = loader;
+    this.handlers[address] = loader;
 
     let lastState = await this.db.get<T>(dataType, this.chainId, address, session);
 
@@ -389,7 +389,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
         });
       }
 
-      await this.loadAndSyncEvents(dataType, address, eventsStartBlock, this.core[address]);
+      await this.loadAndSyncEvents(dataType, address, eventsStartBlock, this.handlers[address]);
     } else {
       this.log.info({
         msg: "First time loading",
@@ -424,7 +424,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     const lastState = await this.getLastState(dataType, address, session);
 
     this.unsubscribeEvents(address);
-    delete this.core[address];
+    delete this.handlers[address];
     if (remove) {
       await this.db.delete(dataType, this.chainId, address, session);
     }
@@ -454,7 +454,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   }
 
   isContractRegistered(address: string): boolean {
-    return this.core[address] !== undefined;
+    return this.handlers[address] !== undefined;
   }
 
   async isDelegableStillReferenced(address: string): Promise<boolean> {
@@ -572,7 +572,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     }
   }
 
-  private checkUpdateAmounts<T>(dataType: DataType, data: Partial<T> | T): void {
+  checkUpdateAmounts<T>(dataType: DataType, data: Partial<T> | T): void {
     let fieldsToCheck: string[];
 
     switch (dataType) {
@@ -605,7 +605,6 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
         ];
         break;
 
-      case "Directory":
       default:
         fieldsToCheck = [];
     }
@@ -640,7 +639,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
     for (const balance of balancesToUpdate) {
       if (userPTBalances[balance.user] === undefined) {
-        userPTBalances[balance.user] = await this.getUserBalancePT(balance.ptAddress, balance.user);
+        userPTBalances[balance.user] = await this.getUserBalancePT(ptAddress, balance.user);
         this.log.info({
           msg: "loaded user PT balance",
           user: balance.user,
@@ -776,25 +775,16 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   ): Promise<void> {
     const updatedBalances = await this.db.getBalancesByProjectToken(this.chainId, ptAddress, user, session);
 
-    try {
-      this.log.trace({
-        msg: "sending multiple balance updates :",
-        data: updatedBalances,
-        contract: this.constructor.name,
-        ptAddress,
-        chainId: this.chainId,
-      });
+    this.log.trace({
+      msg: "sending multiple balance updates :",
+      data: updatedBalances,
+      contract: this.constructor.name,
+      ptAddress,
+      chainId: this.chainId,
+    });
 
-      for (const b of updatedBalances) {
-        this.broker.notifyUpdate("UserBalance", this.chainId, user, [b]);
-      }
-    } catch (err) {
-      this.log.error({
-        msg: "Error loading updated balances after pt balance changed",
-        err,
-        chainId: this.chainId,
-        ptAddress,
-      });
+    for (const b of updatedBalances) {
+      this.broker.notifyUpdate("UserBalance", this.chainId, user, [b]);
     }
   }
 
