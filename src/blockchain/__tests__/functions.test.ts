@@ -1,5 +1,5 @@
 import ethers from "ethers";
-import { getBlockDate } from "../functions";
+import { detectNegativeAmount, getBlockDate } from "../functions";
 
 describe("Blockchain functions", () => {
   test("should memoize fetched blocks from the provider to reduce requests", async () => {
@@ -21,5 +21,11 @@ describe("Blockchain functions", () => {
     expect(provider.getBlock).toHaveBeenNthCalledWith(1, 1);
     expect(provider.getBlock).toHaveBeenNthCalledWith(2, 3);
     expect(provider.getBlock).toHaveBeenNthCalledWith(3, 2);
+  });
+
+  test("should throw if negative amount is detected in the given fields", () => {
+    expect(() =>
+      detectNegativeAmount(1337, "UserBalance", { balance: "10", balancePT: "-15" }, ["balance", "balancePT"]),
+    ).toThrow("Invalid update detected : negative amounts in UserBalance");
   });
 });
