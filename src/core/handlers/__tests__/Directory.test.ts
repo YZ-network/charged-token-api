@@ -1,8 +1,6 @@
 import { ethers } from "ethers";
 import { ClientSession } from "mongodb";
 import { AbstractBlockchainRepository } from "../../AbstractBlockchainRepository";
-import { AbstractBroker } from "../../AbstractBroker";
-import { AbstractDbRepository } from "../../AbstractDbRepository";
 import { MockBlockchainRepository } from "../../__mocks__/MockBlockchainRepository";
 import { ChargedToken } from "../ChargedToken";
 import { Directory } from "../Directory";
@@ -15,8 +13,6 @@ describe("Directory loader", () => {
 
   let blockchain: jest.Mocked<AbstractBlockchainRepository>;
   let provider: ethers.providers.JsonRpcProvider;
-  let db: jest.Mocked<AbstractDbRepository>;
-  let broker: jest.Mocked<AbstractBroker>;
   let loaderFactory: jest.Mock;
   let loader: Directory;
   let session: ClientSession;
