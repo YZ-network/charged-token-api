@@ -18,6 +18,10 @@ const Contract = jest.fn().mockImplementation(() => {
     countWhitelistedProjectOwners: jest.fn(),
     countLTContracts: jest.fn(),
     projectRelatedToLT: jest.fn(),
+    getWhitelistedProjectOwner: jest.fn(),
+    getWhitelistedProjectName: jest.fn(),
+    whitelist: jest.fn(),
+    getLTContract: jest.fn(),
     // ChargedToken functions
     fractionInitialUnlockPerThousand: jest.fn(),
     durationCliff: jest.fn(),
