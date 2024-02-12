@@ -1,12 +1,11 @@
 import { ethers } from "ethers";
 import { ClientSession } from "mongodb";
-import mongoose from "mongoose";
 import { EventListener } from "../../blockchain/EventListener";
-import { AbstractDbRepository, type AbstractHandler } from "../../core";
+import { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import { AbstractHandler } from "../../core/AbstractHandler";
 import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 
 jest.mock("../../config");
-jest.mock("../../db");
 
 describe("EventListener", () => {
   let db: jest.Mocked<AbstractDbRepository>;
@@ -174,7 +173,7 @@ describe("EventListener", () => {
     db.existsEvent.mockResolvedValue(true).mockResolvedValueOnce(false);
 
     const mockSession = new ClientSession();
-    (mongoose as any).startSession.mockReturnValue(mockSession);
+    db.startSession.mockResolvedValue(mockSession);
 
     const listener = new EventListener(db, provider);
 
@@ -186,7 +185,7 @@ describe("EventListener", () => {
     );
     await waitForEventsLoopToComplete(listener);
 
-    expect(mongoose.startSession).toBeCalledTimes(1);
+    expect(db.startSession).toBeCalledTimes(1);
     expect(mockSession.startTransaction).toBeCalledTimes(1);
 
     expect(mockAbstractHandler.onEvent).toHaveBeenNthCalledWith(
@@ -207,6 +206,7 @@ describe("EventListener", () => {
         logIndex: log.logIndex,
       },
       "SUCCESS",
+      mockSession,
     );
 
     expect(mockSession.commitTransaction).toBeCalledTimes(1);
@@ -238,7 +238,7 @@ describe("EventListener", () => {
     } as unknown as ethers.providers.Block);
 
     const mockSession = new ClientSession();
-    (mongoose as any).startSession.mockResolvedValue(mockSession);
+    db.startSession.mockResolvedValue(mockSession);
 
     db.existsEvent.mockResolvedValue(true).mockResolvedValueOnce(false);
 
@@ -257,7 +257,7 @@ describe("EventListener", () => {
     expect(listener.running).toBe(false);
     expect(listener.queue.length).toBe(1);
 
-    expect(mongoose.startSession).toBeCalledTimes(1);
+    expect(db.startSession).toBeCalledTimes(1);
     expect(mockSession.startTransaction).toBeCalledTimes(1);
 
     expect(mockAbstractHandler.onEvent).toHaveBeenNthCalledWith(

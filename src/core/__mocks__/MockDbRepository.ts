@@ -28,5 +28,6 @@ export const MockDbRepository: jest.Mock<AbstractDbRepository> = jest.fn().mockI
     updateEventStatus: jest.fn(),
     delete: jest.fn(),
     deletePendingAndFailedEvents: jest.fn(),
+    startSession: jest.fn(),
   };
 });
