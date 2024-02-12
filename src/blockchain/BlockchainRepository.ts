@@ -7,6 +7,8 @@ import { rootLogger } from "../rootLogger";
 import { ClientSession, EMPTY_ADDRESS } from "../vendor";
 import { EventListener } from "./EventListener";
 import { contracts } from "./contracts";
+import { detectNegativeAmount } from "./functions";
+import { loadContract } from "./loaders";
 import topicsMap from "./topics";
 
 export class BlockchainRepository extends AbstractBlockchainRepository {
@@ -93,107 +95,6 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     return await this.db.getPTBalance(this.chainId, ptAddress, user, session);
   }
 
-  private async loadDirectory(address: string, blockNumber: number): Promise<IDirectory> {
-    const ins = this.getInstance("Directory", address);
-
-    const whitelistCount = (await ins.countWhitelistedProjectOwners()).toNumber();
-    const whitelistedProjectOwners: string[] = [];
-    const projects: string[] = [];
-    const whitelist: Record<string, string> = {};
-    for (let i = 0; i < whitelistCount; i++) {
-      const projectOwner = await ins.getWhitelistedProjectOwner(i);
-      const projectName = await ins.getWhitelistedProjectName(i);
-      whitelistedProjectOwners.push(projectOwner);
-      projects.push(projectName);
-      whitelist[projectOwner] = await ins.whitelist(projectOwner);
-    }
-
-    const contractsCount = (await ins.countLTContracts()).toNumber();
-    const directory: string[] = [];
-    const projectRelatedToLT: Record<string, string> = {};
-    for (let i = 0; i < contractsCount; i++) {
-      const ctAddress = await ins.getLTContract(i);
-      directory.push(ctAddress);
-      projectRelatedToLT[ctAddress] = await ins.projectRelatedToLT(ctAddress);
-    }
-
-    return {
-      chainId: this.chainId,
-      lastUpdateBlock: blockNumber,
-      address,
-      owner: await ins.owner(),
-      directory,
-      whitelistedProjectOwners,
-      projects,
-      projectRelatedToLT,
-      whitelist,
-      areUserFunctionsDisabled: await ins.areUserFunctionsDisabled(),
-    };
-  }
-
-  private async loadChargedToken(address: string, blockNumber: number): Promise<IChargedToken> {
-    const ins = this.getInstance("ChargedToken", address);
-
-    const fundraisingFields = {
-      isFundraisingContract: false,
-      fundraisingTokenSymbol: "",
-      priceTokenPer1e18: "0",
-      fundraisingToken: EMPTY_ADDRESS,
-      isFundraisingActive: false,
-    };
-
-    try {
-      fundraisingFields.isFundraisingActive = await ins.isFundraisingActive();
-      fundraisingFields.fundraisingTokenSymbol = (await ins.fundraisingTokenSymbol()).toString();
-      fundraisingFields.priceTokenPer1e18 = (await ins.priceTokenPer1e18()).toString();
-      fundraisingFields.fundraisingToken = (await ins.fundraisingToken()).toString();
-      fundraisingFields.isFundraisingContract = true;
-    } catch (err) {}
-
-    return {
-      // contract
-      chainId: this.chainId,
-      lastUpdateBlock: blockNumber,
-      address,
-      // ownable
-      owner: await ins.owner(),
-      // erc20
-      name: await ins.name(),
-      symbol: await ins.symbol(),
-      decimals: (await ins.decimals()).toString(),
-      totalSupply: (await ins.totalSupply()).toString(),
-      // constants
-      fractionInitialUnlockPerThousand: (await ins.fractionInitialUnlockPerThousand()).toString(),
-      durationCliff: (await ins.durationCliff()).toString(),
-      durationLinearVesting: (await ins.durationLinearVesting()).toString(),
-      maxInitialTokenAllocation: (await ins.maxInitialTokenAllocation()).toString(),
-      maxWithdrawFeesPerThousandForLT: (await ins.maxWithdrawFeesPerThousandForLT()).toString(),
-      maxClaimFeesPerThousandForPT: (await ins.maxClaimFeesPerThousandForPT()).toString(),
-      maxStakingAPR: (await ins.maxStakingAPR()).toString(),
-      maxStakingTokenAmount: (await ins.maxStakingTokenAmount()).toString(),
-      // toggles
-      areUserFunctionsDisabled: await ins.areUserFunctionsDisabled(),
-      isInterfaceProjectTokenLocked: await ins.isInterfaceProjectTokenLocked(),
-      areAllocationsTerminated: await ins.areAllocationsTerminated(),
-      // variables
-      interfaceProjectToken: await ins.interfaceProjectToken(),
-      ratioFeesToRewardHodlersPerThousand: (await ins.ratioFeesToRewardHodlersPerThousand()).toString(),
-      currentRewardPerShare1e18: (await ins.currentRewardPerShare1e18()).toString(),
-      stakedLT: (await ins.stakedLT()).toString(),
-      totalLocked: (await ins.balanceOf(address)).toString(),
-      totalTokenAllocated: (await ins.totalTokenAllocated()).toString(),
-      withdrawFeesPerThousandForLT: (await ins.withdrawFeesPerThousandForLT()).toString(),
-      // staking
-      stakingStartDate: (await ins.stakingStartDate()).toString(),
-      stakingDuration: (await ins.stakingDuration()).toString(),
-      stakingDateLastCheckpoint: (await ins.stakingDateLastCheckpoint()).toString(),
-      campaignStakingRewards: (await ins.campaignStakingRewards()).toString(),
-      totalStakingRewards: (await ins.totalStakingRewards()).toString(),
-      // fundraising
-      ...fundraisingFields,
-    };
-  }
-
   async getUserBalancePT(ptAddress: string, user: string): Promise<string> {
     return (await this.getInstance("DelegableToLT", ptAddress).balanceOf(user)).toString();
   }
@@ -209,52 +110,6 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   async getUserLiquiToken(address: string, user: string): Promise<{ dateOfPartiallyCharged: number }> {
     return (await this.getInstance("ChargedToken", address).userLiquiToken(user)) as {
       dateOfPartiallyCharged: number;
-    };
-  }
-
-  private async loadInterfaceProjectToken(address: string, blockNumber: number): Promise<IInterfaceProjectToken> {
-    const ins = this.getInstance("InterfaceProjectToken", address);
-
-    return {
-      // contract
-      chainId: this.chainId,
-      lastUpdateBlock: blockNumber,
-      address,
-      // ownable
-      owner: await ins.owner(),
-      // other
-      liquidityToken: await ins.liquidityToken(),
-      projectToken: await ins.projectToken(),
-      dateLaunch: (await ins.dateLaunch()).toString(),
-      dateEndCliff: (await ins.dateEndCliff()).toString(),
-      claimFeesPerThousandForPT: (await ins.claimFeesPerThousandForPT()).toString(),
-    };
-  }
-
-  private async loadDelegableToLT(address: string, blockNumber: number): Promise<IDelegableToLT> {
-    const ins = this.getInstance("DelegableToLT", address);
-
-    const validatedInterfaceProjectToken: string[] = [];
-    const validatedInterfaceCount = (await ins.countValidatedInterfaceProjectToken()).toNumber();
-    for (let i = 0; i < validatedInterfaceCount; i++) {
-      validatedInterfaceProjectToken.push(await ins.getValidatedInterfaceProjectToken(i));
-    }
-
-    return {
-      // contract
-      chainId: this.chainId,
-      lastUpdateBlock: blockNumber,
-      address,
-      // ownable
-      owner: await ins.owner(),
-      // erc20
-      name: await ins.name(),
-      symbol: await ins.symbol(),
-      decimals: (await ins.decimals()).toString(),
-      totalSupply: (await ins.totalSupply()).toString(),
-      // other
-      validatedInterfaceProjectToken,
-      isListOfInterfaceProjectTokenComplete: await ins.isListOfInterfaceProjectTokenComplete(),
     };
   }
 
@@ -543,7 +398,13 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
         chainId: this.chainId,
       });
 
-      const data = await this.loadContract<T>(dataType, address, blockNumber);
+      const data = await loadContract<T>(
+        this.chainId,
+        dataType,
+        this.getInstance(dataType, address),
+        address,
+        blockNumber,
+      );
       lastState = await this.db.save<T>(dataType, data, session);
 
       this.broker.notifyUpdate(dataType, this.chainId, address, lastState);
@@ -552,25 +413,6 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     this.subscribeToEvents(dataType, address, loader);
 
     return lastState;
-  }
-
-  private async loadContract<T extends IContract>(
-    dataType: DataType,
-    address: string,
-    blockNumber: number,
-  ): Promise<T> {
-    switch (dataType) {
-      case "Directory":
-        return (await this.loadDirectory(address, blockNumber)) as unknown as T;
-      case "ChargedToken":
-        return (await this.loadChargedToken(address, blockNumber)) as unknown as T;
-      case "InterfaceProjectToken":
-        return (await this.loadInterfaceProjectToken(address, blockNumber)) as unknown as T;
-      case "DelegableToLT":
-        return (await this.loadDelegableToLT(address, blockNumber)) as unknown as T;
-      default:
-        throw new Error("Unexpected dataType !");
-    }
   }
 
   async unregisterContract(
@@ -769,31 +611,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     }
 
     if (fieldsToCheck.length > 0) {
-      this.detectNegativeAmount(dataType, data as Record<string, string>, fieldsToCheck);
-    }
-  }
-
-  private detectNegativeAmount(
-    dataType: DataType,
-    data: Record<string, string>,
-    fieldsToCheck: string[],
-    logData: Record<string, any> = {},
-  ) {
-    const faultyFields: Record<string, string> = {};
-    fieldsToCheck.forEach((field) => {
-      if (data[field] !== undefined && data[field].startsWith("-")) {
-        faultyFields[field] = data[field];
-      }
-    });
-
-    if (Object.keys(faultyFields).length > 0) {
-      this.log.error({
-        ...logData,
-        msg: `Invalid update detected : negative amounts in ${dataType}`,
-        faultyFields,
-        chainId: this.chainId,
-      });
-      throw new Error(`Invalid update detected : negative amounts in ${dataType}`);
+      detectNegativeAmount(this.chainId, dataType, data as Record<string, string>, fieldsToCheck);
     }
   }
 
