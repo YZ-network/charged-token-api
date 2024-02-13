@@ -64,9 +64,7 @@ describe("Main class", () => {
     await waitForServerStart(main);
 
     // trying some gql queries
-    const executor = buildHTTPExecutor({
-      fetch: main.yoga.fetch,
-    });
+    const executor = buildHTTPExecutor();
 
     const healthSub = await executor({
       document: gql`
