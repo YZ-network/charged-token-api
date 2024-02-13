@@ -11,14 +11,13 @@ describe("Directory query resolver", () => {
     resolver = DirectoryQueryResolverFactory(db);
   });
 
-  it("should query for a directory by chain id and return null when not found", async () => {
+  it("should query for a directory by chain id and throw when not found", async () => {
     const chainId = 129;
 
     db.getDirectory.mockResolvedValueOnce(null);
 
-    const result = await resolver(undefined, { chainId });
+    await expect(resolver(undefined, { chainId })).rejects.toThrow("Directory not found !");
 
-    expect(result).toBe(null);
     expect(db.getDirectory).toBeCalledWith(chainId);
   });
 

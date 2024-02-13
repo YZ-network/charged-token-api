@@ -15,12 +15,13 @@ export const UserBalanceQueryResolverFactory =
   async (_: any, { chainId, user, address }: { chainId: number; user: string; address?: string }) => {
     log.debug({ msg: "checking existing balances", chainId, user, address });
 
-    if (address !== undefined) {
-      return await db.getBalance(chainId, address, user);
-    }
-
     if (await db.isUserBalancesLoaded(chainId, user)) {
-      log.debug(`returning cached balances for ${chainId} ${user}`);
+      log.debug(`returning cached balances for ${chainId} ${user} ${address}`);
+
+      if (address !== undefined) {
+        return await db.getBalance(chainId, address, user);
+      }
+
       return await db.getBalances(chainId, user);
     }
 

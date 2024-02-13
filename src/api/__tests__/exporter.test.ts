@@ -1,9 +1,7 @@
 import { OnRequestEventPayload } from "@whatwg-node/server";
-import { AbstractDbRepository } from "../core/AbstractDbRepository";
-import { MockDbRepository } from "../core/__mocks__/MockDbRepository";
+import { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 import { eventsExporterFactory } from "../exporter";
-
-jest.mock("../db");
 
 async function streamToString(stream: ReadableStream<Uint8Array>): Promise<string> {
   const chunks: string[] = [];

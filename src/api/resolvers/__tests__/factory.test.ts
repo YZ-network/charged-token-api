@@ -80,7 +80,7 @@ describe("Generic query resolver factory", () => {
     expect(repeater).toBeInstanceOf(Repeater);
     expect(broker.subscribeUpdates).toBeCalledWith("ChargedToken", chainId);
 
-    expect(await repeater.next()).toEqual({ value: [{ address: "0x0" }], done: false });
+    expect(await repeater.next()).toEqual({ value: { address: "0x0" }, done: false });
     expect(await repeater.next()).toEqual({ value: { address: "0x1" }, done: false });
     expect(await repeater.next()).toEqual({ value: { address: "0x2" }, done: false });
     expect(await repeater.next()).toEqual({ value: { address: "0x3" }, done: false });

@@ -3,14 +3,14 @@ import { ClientSession } from "mongodb";
 import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractBroker } from "../AbstractBroker";
 import { AbstractDbRepository } from "../AbstractDbRepository";
-import { ChargedToken } from "../ChargedToken";
-import { Directory } from "../Directory";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { MockBroker } from "../__mocks__/MockBroker";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
+import { ChargedToken } from "../handlers/ChargedToken";
+import { Directory } from "../handlers/Directory";
+
 jest.mock("../../config");
-jest.mock("../../topics");
-jest.mock("../../db");
+jest.mock("../../blockchain/topics");
 jest.mock("../ChargedToken");
 
 describe("Directory loader", () => {

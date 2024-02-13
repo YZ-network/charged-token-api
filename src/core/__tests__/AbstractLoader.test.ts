@@ -9,8 +9,7 @@ import { MockBroker } from "../__mocks__/MockBroker";
 import { MockDbRepository } from "../__mocks__/MockDbRepository";
 
 jest.mock("../../config");
-jest.mock("../../topics");
-jest.mock("../../db");
+jest.mock("../../blockchain/topics");
 
 describe("AbstractHandler: common core features", () => {
   const CHAIN_ID = 1337;

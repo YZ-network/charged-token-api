@@ -53,26 +53,26 @@ describe("User balance query resolver", () => {
     expect(broker.notifyBalanceLoadingRequired).toBeCalledWith(chainId, { user });
   });
 
-  it("should return specific cached balances when address is provided", async () => {
+  it("should return specific cached balance when address is provided", async () => {
     const loadedBalance = { chainId, user, address: "0xCT1" } as IUserBalance;
 
-    db.existsBalance.mockResolvedValueOnce(true);
+    db.isUserBalancesLoaded.mockResolvedValueOnce(true);
     db.getBalance.mockResolvedValueOnce(loadedBalance);
 
     const result = await resolver(undefined, { chainId, user, address });
 
     expect(result).toStrictEqual(loadedBalance);
-    expect(db.existsBalance).toBeCalledWith(chainId, address, user);
+    expect(db.isUserBalancesLoaded).toBeCalledWith(chainId, user);
     expect(db.getBalance).toBeCalledWith(chainId, address, user);
   });
 
   it("should load balances from blockchain if not found when address is provided", async () => {
-    db.existsBalance.mockResolvedValueOnce(false);
+    db.isUserBalancesLoaded.mockResolvedValueOnce(false);
 
     const result = await resolver(undefined, { chainId, user, address });
 
     expect(result).toStrictEqual([]);
-    expect(db.existsBalance).toBeCalledWith(chainId, address, user);
+    expect(db.isUserBalancesLoaded).toBeCalledWith(chainId, user);
     expect(broker.notifyBalanceLoadingRequired).toBeCalledWith(chainId, { user, address });
   });
 

@@ -1,3 +1,4 @@
+/*
 import { createSchema } from "graphql-yoga";
 
 const schemaFactory = jest.fn(() =>
@@ -16,3 +17,9 @@ const schemaFactory = jest.fn(() =>
 );
 
 export default schemaFactory;
+*/
+
+export const schemaFactory = jest.fn(() => ({
+  schema: {},
+  resolvers: {},
+}));

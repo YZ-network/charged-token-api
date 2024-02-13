@@ -10,8 +10,6 @@ jest.unmock("ws");
 jest.unmock("ethers");
 
 jest.mock("../config");
-jest.mock("../api");
-jest.mock("../exporter");
 jest.mock("../worker");
 
 describe("Main class", () => {
@@ -28,25 +26,13 @@ describe("Main class", () => {
     expect(main.httpServer).toBeDefined();
     expect(main.workers).toEqual([]);
     expect(main.keepAlive).toBeUndefined();
+    expect(main.healthTimer).toBeUndefined();
   });
 
   it("should return empty health check initially", () => {
     const main = new MainClass();
 
     expect(main.health()).toEqual([]);
-  });
-
-  it("init function should connect ws server to graphql api", () => {
-    const main = new MainClass();
-
-    expect(main.wsServer.listenerCount("error")).toBe(0);
-    expect(main.wsServer.listenerCount("connection")).toBe(0);
-    expect(main.wsServer.listenerCount("close")).toBe(0);
-
-    main.init();
-
-    expect(main.wsServer.listenerCount("error")).toBe(1);
-    expect(main.wsServer.listenerCount("connection")).toBe(1);
   });
 
   it("start function should connect to mongodb before starting api", async () => {
