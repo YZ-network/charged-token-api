@@ -52,4 +52,8 @@ describe("Handler factory", () => {
     expect(handler).toStrictEqual({ type: "DelegableToLT" });
     expect(DelegableToLT).toBeCalledWith(CHAIN_ID, blockchain, ADDRESS, handlerFactory);
   });
+
+  it("should throw for invalid handler type", () => {
+    expect(() => handlerFactory("UserBalance", CHAIN_ID, ADDRESS, blockchain)).toThrow();
+  });
 });
