@@ -3,8 +3,6 @@ import { AbstractBroker } from "../../../core/AbstractBroker";
 import { MockBroker } from "../../../core/__mocks__/MockBroker";
 import { HealthQueryResolverFactory, HealthSubscriptionResolverFactory } from "../health";
 
-jest.mock("../../../globals");
-jest.mock("../../../db");
 jest.mock("../../../main");
 
 describe("Health check query resolver", () => {

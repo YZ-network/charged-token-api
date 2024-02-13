@@ -10,7 +10,6 @@ import {
 } from "../userBalance";
 
 jest.mock("../../../config");
-jest.mock("../../../db");
 
 describe("User balance query resolver", () => {
   const chainId = 129;

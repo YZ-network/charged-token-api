@@ -1,17 +1,16 @@
 import mongoose from "mongoose";
+import { AutoWebSocketProvider } from "../blockchain/AutoWebSocketProvider";
 import { AbstractBroker } from "../core/AbstractBroker";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
-import { Directory } from "../core/Directory";
 import { MockBroker } from "../core/__mocks__/MockBroker";
 import { MockDbRepository } from "../core/__mocks__/MockDbRepository";
 import { Metrics } from "../metrics";
 import { subscribeToUserBalancesLoading } from "../subscriptions/subscribeToUserBalances";
-import { AutoWebSocketProvider } from "../util/AutoWebSocketProvider";
 import { ChainWorker } from "../worker";
 
 jest.mock("../topics");
 jest.mock("../config");
-jest.mock("../util/AutoWebSocketProvider");
+jest.mock("../blockchain/AutoWebSocketProvider");
 jest.mock("../core/Directory");
 jest.mock("../db");
 jest.mock("../subscriptions");

@@ -1,4 +1,5 @@
 import { WebSocket } from "ws";
+import { AutoWebSocketProvider } from "./blockchain/AutoWebSocketProvider";
 import { BlockchainRepository } from "./blockchain/BlockchainRepository";
 import { Config } from "./config";
 import { AbstractBroker } from "./core/AbstractBroker";
@@ -7,7 +8,6 @@ import { ContractsWatcher } from "./core/ContractsWatcher";
 import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";
 import { subscribeToUserBalancesLoading } from "./subscriptions/subscribeToUserBalances";
-import { AutoWebSocketProvider } from "./util/AutoWebSocketProvider";
 
 const log = rootLogger.child({ name: "worker" });
 

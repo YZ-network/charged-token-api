@@ -1,12 +1,9 @@
 import { Repeater } from "graphql-yoga";
-import { IContract } from "../../../core";
 import { AbstractBroker } from "../../../core/AbstractBroker";
 import { AbstractDbRepository } from "../../../core/AbstractDbRepository";
 import { MockBroker } from "../../../core/__mocks__/MockBroker";
 import { MockDbRepository } from "../../../core/__mocks__/MockDbRepository";
 import { ResolverFactory } from "../factory";
-
-jest.mock("../../../db");
 
 describe("Generic query resolver factory", () => {
   let db: jest.Mocked<AbstractDbRepository>;
@@ -92,7 +89,7 @@ describe("Generic query resolver factory", () => {
     expect(db.getAllMatching).toBeCalledWith("ChargedToken", { chainId });
   });
 
-  it.only("should susbscribe to channel by model name and contract address", async () => {
+  it("should susbscribe to channel by model name and contract address", async () => {
     const chainId = 129;
     const address = "0xCT";
     const { subscribe: subscribeByNameAndAddrResolver, resolve } = ResolverFactory.subscribeByNameAndAddress(

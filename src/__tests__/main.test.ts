@@ -10,7 +10,7 @@ jest.unmock("ws");
 jest.unmock("ethers");
 
 jest.mock("../config");
-jest.mock("../graphql");
+jest.mock("../api");
 jest.mock("../exporter");
 jest.mock("../worker");
 
@@ -25,9 +25,7 @@ describe("Main class", () => {
     expect(main.bindAddress).toBeDefined();
     expect(main.bindPort).toBeDefined();
     expect(main.networks).toBeDefined();
-    expect(main.yoga).toBeDefined();
     expect(main.httpServer).toBeDefined();
-    expect(main.wsServer).toBeDefined();
     expect(main.workers).toEqual([]);
     expect(main.keepAlive).toBeUndefined();
   });

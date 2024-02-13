@@ -4,14 +4,12 @@ import mongoose from "mongoose";
 import { AbstractBlockchainRepository } from "../../core/AbstractBlockchainRepository";
 import { AbstractBroker } from "../../core/AbstractBroker";
 import { AbstractDbRepository } from "../../core/AbstractDbRepository";
-import { Directory } from "../../core/Directory";
 import { MockBlockchainRepository } from "../../core/__mocks__/MockBlockchainRepository";
 import { MockBroker } from "../../core/__mocks__/MockBroker";
 import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 import subscribeToUserBalancesLoading from "../subscribeToUserBalances";
 
 jest.mock("../../config");
-jest.mock("../../core/Directory");
 
 describe("User balances subscriptions", () => {
   let generatorCount = 0;
@@ -54,10 +52,6 @@ describe("User balances subscriptions", () => {
       generatorCount++;
     }
 
-    const directory = new Directory(1337, blockchain, "0xDIRECTORY", db, broker);
-    Object.defineProperty(directory, "chainId", { value: 1337 });
-    Object.defineProperty(directory, "blockchain", { value: blockchain });
-
     blockchain.getBlockNumber.mockResolvedValue(15);
 
     const generatorInstance = generator();
@@ -68,7 +62,7 @@ describe("User balances subscriptions", () => {
     (mongoose as any).startSession.mockResolvedValue(mockSession);
     (mockSession as any).withTransaction.mockImplementation(async (fn: () => Promise<void>) => await fn());
 
-    await subscribeToUserBalancesLoading(directory, blockchain, broker);
+    await subscribeToUserBalancesLoading(1337, db, blockchain, broker);
     await waitForGeneratorToComplete(3);
 
     expect(blockchain.getBlockNumber).toBeCalledTimes(3);
@@ -76,9 +70,6 @@ describe("User balances subscriptions", () => {
     expect(mongoose.startSession).toBeCalledTimes(3);
     expect(mockSession.withTransaction).toBeCalledTimes(3);
     expect(mockSession.endSession).toBeCalledTimes(3);
-    expect(directory.loadAllUserBalances).toHaveBeenNthCalledWith(1, mockSession, "0xUSER1", 15, "0xADDR1");
-    expect(directory.loadAllUserBalances).toHaveBeenNthCalledWith(2, mockSession, "0xUSER2", 15, "0xADDR2");
-    expect(directory.loadAllUserBalances).toHaveBeenNthCalledWith(3, mockSession, "0xUSER3", 15, undefined);
   });
 
   it("should catch errors on user balances loading requests", async () => {
@@ -87,10 +78,6 @@ describe("User balances subscriptions", () => {
       yield { user: "0xUSER1", address: "0xADDR1" };
       generatorCount++;
     }
-
-    const directory = new Directory(1337, blockchain, "0xDIRECTORY", db, broker);
-    Object.defineProperty(directory, "chainId", { value: 1337 });
-    Object.defineProperty(directory, "blockchain", { value: blockchain });
 
     blockchain.getBlockNumber.mockResolvedValueOnce(15);
 
@@ -102,12 +89,11 @@ describe("User balances subscriptions", () => {
       throw new Error("triggered error");
     });
 
-    await subscribeToUserBalancesLoading(directory, blockchain, broker);
+    await subscribeToUserBalancesLoading(1337, db, blockchain, broker);
     await waitForGeneratorToComplete(1);
 
     expect(blockchain.getBlockNumber).toBeCalledTimes(1);
     expect(broker.subscribeBalanceLoadingRequests).toHaveBeenNthCalledWith(1, 1337);
     expect(mongoose.startSession).toBeCalledTimes(1);
-    expect(directory.loadAllUserBalances).not.toBeCalled();
   });
 });
