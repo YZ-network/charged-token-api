@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import { AutoWebSocketProvider } from "../blockchain/AutoWebSocketProvider";
 import { AbstractBroker } from "../core/AbstractBroker";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
@@ -11,6 +10,7 @@ import { ChainWorker } from "../worker";
 jest.mock("../config");
 jest.mock("../blockchain/topics");
 jest.mock("../blockchain/AutoWebSocketProvider");
+jest.mock("../core/ContractsWatcher");
 jest.mock("../subscriptions/subscribeToUserBalances");
 
 describe("ChainWorker", () => {
@@ -159,11 +159,6 @@ describe("ChainWorker", () => {
   test("should initialize directory upon connection", async () => {
     (AutoWebSocketProvider as any).mockReturnValueOnce(mockProviderBase());
 
-    const mockSession = {
-      endSession: jest.fn(),
-    };
-    (mongoose as any).startSession.mockResolvedValueOnce(mockSession);
-
     const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID, db, broker);
     await waitForWorkerToStart(worker);
 
@@ -181,11 +176,10 @@ describe("ChainWorker", () => {
 
     expect(worker.blockchain).toBeDefined();
     expect(worker.db).toBeDefined();
-    expect(mongoose.startSession).toBeCalledTimes(1);
-    expect(mockSession.endSession).toBeCalledTimes(1);
-
+    expect(worker.contractsWatcher).toBeDefined();
+    expect(worker.contractsWatcher?.registerDirectory).toBeCalledWith(DIRECTORY);
     expect((worker.provider as any).handlers.block).toBeDefined();
-    expect(subscribeToUserBalancesLoading).toBeCalledTimes(1);
+    expect(subscribeToUserBalancesLoading).toBeCalledWith(CHAIN_ID, db, worker.blockchain, broker);
 
     // checking block number tracking
     const BLOCK_NUMBER = 15;
@@ -235,7 +229,6 @@ describe("ChainWorker", () => {
     expect(provider?.destroy).toBeCalledTimes(1);
     expect(worker.provider).toBeUndefined();
     expect(worker.blockchain).toBeUndefined();
-    expect(worker.db).toBeUndefined();
     expect(worker.worker).toBeUndefined();
     expect(worker.wsWatch).toBeUndefined();
     expect(worker.pingInterval).toBeUndefined();
@@ -275,7 +268,6 @@ describe("ChainWorker", () => {
     expect(provider?.destroy).toBeCalledTimes(1);
     expect(worker.provider).toBeUndefined();
     expect(worker.blockchain).toBeUndefined();
-    expect(worker.db).toBeUndefined();
     expect(worker.worker).toBeUndefined();
     expect(worker.wsWatch).toBeUndefined();
     expect(worker.pingInterval).toBeUndefined();
