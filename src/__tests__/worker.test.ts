@@ -9,8 +9,9 @@ import { subscribeToUserBalancesLoading } from "../subscriptions/subscribeToUser
 import { ChainWorker } from "../worker";
 
 jest.mock("../config");
+jest.mock("../blockchain/topics");
 jest.mock("../blockchain/AutoWebSocketProvider");
-jest.mock("../subscriptions");
+jest.mock("../subscriptions/subscribeToUserBalances");
 
 describe("ChainWorker", () => {
   const RPC = "ws://127.0.0.1:8545";
