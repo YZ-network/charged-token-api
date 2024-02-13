@@ -2,12 +2,12 @@ import mongoose, { Document, Model } from "mongoose";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
 import { rootLogger } from "../rootLogger";
 import { ClientSession } from "../vendor";
-import { ChargedTokenModel } from "./ChargedToken";
-import { DelegableToLTModel } from "./DelegableToLT";
-import { DirectoryModel } from "./Directory";
-import { EventModel } from "./Event";
-import { InterfaceProjectTokenModel } from "./InterfaceProjectToken";
-import { UserBalanceModel } from "./UserBalances";
+import { ChargedTokenModel } from "./models/ChargedToken";
+import { DelegableToLTModel } from "./models/DelegableToLT";
+import { DirectoryModel } from "./models/Directory";
+import { EventModel } from "./models/Event";
+import { InterfaceProjectTokenModel } from "./models/InterfaceProjectToken";
+import { UserBalanceModel } from "./models/UserBalances";
 
 export class DbRepository extends AbstractDbRepository {
   private readonly log = rootLogger.child({ name: "DbRepository" });
