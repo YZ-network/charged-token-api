@@ -30,37 +30,27 @@ export async function subscribeToUserBalancesLoading(
     if (address === undefined) {
       await blockchain.loadAllUserBalances(user, blockNumber);
     } else {
-      const directory = await db.getDirectory(chainId);
+      const lastState = await blockchain.getLastState<IChargedToken>("ChargedToken", address);
+      let interfaceAddress: string | undefined;
+      let ptAddress: string | undefined;
 
-      if (directory === null) {
-        throw new Error("No directory !");
+      if (lastState !== null) {
+        if (lastState.interfaceProjectToken !== EMPTY_ADDRESS) {
+          interfaceAddress = lastState.interfaceProjectToken;
+          const lastInterface = await blockchain.getLastState<IInterfaceProjectToken>(
+            "InterfaceProjectToken",
+            interfaceAddress,
+          );
+
+          if (lastInterface !== null && lastInterface.projectToken !== EMPTY_ADDRESS) {
+            ptAddress = lastInterface.projectToken;
+          }
+        }
       }
 
-      await Promise.all(
-        directory.directory.map(async (address) => {
-          const lastState = await blockchain.getLastState<IChargedToken>("ChargedToken", address);
-          let interfaceAddress: string | undefined;
-          let ptAddress: string | undefined;
+      const balance = await blockchain.loadUserBalances(blockNumber, user, address, interfaceAddress, ptAddress);
 
-          if (lastState !== null) {
-            if (lastState.interfaceProjectToken !== EMPTY_ADDRESS) {
-              interfaceAddress = lastState.interfaceProjectToken;
-              const lastInterface = await blockchain.getLastState<IInterfaceProjectToken>(
-                "InterfaceProjectToken",
-                interfaceAddress,
-              );
-
-              if (lastInterface !== null && lastInterface.projectToken !== EMPTY_ADDRESS) {
-                ptAddress = lastInterface.projectToken;
-              }
-            }
-
-            const balance = await blockchain.loadUserBalances(blockNumber, user, address, interfaceAddress, ptAddress);
-
-            await db.saveBalance(balance);
-          }
-        }),
-      );
+      await db.saveBalance(balance);
     }
   }
 }
