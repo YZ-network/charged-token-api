@@ -89,8 +89,9 @@ describe("User balances subscriptions", () => {
     broker.subscribeBalanceLoadingRequests.mockReturnValueOnce(generatorInstance as unknown as Repeater<any>);
 
     blockchain.getLastState
-      .mockResolvedValue({ address: "0xCT", interfaceProjectToken: "0xIFACE" })
-      .mockResolvedValue({ projectToken: "0xPT" });
+      .mockResolvedValueOnce({ address: "0xCT", interfaceProjectToken: "0xIFACE" })
+      .mockResolvedValueOnce({ projectToken: "0xPT" });
+
     blockchain.loadUserBalances.mockResolvedValueOnce({
       user: "0xUSER1",
       address: "0xCT",
@@ -102,7 +103,8 @@ describe("User balances subscriptions", () => {
 
     expect(broker.subscribeBalanceLoadingRequests).toBeCalled();
     expect(blockchain.getBlockNumber).toBeCalled();
-    expect(blockchain.getLastState).toBeCalledTimes(2);
+    expect(blockchain.getLastState).toHaveBeenNthCalledWith(1, "ChargedToken", "0xCT");
+    expect(blockchain.getLastState).toHaveBeenNthCalledWith(2, "InterfaceProjectToken", "0xIFACE");
     expect(blockchain.loadUserBalances).toBeCalledWith(15, "0xUSER1", "0xCT", "0xIFACE", "0xPT");
     expect(db.saveBalance).toBeCalledWith({
       user: "0xUSER1",
