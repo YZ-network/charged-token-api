@@ -1,14 +1,19 @@
 export function makeModelMock() {
-  return {
-    create: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    exists: jest.fn(),
-    count: jest.fn(),
-    updateOne: jest.fn(),
-    updateMany: jest.fn(),
-    deleteOne: jest.fn(),
-    deleteMany: jest.fn(),
-    toJSON: jest.fn(),
-  };
+  const modelMock = jest.fn();
+
+  (modelMock as any).create = jest.fn();
+  (modelMock as any).save = jest.fn();
+  (modelMock as any).find = jest.fn();
+  (modelMock as any).findOne = jest.fn();
+  (modelMock as any).exists = jest.fn();
+  (modelMock as any).count = jest.fn();
+  (modelMock as any).updateOne = jest.fn();
+  (modelMock as any).updateMany = jest.fn();
+  (modelMock as any).deleteOne = jest.fn();
+  (modelMock as any).deleteMany = jest.fn();
+  (modelMock as any).toJSON = jest.fn();
+
+  modelMock.mockImplementation(() => modelMock);
+
+  return modelMock;
 }

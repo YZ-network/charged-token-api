@@ -71,7 +71,10 @@ describe("DbRepository", () => {
   });
 
   it("should check balance in db", async () => {
-    UserBalanceModel.exists.mockResolvedValueOnce(null).mockResolvedValueOnce({});
+    const sessionMock = { session: jest.fn() };
+
+    UserBalanceModel.exists.mockReturnValue(sessionMock);
+    sessionMock.session.mockResolvedValueOnce(null).mockResolvedValueOnce({});
 
     expect(await db.existsBalance(CHAIN_ID, ADDRESS, "0xUSER")).toBe(false);
     expect(await db.existsBalance(CHAIN_ID, ADDRESS, "0xUSER")).toBe(true);
@@ -328,5 +331,192 @@ describe("DbRepository", () => {
 
     expect(result).toBe(true);
     expect(InterfaceProjectTokenModel.exists).toBeCalledWith({ chainId: CHAIN_ID, projectToken: "0xPT" });
+  });
+
+  it("should save contract as a new document", async () => {
+    const directory = { chainId: CHAIN_ID, address: ADDRESS } as IDirectory;
+    const document = { toJSON: jest.fn(() => directory) };
+
+    const sessionMock = { session: jest.fn() };
+    DirectoryModel.exists.mockReturnValueOnce(sessionMock);
+    sessionMock.session.mockResolvedValueOnce(null);
+    DirectoryModel.save.mockResolvedValueOnce(document);
+
+    const result = await db.save("Directory", directory, session);
+
+    expect(result).toBe(directory);
+    expect(DirectoryModel.exists).toBeCalledWith(directory);
+    expect(sessionMock.session).toBeCalled();
+    expect(DirectoryModel).toBeCalledWith(directory);
+    expect(DirectoryModel.save).toBeCalledWith({ session });
+    expect(document.toJSON).toBeCalled();
+  });
+
+  it("should refuse saving a duplicate contract", async () => {
+    const directory = { chainId: CHAIN_ID, address: ADDRESS } as IDirectory;
+
+    const sessionMock = { session: jest.fn() };
+    DirectoryModel.exists.mockReturnValueOnce(sessionMock);
+    sessionMock.session.mockResolvedValueOnce({});
+
+    await expect(db.save("Directory", directory, session)).rejects.toThrow();
+
+    expect(DirectoryModel.exists).toBeCalledWith(directory);
+    expect(sessionMock.session).toBeCalled();
+    expect(DirectoryModel).not.toBeCalled();
+    expect(DirectoryModel.save).not.toBeCalled();
+  });
+
+  it("should save balance as a new document", async () => {
+    const balance = { chainId: CHAIN_ID, address: ADDRESS, user: "0xUSER" } as IUserBalance;
+
+    const sessionMock = { session: jest.fn() };
+    UserBalanceModel.exists.mockReturnValueOnce(sessionMock);
+    sessionMock.session.mockResolvedValueOnce(null);
+
+    await db.saveBalance(balance);
+
+    expect(UserBalanceModel.exists).toBeCalledWith(balance);
+    expect(UserBalanceModel).toBeCalledWith(balance);
+    expect(UserBalanceModel.save).toBeCalled();
+  });
+
+  it("should refuse saving a duplicate balance as a new document", async () => {
+    const balance = { chainId: CHAIN_ID, address: ADDRESS, user: "0xUSER" } as IUserBalance;
+
+    const sessionMock = { session: jest.fn() };
+    UserBalanceModel.exists.mockReturnValueOnce(sessionMock);
+    sessionMock.session.mockResolvedValueOnce({});
+
+    await expect(db.saveBalance(balance)).rejects.toThrow();
+
+    expect(UserBalanceModel.exists).toBeCalledWith(balance);
+    expect(UserBalanceModel).not.toBeCalled();
+    expect(UserBalanceModel.save).not.toBeCalled();
+  });
+
+  it("should save event as a new document", async () => {
+    const event = { name: "Transfer" } as IEvent;
+
+    await db.saveEvent(event);
+
+    expect(EventModel).toBeCalledWith(event);
+    expect(EventModel.save).toBeCalled();
+  });
+
+  it("should update contract in db", async () => {
+    const directory = { chainId: CHAIN_ID, address: ADDRESS, directory: [] as string[] } as IDirectory;
+
+    const sessionMock = { session: jest.fn() };
+    DirectoryModel.exists.mockReturnValueOnce(sessionMock);
+    sessionMock.session.mockResolvedValueOnce({});
+
+    await db.update("Directory", directory, session);
+
+    expect(DirectoryModel.exists).toBeCalledWith({ chainId: CHAIN_ID, address: ADDRESS });
+    expect(sessionMock.session).toBeCalledWith(session);
+    expect(DirectoryModel.updateOne).toBeCalledWith({ chainId: CHAIN_ID, address: ADDRESS }, directory, { session });
+  });
+
+  it("should refuse to update a non existing contract in db", async () => {
+    const directory = { chainId: CHAIN_ID, address: ADDRESS, directory: [] as string[] } as IDirectory;
+
+    const sessionMock = { session: jest.fn() };
+    DirectoryModel.exists.mockReturnValueOnce(sessionMock);
+    sessionMock.session.mockResolvedValueOnce(null);
+
+    await expect(db.update("Directory", directory, session)).rejects.toThrow();
+
+    expect(DirectoryModel.exists).toBeCalledWith({ chainId: CHAIN_ID, address: ADDRESS });
+    expect(sessionMock.session).toBeCalledWith(session);
+    expect(DirectoryModel.updateOne).not.toBeCalled();
+  });
+
+  it("should update balance in db", async () => {
+    const balance = { chainId: CHAIN_ID, address: ADDRESS, user: "0xUSER" } as IUserBalance;
+
+    const sessionMock = { session: jest.fn() };
+    UserBalanceModel.exists.mockReturnValueOnce(sessionMock);
+    sessionMock.session.mockResolvedValueOnce({});
+
+    await db.updateBalance(balance, session);
+
+    expect(UserBalanceModel.exists).toBeCalledWith(balance);
+    expect(sessionMock.session).toBeCalledWith(session);
+    expect(UserBalanceModel.updateOne).toBeCalledWith(balance, balance, { session });
+  });
+
+  it("should refuse to update a non existing balance in db", async () => {
+    const balance = { chainId: CHAIN_ID, address: ADDRESS, user: "0xUSER" } as IUserBalance;
+
+    const sessionMock = { session: jest.fn() };
+    UserBalanceModel.exists.mockReturnValueOnce(sessionMock);
+    sessionMock.session.mockResolvedValueOnce(null);
+
+    await expect(db.updateBalance(balance, session)).rejects.toThrow();
+
+    expect(UserBalanceModel.exists).toBeCalledWith(balance);
+    expect(sessionMock.session).toBeCalledWith(session);
+    expect(UserBalanceModel.updateOne).not.toBeCalled();
+  });
+
+  it("should update all PT balance in db for the given user", async () => {
+    const balance = { chainId: CHAIN_ID, ptAddress: "0xPT", user: "0xUSER" } as IUserBalance;
+
+    await db.updatePTBalances(balance, session);
+
+    expect(UserBalanceModel.updateMany).toBeCalledWith(balance, balance, { session });
+  });
+
+  it("should update all PT balance except one in db for the given user", async () => {
+    const balance = { chainId: CHAIN_ID, ptAddress: "0xPT", user: "0xUSER" } as IUserBalance;
+
+    await db.updateOtherBalancesByProjectToken("0xCT", balance, session);
+
+    expect(UserBalanceModel.updateMany).toBeCalledWith({ ...balance, address: { $ne: "0xCT" } }, balance, { session });
+  });
+
+  it("should update event status", async () => {
+    const event = { name: "Transfer", status: "QUEUED" } as IEvent;
+
+    const sessionMock = { session: jest.fn() };
+    EventModel.updateOne.mockReturnValueOnce(sessionMock);
+
+    await db.updateEventStatus(event, "SUCCESS", session);
+
+    expect(EventModel.updateOne).toBeCalledWith(event, { status: "SUCCESS" });
+    expect(sessionMock.session).toBeCalledWith(session);
+  });
+
+  it("should delete a given contract", async () => {
+    const directory = { chainId: CHAIN_ID, address: ADDRESS } as IDirectory;
+
+    await db.delete("Directory", CHAIN_ID, ADDRESS, session);
+
+    expect(DirectoryModel.deleteOne).toBeCalledWith(directory, { session });
+  });
+
+  it("should delete a bunch of contracts", async () => {
+    const addresses = ["0xCT1", "0xCT2"];
+
+    await db.delete("ChargedToken", CHAIN_ID, addresses, session);
+
+    expect(ChargedTokenModel.deleteMany).toBeCalledWith(
+      { chainId: CHAIN_ID, address: { $in: addresses } },
+      { session },
+    );
+  });
+
+  it("should delete pending and failed events", async () => {
+    const event = { name: "Transfer", toJSON: jest.fn() };
+
+    EventModel.find.mockResolvedValueOnce([event]).mockResolvedValueOnce([event]);
+
+    await db.deletePendingAndFailedEvents(CHAIN_ID);
+
+    expect(EventModel.find).toHaveBeenNthCalledWith(1, { chainId: CHAIN_ID, status: "QUEUED" });
+    expect(EventModel.find).toHaveBeenNthCalledWith(2, { chainId: CHAIN_ID, status: "FAILURE" });
+    expect(EventModel.deleteMany).toBeCalledWith({ chainId: CHAIN_ID, status: { $in: ["QUEUED", "FAILURE"] } });
+    expect(event.toJSON).toBeCalledTimes(1);
   });
 });

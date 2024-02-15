@@ -34,13 +34,18 @@ export class DbRepository extends AbstractDbRepository {
     );
   }
 
-  async existsBalance(chainId: number, address: string, user: string): Promise<boolean> {
+  async existsBalance(
+    chainId: number,
+    address: string,
+    user: string,
+    session: ClientSession | null = null,
+  ): Promise<boolean> {
     return (
       (await UserBalanceModel.exists({
         chainId,
         address,
         user,
-      })) !== null
+      }).session(session)) !== null
     );
   }
 
@@ -243,7 +248,7 @@ export class DbRepository extends AbstractDbRepository {
     data: Partial<IUserBalance> & Pick<IUserBalance, "user" | "chainId" | "address" | "lastUpdateBlock">,
     session: ClientSession | null = null,
   ): Promise<void> {
-    if (!(await this.exists("UserBalance", data.chainId, data.address, session))) {
+    if (!(await this.existsBalance(data.chainId, data.address, data.user, session))) {
       throw new Error("Tried updating a non-existing document !");
     }
 
@@ -267,7 +272,7 @@ export class DbRepository extends AbstractDbRepository {
     session: ClientSession | null = null,
   ): Promise<void> {
     await UserBalanceModel.updateMany(
-      { chainId: data.chainId, address: { $ne: addressToExclude }, user: data.user },
+      { chainId: data.chainId, ptAddress: data.ptAddress, address: { $ne: addressToExclude }, user: data.user },
       data,
       { session },
     );
