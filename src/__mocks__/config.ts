@@ -6,7 +6,7 @@ export const Config: JsonConfig = {
     bindAddress: "127.0.0.1",
     bindPort: 4000,
     corsOrigins: "http://localhost:3000",
-    logLevel: "info",
+    logLevel: "silent",
     enableGraphiql: true,
   },
   networks: [{ chainId: 1337, uri: "ws://127.0.0.1:8545", directory: "0xA8CA002BF4d8253b8493b1c92Fd3055F05A2DF6B" }],

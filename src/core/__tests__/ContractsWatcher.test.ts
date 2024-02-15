@@ -7,6 +7,8 @@ import { DelegableToLT } from "../handlers/DelegableToLT";
 import { Directory } from "../handlers/Directory";
 import { InterfaceProjectToken } from "../handlers/InterfaceProjectToken";
 
+jest.mock("../../config");
+
 describe("ContractsWatcher", () => {
   const CHAIN_ID = 1337;
   const ADDRESS = "0xADDRESS";

@@ -4,6 +4,8 @@ import { AbstractBlockchainRepository } from "../../AbstractBlockchainRepository
 import { MockBlockchainRepository } from "../../__mocks__/MockBlockchainRepository";
 import { DelegableToLT } from "../DelegableToLT";
 
+jest.mock("../../../config");
+
 describe("DelegableToLT loader", () => {
   const CHAIN_ID = 1337;
   const ADDRESS = "0xF79A6c67E99b2135E09C3Ba0d06AE60977C1f393";

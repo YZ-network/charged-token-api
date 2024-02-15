@@ -5,6 +5,8 @@ import { MockBlockchainRepository } from "../../__mocks__/MockBlockchainReposito
 import { ChargedToken } from "../ChargedToken";
 import { Directory } from "../Directory";
 
+jest.mock("../../../config");
+
 describe("Directory loader", () => {
   const CHAIN_ID = 1337;
   const OWNER = "0x493942A95Bc6Db03CE8Cc22ff5a0441Dcc581f45";

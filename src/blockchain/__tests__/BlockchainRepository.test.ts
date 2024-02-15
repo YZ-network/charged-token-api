@@ -12,6 +12,7 @@ jest.mock("../topics");
 jest.mock("../functions");
 jest.mock("../loaders");
 jest.mock("../EventListener");
+jest.mock("../../config");
 
 describe("BlockchainRepository", () => {
   const CHAIN_ID = 1337;

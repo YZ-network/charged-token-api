@@ -7,6 +7,7 @@ import { EventModel } from "../models/Event";
 import { InterfaceProjectTokenModel } from "../models/InterfaceProjectToken";
 import { UserBalanceModel } from "../models/UserBalances";
 
+jest.mock("../../config");
 jest.mock("../models/Directory");
 jest.mock("../models/ChargedToken");
 jest.mock("../models/InterfaceProjectToken");

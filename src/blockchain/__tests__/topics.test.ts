@@ -1,6 +1,8 @@
 import mockedTopicsMap from "../topics";
 
 jest.mock("../topics");
+jest.mock("../../config");
+
 jest.unmock("ethers");
 
 describe("Topics map", () => {

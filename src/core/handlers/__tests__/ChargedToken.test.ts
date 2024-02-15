@@ -7,6 +7,8 @@ import { MockBroker } from "../../__mocks__/MockBroker";
 import { ChargedToken } from "../ChargedToken";
 import { InterfaceProjectToken } from "../InterfaceProjectToken";
 
+jest.mock("../../../config");
+
 describe("ChargedToken loader", () => {
   const CHAIN_ID = 1337;
   const OWNER = "0x493942A95Bc6Db03CE8Cc22ff5a0441Dcc581f45";
