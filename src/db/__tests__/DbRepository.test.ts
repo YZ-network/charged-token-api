@@ -1,3 +1,4 @@
+import { ClientSession } from "mongodb";
 import { DbRepository } from "../DbRepository";
 import { ChargedTokenModel } from "../models/ChargedToken";
 import { DelegableToLTModel } from "../models/DelegableToLT";
@@ -18,9 +19,11 @@ describe("DbRepository", () => {
   const ADDRESS = "0xADDRESS";
 
   let db: DbRepository;
+  let session: jest.Mocked<ClientSession>;
 
   beforeEach(() => {
     db = new DbRepository();
+    session = new ClientSession() as jest.Mocked<ClientSession>;
   });
 
   it("should be able to start a new session", async () => {
@@ -177,5 +180,153 @@ describe("DbRepository", () => {
 
     expect(await db.getAllMatching("ChargedToken", { chainId: CHAIN_ID })).toStrictEqual(contracts);
     expect(ChargedTokenModel.find).toBeCalledWith({ chainId: CHAIN_ID });
+  });
+
+  it("should return the directory for the given chainId", async () => {
+    const toJSON = jest.fn(() => "result");
+    const document = { toJSON };
+    DirectoryModel.findOne.mockResolvedValueOnce(document);
+
+    const result = await db.getDirectory(CHAIN_ID);
+
+    expect(result).toBe("result");
+    expect(DirectoryModel.findOne).toBeCalledWith({ chainId: CHAIN_ID });
+    expect(toJSON).toBeCalled();
+  });
+
+  it("should return the interface for the given chainId and charged token address", async () => {
+    const toJSON = jest.fn(() => "result");
+    const document = { toJSON };
+    InterfaceProjectTokenModel.findOne.mockResolvedValueOnce(document);
+
+    const result = await db.getInterfaceByChargedToken(CHAIN_ID, ADDRESS);
+
+    expect(result).toBe("result");
+    expect(InterfaceProjectTokenModel.findOne).toBeCalledWith({ chainId: CHAIN_ID, liquidityToken: ADDRESS });
+    expect(toJSON).toBeCalled();
+  });
+
+  it("should return the balances for the given user address", async () => {
+    const balance1 = { user: "0xUSER", address: "0xCT1" };
+    const balance2 = { user: "0xUSER", address: "0xCT2" };
+    const docBalance1 = { toJSON: jest.fn(() => balance1) };
+    const docBalance2 = { toJSON: jest.fn(() => balance2) };
+
+    const sessionMock = { session: jest.fn() };
+
+    UserBalanceModel.find.mockReturnValueOnce(sessionMock);
+    sessionMock.session.mockResolvedValueOnce([docBalance1, docBalance2]);
+
+    const result = await db.getBalances(CHAIN_ID, "0xUSER", session);
+
+    expect(result).toStrictEqual([balance1, balance2]);
+    expect(UserBalanceModel.find).toBeCalledWith({ chainId: CHAIN_ID, user: "0xUSER" });
+    expect(sessionMock.session).toBeCalledWith(session);
+    expect(docBalance1.toJSON).toBeCalled();
+    expect(docBalance2.toJSON).toBeCalled();
+  });
+
+  it("should return the balance for the given user and charged token address", async () => {
+    const balance = { user: "0xUSER", address: "0xCT1" };
+    const docBalance = { toJSON: jest.fn(() => balance) };
+
+    const sessionMock = { session: jest.fn() };
+
+    UserBalanceModel.findOne.mockReturnValueOnce(sessionMock);
+    sessionMock.session.mockResolvedValueOnce(docBalance);
+
+    const result = await db.getBalance(CHAIN_ID, ADDRESS, "0xUSER", session);
+
+    expect(result).toStrictEqual(balance);
+    expect(UserBalanceModel.findOne).toBeCalledWith({ chainId: CHAIN_ID, user: "0xUSER", address: ADDRESS });
+    expect(sessionMock.session).toBeCalledWith(session);
+    expect(docBalance.toJSON).toBeCalled();
+  });
+
+  it("should return the balances for the given user address and project token", async () => {
+    const balance1 = { user: "0xUSER", address: "0xCT1", ptAddress: "0xPT" };
+    const balance2 = { user: "0xUSER", address: "0xCT2", ptAddress: "0xPT" };
+    const docBalance1 = { toJSON: jest.fn(() => balance1) };
+    const docBalance2 = { toJSON: jest.fn(() => balance2) };
+
+    const sessionMock = { session: jest.fn() };
+
+    UserBalanceModel.find.mockReturnValueOnce(sessionMock);
+    sessionMock.session.mockResolvedValueOnce([docBalance1, docBalance2]);
+
+    const result = await db.getBalancesByProjectToken(CHAIN_ID, "0xPT", "0xUSER", session);
+
+    expect(result).toStrictEqual([balance1, balance2]);
+    expect(UserBalanceModel.find).toBeCalledWith({ chainId: CHAIN_ID, ptAddress: "0xPT", user: "0xUSER" });
+    expect(sessionMock.session).toBeCalledWith(session);
+    expect(docBalance1.toJSON).toBeCalled();
+    expect(docBalance2.toJSON).toBeCalled();
+  });
+
+  it("should return the PT balance for the given user", async () => {
+    const balance = { user: "0xUSER", address: "0xCT", ptAddress: "0xPT", balancePT: "10" };
+
+    const sessionMock = { session: jest.fn() };
+
+    UserBalanceModel.findOne.mockReturnValueOnce(sessionMock);
+    sessionMock.session.mockResolvedValueOnce(balance);
+
+    const result = await db.getPTBalance(CHAIN_ID, "0xPT", "0xUSER", session);
+
+    expect(result).toStrictEqual(balance.balancePT);
+    expect(UserBalanceModel.findOne).toBeCalledWith({ chainId: CHAIN_ID, user: "0xUSER", ptAddress: "0xPT" });
+    expect(sessionMock.session).toBeCalledWith(session);
+  });
+
+  it("should return all events from the db", async () => {
+    const event1 = { type: "Transfer" };
+    const event2 = { type: "LTAllocated" };
+    const docEvent1 = { toJSON: jest.fn(() => event1) };
+    const docEvent2 = { toJSON: jest.fn(() => event2) };
+
+    const sortMock = { sort: jest.fn() };
+
+    EventModel.find.mockReturnValueOnce(sortMock);
+    sortMock.sort.mockResolvedValueOnce([docEvent1, docEvent2]);
+
+    const result = await db.getAllEvents();
+
+    expect(result).toStrictEqual([event1, event2]);
+    expect(EventModel.find).toBeCalled();
+    expect(docEvent1.toJSON).toBeCalled();
+    expect(docEvent2.toJSON).toBeCalled();
+    expect(sortMock.sort).toBeCalledWith({ blockNumber: "asc", txIndex: "asc", logIndex: "asc" });
+  });
+
+  it("should return paginated events from the db", async () => {
+    const event = { type: "Transfer" };
+    const docEvent = { toJSON: jest.fn(() => event) };
+
+    const limitMock = { limit: jest.fn() };
+    const skipMock = { skip: jest.fn() };
+    const sortMock = { sort: jest.fn() };
+
+    EventModel.find.mockReturnValueOnce(limitMock);
+    limitMock.limit.mockReturnValueOnce(skipMock);
+    skipMock.skip.mockReturnValueOnce(sortMock);
+    sortMock.sort.mockResolvedValueOnce([docEvent]);
+
+    const result = await db.getEventsPaginated(CHAIN_ID, 10, 20);
+
+    expect(result).toStrictEqual([event]);
+    expect(EventModel.find).toBeCalled();
+    expect(docEvent.toJSON).toBeCalled();
+    expect(limitMock.limit).toBeCalledWith(10);
+    expect(skipMock.skip).toBeCalledWith(20);
+    expect(sortMock.sort).toBeCalledWith({ blockNumber: "asc", txIndex: "asc", logIndex: "asc" });
+  });
+
+  it("should check if an interface exists that references the given project token", async () => {
+    InterfaceProjectTokenModel.exists.mockResolvedValueOnce({});
+
+    const result = await db.isDelegableStillReferenced(CHAIN_ID, "0xPT");
+
+    expect(result).toBe(true);
+    expect(InterfaceProjectTokenModel.exists).toBeCalledWith({ chainId: CHAIN_ID, projectToken: "0xPT" });
   });
 });

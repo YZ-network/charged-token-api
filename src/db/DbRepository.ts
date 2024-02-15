@@ -177,9 +177,7 @@ export class DbRepository extends AbstractDbRepository {
       user,
     }).session(session);
 
-    if (result === null) {
-      return null;
-    }
+    if (result === null) return null;
 
     return result.balancePT;
   }
