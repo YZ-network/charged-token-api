@@ -8,6 +8,7 @@ import { ChainWorker } from "../worker";
 
 jest.unmock("ws");
 jest.unmock("ethers");
+jest.unmock("graphql-yoga");
 
 jest.mock("../config");
 jest.mock("../worker");

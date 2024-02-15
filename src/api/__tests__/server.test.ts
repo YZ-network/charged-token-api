@@ -6,6 +6,8 @@ import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 import { buildCorsHeaders, configureApiServer, onSubscribeFactory } from "../server";
 
 jest.unmock("ws");
+jest.unmock("graphql-yoga");
+
 jest.mock("../../config");
 jest.mock("../exporter");
 jest.mock("../prometheus");

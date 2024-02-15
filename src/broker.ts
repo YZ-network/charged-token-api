@@ -3,9 +3,9 @@ import { AbstractBroker } from "./core/AbstractBroker";
 
 const HEALTH_CHANNEL = "Health";
 
-const pubSub = createPubSub();
-
 export class Broker extends AbstractBroker {
+  readonly pubSub = createPubSub();
+
   private getChannel(dataType: DataType, chainId: number, address?: string): string {
     return address !== undefined ? `${dataType}.${chainId}.${address}` : `${dataType}.${chainId}`;
   }
@@ -15,31 +15,31 @@ export class Broker extends AbstractBroker {
   }
 
   notifyUpdate(dataType: DataType, chainId: number, address: string, data: any): void {
-    pubSub.publish(this.getChannel(dataType, chainId, address), data);
-    pubSub.publish(this.getChannel(dataType, chainId), data);
+    this.pubSub.publish(this.getChannel(dataType, chainId, address), data);
+    this.pubSub.publish(this.getChannel(dataType, chainId), data);
   }
 
   notifyBalanceLoadingRequired(chainId: number, data: any): void {
-    pubSub.publish(this.getBalanceLoadingChannel(chainId), data);
+    this.pubSub.publish(this.getBalanceLoadingChannel(chainId), data);
   }
 
   notifyHealth(data: any): void {
-    pubSub.publish(HEALTH_CHANNEL, data);
+    this.pubSub.publish(HEALTH_CHANNEL, data);
   }
 
   subscribeHealth(): Repeater<any> {
-    return pubSub.subscribe(HEALTH_CHANNEL);
+    return this.pubSub.subscribe(HEALTH_CHANNEL);
   }
 
   subscribeUpdates(dataType: DataType, chainId: number): Repeater<any> {
-    return pubSub.subscribe(this.getChannel(dataType, chainId));
+    return this.pubSub.subscribe(this.getChannel(dataType, chainId));
   }
 
   subscribeUpdatesByAddress(dataType: DataType, chainId: number, address: string): Repeater<any> {
-    return pubSub.subscribe(this.getChannel(dataType, chainId, address));
+    return this.pubSub.subscribe(this.getChannel(dataType, chainId, address));
   }
 
   subscribeBalanceLoadingRequests(chainId: number): Repeater<any> {
-    return pubSub.subscribe(this.getBalanceLoadingChannel(chainId));
+    return this.pubSub.subscribe(this.getBalanceLoadingChannel(chainId));
   }
 }

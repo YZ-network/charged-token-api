@@ -4,6 +4,8 @@ import { MockBroker } from "../../core/__mocks__/MockBroker";
 import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 import schemaFactory from "../schema";
 
+jest.unmock("graphql-yoga");
+
 jest.mock("../resolvers");
 
 describe("GraphQL Schema", () => {
