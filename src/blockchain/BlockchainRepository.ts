@@ -20,9 +20,9 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   readonly eventListener: EventListener;
   private readonly log = rootLogger.child({ name: "BlockchainRepository" });
 
-  private readonly instances: Record<string, ethers.Contract> = {};
+  readonly instances: Record<string, ethers.Contract> = {};
   private readonly interfaces: Record<string, ethers.utils.Interface> = {};
-  private readonly handlers: Record<string, AbstractHandler<any>> = {};
+  private handlers: Record<string, AbstractHandler<any>> = {};
 
   constructor(
     chainId: number,
@@ -274,15 +274,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
     const events = await instance.queryFilter(eventFilter, startBlock);
 
-    if (events === null) {
-      this.log.warn({
-        msg: `Events querying returned null since block ${startBlock}`,
-        contract: dataType,
-        address,
-        chainId: this.chainId,
-      });
-      return [] as ethers.Event[];
-    } else if (events.length === 0) {
+    if (events.length === 0) {
       this.log.info({
         msg: "No events missed",
         contract: dataType,
@@ -431,19 +423,19 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
     switch (dataType) {
       case "ChargedToken":
+        if (remove) {
+          await this.db.delete("UserBalance", this.chainId, address, session);
+        }
         const interfaceAddress = (lastState as IChargedToken).interfaceProjectToken;
         if (interfaceAddress !== EMPTY_ADDRESS) {
-          await this.unregisterContract("InterfaceProjectToken", interfaceAddress, remove);
-        }
-        if (remove) {
-          await this.db.delete("UserBalance", this.chainId, address);
+          await this.unregisterContract("InterfaceProjectToken", interfaceAddress, remove, session);
         }
         break;
 
       case "InterfaceProjectToken":
         const ptAddress = (lastState as IInterfaceProjectToken).projectToken;
-        if (ptAddress !== EMPTY_ADDRESS && !this.isDelegableStillReferenced(ptAddress)) {
-          await this.unregisterContract("DelegableToLT", ptAddress, remove);
+        if (ptAddress !== EMPTY_ADDRESS && !(await this.isDelegableStillReferenced(ptAddress))) {
+          await this.unregisterContract("DelegableToLT", ptAddress, remove, session);
         }
         break;
     }

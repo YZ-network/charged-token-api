@@ -5,6 +5,7 @@ import { AbstractDbRepository } from "../../core/AbstractDbRepository";
 import { AbstractHandler } from "../../core/AbstractHandler";
 import { MockBroker } from "../../core/__mocks__/MockBroker";
 import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
+import { EMPTY_ADDRESS } from "../../vendor";
 import { BlockchainRepository } from "../BlockchainRepository";
 
 jest.mock("../topics");
@@ -582,8 +583,6 @@ describe("BlockchainRepository", () => {
   });
 
   it("should save first registed directory", async () => {
-    const { loadContract } = require("../loaders");
-
     db.get.mockResolvedValueOnce(null);
 
     await blockchain.registerContract(
@@ -653,5 +652,198 @@ describe("BlockchainRepository", () => {
     await blockchain.registerContract("ChargedToken", "0xCT", 300, loaderMock, session);
 
     expect(loadAndSyncEvents).toBeCalledWith("ChargedToken", "0xCT", 200, expect.anything());
+  });
+
+  it("should queue missed events for execution", async () => {
+    const loaderMock = jest.fn() as unknown as AbstractHandler<IChargedToken>;
+    const getInstance = jest.spyOn(blockchain, "getInstance");
+    const getInterface = jest.spyOn(blockchain, "getInterface");
+    const instanceMock = new ethers.Contract("0xCT", []);
+    const interfaceMock = new ethers.utils.Interface("");
+    const queueLog = jest.spyOn(blockchain.eventListener, "queueLog");
+
+    const subscribe = jest.spyOn(blockchain, "subscribeToEvents");
+    const data = {
+      lastUpdateBlock: 15,
+      address: "0xCT",
+      chainId: CHAIN_ID,
+    };
+
+    const events = [
+      { address: "0xCT", blockNumber: 1, transactionIndex: 1, logIndex: 1, event: "Transfer" },
+      {
+        address: "0xCT",
+        blockNumber: 1,
+        transactionIndex: 1,
+        logIndex: 2,
+        event: "UserFunctionsDisabled",
+      },
+      {
+        address: "0xCT",
+        blockNumber: 1,
+        transactionIndex: 1,
+        logIndex: 3,
+        event: "OwnershipTransferred",
+      },
+    ] as ethers.Event[];
+
+    db.get.mockResolvedValueOnce(data);
+    getInstance.mockReturnValue(instanceMock);
+    getInterface.mockReturnValue(interfaceMock);
+    instanceMock.queryFilter.mockResolvedValueOnce(events);
+    db.existsEvent.mockResolvedValueOnce(false).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+
+    const result = await blockchain.registerContract("ChargedToken", "0xCT", 30, loaderMock, session);
+
+    expect(result).toBe(data);
+
+    expect(db.get).toBeCalledWith("ChargedToken", CHAIN_ID, "0xCT", session);
+    expect(getInstance).toBeCalledWith("ChargedToken", "0xCT");
+    expect(instanceMock.queryFilter).toBeCalledWith({ address: "0xCT" }, 15);
+    expect(getInterface).toBeCalledWith("ChargedToken");
+    expect(db.existsEvent).toHaveBeenNthCalledWith(
+      1,
+      CHAIN_ID,
+      events[0].address,
+      events[0].blockNumber,
+      events[0].transactionIndex,
+      events[0].logIndex,
+    );
+    expect(db.existsEvent).toHaveBeenNthCalledWith(
+      2,
+      CHAIN_ID,
+      events[1].address,
+      events[1].blockNumber,
+      events[1].transactionIndex,
+      events[1].logIndex,
+    );
+    expect(db.existsEvent).toHaveBeenNthCalledWith(
+      3,
+      CHAIN_ID,
+      events[2].address,
+      events[2].blockNumber,
+      events[2].transactionIndex,
+      events[2].logIndex,
+    );
+    expect(queueLog).toBeCalledTimes(2);
+    expect(queueLog).toHaveBeenNthCalledWith(1, events[0].event, events[0], loaderMock, interfaceMock);
+    expect(queueLog).toHaveBeenNthCalledWith(2, events[1].event, events[1], loaderMock, interfaceMock);
+    expect(subscribe).toBeCalledWith("ChargedToken", "0xCT", loaderMock);
+  });
+
+  it("should unregister contract and remove it from db", async () => {
+    const directory = { chainId: CHAIN_ID, address: "0xDIRECTORY" };
+    db.get.mockResolvedValueOnce(directory);
+    const instanceMock = {
+      removeAllListeners: jest.fn(),
+    } as unknown as ethers.Contract;
+
+    blockchain.instances[directory.address] = instanceMock;
+    blockchain.handlers[directory.address] = "x" as any;
+
+    await blockchain.unregisterContract("Directory", directory.address, true, session);
+
+    expect(db.get).toBeCalledWith("Directory", CHAIN_ID, directory.address, session);
+    expect(instanceMock.removeAllListeners).toBeCalled();
+    expect(blockchain.instances[directory.address]).toBeUndefined();
+    expect(blockchain.handlers[directory.address]).toBeUndefined();
+    expect(db.delete).toBeCalledWith("Directory", directory.chainId, directory.address, session);
+  });
+
+  it("should unregister linked contracts and balances if needed", async () => {
+    const chargedToken = { chainId: CHAIN_ID, address: "0xCT", interfaceProjectToken: "0xINTERFACE" };
+    const interfacePT = { chainId: CHAIN_ID, address: "0xINTERFACE", projectToken: "0xPT" };
+    const pt = { chainId: CHAIN_ID, address: "0xPT" };
+
+    db.get.mockResolvedValueOnce(chargedToken).mockResolvedValueOnce(interfacePT).mockResolvedValueOnce(pt);
+    db.isDelegableStillReferenced.mockResolvedValueOnce(false);
+
+    const instanceMock = {
+      removeAllListeners: jest.fn(),
+    } as unknown as ethers.Contract;
+
+    blockchain.instances[chargedToken.address] = instanceMock;
+    blockchain.instances[interfacePT.address] = instanceMock;
+    blockchain.instances[pt.address] = instanceMock;
+
+    await blockchain.unregisterContract("ChargedToken", chargedToken.address, true, session);
+
+    expect(db.get).toHaveBeenNthCalledWith(1, "ChargedToken", CHAIN_ID, chargedToken.address, session);
+    expect(blockchain.instances[chargedToken.address]).toBeUndefined();
+    expect(db.delete).toHaveBeenNthCalledWith(1, "ChargedToken", chargedToken.chainId, chargedToken.address, session);
+    expect(db.delete).toHaveBeenNthCalledWith(2, "UserBalance", chargedToken.chainId, chargedToken.address, session);
+
+    expect(db.get).toHaveBeenNthCalledWith(2, "InterfaceProjectToken", CHAIN_ID, interfacePT.address, session);
+    expect(blockchain.instances[interfacePT.address]).toBeUndefined();
+    expect(db.delete).toHaveBeenNthCalledWith(
+      3,
+      "InterfaceProjectToken",
+      interfacePT.chainId,
+      interfacePT.address,
+      session,
+    );
+    expect(db.isDelegableStillReferenced).toBeCalledWith(CHAIN_ID, interfacePT.projectToken);
+
+    expect(db.get).toHaveBeenNthCalledWith(3, "DelegableToLT", CHAIN_ID, pt.address, session);
+    expect(blockchain.instances[pt.address]).toBeUndefined();
+    expect(db.delete).toHaveBeenNthCalledWith(4, "DelegableToLT", pt.chainId, pt.address, session);
+
+    expect(instanceMock.removeAllListeners).toBeCalledTimes(3);
+  });
+
+  it("should load user balances for all charged tokens", async () => {
+    const directory = { address: "0xDIR", directory: ["0xCT1", "0xCT2"] };
+    const chargedTokens = [
+      { address: "0xCT1", interfaceProjectToken: EMPTY_ADDRESS },
+      { address: "0xCT2", interfaceProjectToken: "0xIFACE" },
+    ];
+    const iface = { address: "0xIFACE", projectToken: "0xPT" };
+    const balances = [
+      { chainId: CHAIN_ID, address: "0xCT1", user: "0xUSER" },
+      { chainId: CHAIN_ID, address: "0xCT2", ptAddress: "0xPT", user: "0xUSER" },
+    ] as IUserBalance[];
+
+    db.get
+      .mockResolvedValueOnce(directory)
+      .mockResolvedValueOnce(chargedTokens[0])
+      .mockResolvedValueOnce(chargedTokens[1])
+      .mockResolvedValueOnce(iface);
+
+    db.existsBalance.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+    db.getBalances.mockResolvedValueOnce(balances);
+
+    const loadUserBalances = jest.spyOn(blockchain, "loadUserBalances");
+    loadUserBalances.mockResolvedValueOnce(balances[0]).mockResolvedValueOnce(balances[1]);
+
+    Object.defineProperty(blockchain, "directory", { value: directory.address });
+
+    const result = await blockchain.loadAllUserBalances("0xUSER", 15);
+
+    expect(db.get).toHaveBeenNthCalledWith(1, "Directory", CHAIN_ID, "0xDIR", undefined);
+    expect(db.get).toHaveBeenNthCalledWith(2, "ChargedToken", CHAIN_ID, directory.directory[0], undefined);
+    expect(db.get).toHaveBeenNthCalledWith(3, "ChargedToken", CHAIN_ID, directory.directory[1], undefined);
+    expect(db.get).toHaveBeenNthCalledWith(
+      4,
+      "InterfaceProjectToken",
+      CHAIN_ID,
+      chargedTokens[1].interfaceProjectToken,
+      undefined,
+    );
+
+    expect(loadUserBalances).toHaveBeenNthCalledWith(1, 15, "0xUSER", "0xCT1", undefined, undefined);
+    expect(loadUserBalances).toHaveBeenNthCalledWith(2, 15, "0xUSER", "0xCT2", "0xIFACE", "0xPT");
+
+    expect(db.existsBalance).toHaveBeenNthCalledWith(1, CHAIN_ID, "0xCT1", "0xUSER");
+    expect(db.existsBalance).toHaveBeenNthCalledWith(2, CHAIN_ID, "0xCT2", "0xUSER");
+
+    expect(db.updateBalance).toBeCalledWith(balances[0]);
+    expect(db.saveBalance).toBeCalledWith(balances[1]);
+
+    expect(db.getBalances).toBeCalledWith(CHAIN_ID, "0xUSER");
+
+    expect(broker.notifyUpdate).toBeCalledWith("UserBalance", CHAIN_ID, "0xUSER", balances);
+
+    expect(result).toStrictEqual(balances);
   });
 });
