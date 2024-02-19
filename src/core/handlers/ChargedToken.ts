@@ -164,6 +164,7 @@ export class ChargedToken extends AbstractHandler<IChargedToken> {
         lastState.projectToken,
         blockNumber,
         this.loaderFactory("DelegableToLT", this.chainId, lastState.projectToken, this.blockchain),
+        session,
       );
     }
 

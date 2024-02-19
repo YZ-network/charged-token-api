@@ -5,6 +5,7 @@ import { AbstractBroker } from "../../AbstractBroker";
 import { MockBlockchainRepository } from "../../__mocks__/MockBlockchainRepository";
 import { MockBroker } from "../../__mocks__/MockBroker";
 import { ChargedToken } from "../ChargedToken";
+import { DelegableToLT } from "../DelegableToLT";
 import { InterfaceProjectToken } from "../InterfaceProjectToken";
 
 jest.mock("../../../config");
@@ -120,22 +121,36 @@ describe("ChargedToken loader", () => {
     );
   });
 
-  test("InterfaceProjectTokenSet", async () => {
+  test("InterfaceProjectTokenSet should trigger interface and project token registrations", async () => {
     blockchain.getLastState.mockResolvedValueOnce({ projectToken: "0xPROJECT" });
-    loaderFactory.mockReturnValueOnce(new InterfaceProjectToken(CHAIN_ID, blockchain, "0xINTERFACE", loaderFactory));
+    loaderFactory
+      .mockReturnValueOnce(new InterfaceProjectToken(CHAIN_ID, blockchain, "0xINTERFACE", loaderFactory))
+      .mockReturnValueOnce(new DelegableToLT(CHAIN_ID, blockchain, "0xPROJECT", loaderFactory));
 
     const updateFunc = jest.spyOn(loader, "applyUpdateAndNotify").mockResolvedValue(undefined);
 
     await loader.onInterfaceProjectTokenSetEvent(session, ["0xINTERFACE"], BLOCK_NUMBER, "InterfaceProjectTokenSet");
 
-    expect(loaderFactory).toBeCalledWith("InterfaceProjectToken", CHAIN_ID, "0xINTERFACE", blockchain);
-    expect(blockchain.registerContract).toBeCalledWith(
+    expect(loaderFactory).toHaveBeenNthCalledWith(1, "InterfaceProjectToken", CHAIN_ID, "0xINTERFACE", blockchain);
+    expect(blockchain.registerContract).toHaveBeenNthCalledWith(
+      1,
       "InterfaceProjectToken",
       "0xINTERFACE",
       BLOCK_NUMBER,
       expect.any(InterfaceProjectToken),
       session,
     );
+
+    expect(loaderFactory).toHaveBeenNthCalledWith(2, "DelegableToLT", CHAIN_ID, "0xPROJECT", blockchain);
+    expect(blockchain.registerContract).toHaveBeenNthCalledWith(
+      2,
+      "DelegableToLT",
+      "0xPROJECT",
+      BLOCK_NUMBER,
+      expect.any(DelegableToLT),
+      session,
+    );
+
     expect(updateFunc).toBeCalledWith(
       { interfaceProjectToken: "0xINTERFACE" },
       BLOCK_NUMBER,
