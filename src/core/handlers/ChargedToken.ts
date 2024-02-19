@@ -158,6 +158,15 @@ export class ChargedToken extends AbstractHandler<IChargedToken> {
       throw new Error("Interface not found !");
     }
 
+    if (lastState.projectToken !== EMPTY_ADDRESS) {
+      await this.blockchain.registerContract(
+        "DelegableToLT",
+        lastState.projectToken,
+        blockNumber,
+        this.loaderFactory("DelegableToLT", this.chainId, lastState.projectToken, this.blockchain),
+      );
+    }
+
     await this.blockchain.setProjectTokenAddressOnBalances(this.address, lastState.projectToken, blockNumber, session);
 
     await this.applyUpdateAndNotify({ interfaceProjectToken }, blockNumber, eventName, session);

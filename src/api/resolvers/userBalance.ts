@@ -19,7 +19,8 @@ export const UserBalanceQueryResolverFactory =
       log.debug(`returning cached balances for ${chainId} ${user} ${address}`);
 
       if (address !== undefined) {
-        return await db.getBalance(chainId, address, user);
+        const balance = await db.getBalance(chainId, address, user);
+        return balance !== null ? balance : [];
       }
 
       return await db.getBalances(chainId, user);
