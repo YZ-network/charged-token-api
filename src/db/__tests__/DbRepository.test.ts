@@ -42,11 +42,11 @@ describe("DbRepository", () => {
     const sessionSetterReturnsValue = { session: jest.fn() };
     sessionSetterReturnsValue.session.mockResolvedValue({});
 
-    DirectoryModel.exists.mockReturnValueOnce(sessionSetterReturnsNull);
-    ChargedTokenModel.exists.mockReturnValueOnce(sessionSetterReturnsValue);
-    InterfaceProjectTokenModel.exists.mockReturnValueOnce(sessionSetterReturnsNull);
-    DelegableToLTModel.exists.mockReturnValueOnce(sessionSetterReturnsValue);
-    UserBalanceModel.exists.mockReturnValueOnce(sessionSetterReturnsNull);
+    (DirectoryModel.exists as jest.Mock).mockReturnValueOnce(sessionSetterReturnsNull);
+    (ChargedTokenModel.exists as jest.Mock).mockReturnValueOnce(sessionSetterReturnsValue);
+    (InterfaceProjectTokenModel.exists as jest.Mock).mockReturnValueOnce(sessionSetterReturnsNull);
+    (DelegableToLTModel.exists as jest.Mock).mockReturnValueOnce(sessionSetterReturnsValue);
+    (UserBalanceModel.exists as jest.Mock).mockReturnValueOnce(sessionSetterReturnsNull);
 
     expect(await db.exists("Directory", CHAIN_ID, ADDRESS, session)).toBe(false);
     expect(DirectoryModel.exists).toBeCalledWith({ chainId: CHAIN_ID, address: ADDRESS });
@@ -74,7 +74,7 @@ describe("DbRepository", () => {
   it("should check balance in db", async () => {
     const sessionMock = { session: jest.fn() };
 
-    UserBalanceModel.exists.mockReturnValue(sessionMock);
+    (UserBalanceModel.exists as jest.Mock).mockReturnValue(sessionMock);
     sessionMock.session.mockResolvedValueOnce(null).mockResolvedValueOnce({});
 
     expect(await db.existsBalance(CHAIN_ID, ADDRESS, "0xUSER")).toBe(false);
@@ -93,7 +93,9 @@ describe("DbRepository", () => {
     const sessionSetterReturnsValue = { session: jest.fn() };
     sessionSetterReturnsValue.session.mockResolvedValue({});
 
-    EventModel.exists.mockReturnValueOnce(sessionSetterReturnsNull).mockReturnValueOnce(sessionSetterReturnsValue);
+    (EventModel.exists as jest.Mock)
+      .mockReturnValueOnce(sessionSetterReturnsNull)
+      .mockReturnValueOnce(sessionSetterReturnsValue);
 
     expect(await db.existsEvent(CHAIN_ID, ADDRESS, 15, 1, 2, session)).toBe(false);
     expect(await db.existsEvent(CHAIN_ID, ADDRESS, 15, 1, 2, session)).toBe(true);
@@ -109,8 +111,8 @@ describe("DbRepository", () => {
   });
 
   it("should check user balances in db and return true if he has balances for every charged token", async () => {
-    ChargedTokenModel.count.mockResolvedValueOnce(10);
-    UserBalanceModel.count.mockResolvedValueOnce(9);
+    (ChargedTokenModel.count as jest.Mock).mockResolvedValueOnce(10);
+    (UserBalanceModel.count as jest.Mock).mockResolvedValueOnce(9);
 
     expect(await db.isUserBalancesLoaded(CHAIN_ID, "0xUSER")).toBe(false);
 
@@ -122,14 +124,14 @@ describe("DbRepository", () => {
   });
 
   it("should check user balances in db and return true if he has balances for every charged token", async () => {
-    ChargedTokenModel.count.mockResolvedValueOnce(10);
-    UserBalanceModel.count.mockResolvedValueOnce(10);
+    (ChargedTokenModel.count as jest.Mock).mockResolvedValueOnce(10);
+    (UserBalanceModel.count as jest.Mock).mockResolvedValueOnce(10);
 
     expect(await db.isUserBalancesLoaded(CHAIN_ID, "0xUSER")).toBe(true);
   });
 
   it("should count events in db", async () => {
-    EventModel.count.mockResolvedValueOnce(10);
+    (EventModel.count as jest.Mock).mockResolvedValueOnce(10);
 
     expect(await db.countEvents(CHAIN_ID)).toBe(10);
     expect(EventModel.count).toBeCalledWith({ chainId: CHAIN_ID });
@@ -147,10 +149,10 @@ describe("DbRepository", () => {
     const sessionSetterReturnsValue = { session: jest.fn() };
     sessionSetterReturnsValue.session.mockResolvedValue(document);
 
-    DirectoryModel.findOne.mockReturnValueOnce(sessionSetterReturnsNull);
-    ChargedTokenModel.findOne.mockReturnValueOnce(sessionSetterReturnsValue);
-    InterfaceProjectTokenModel.findOne.mockReturnValueOnce(sessionSetterReturnsNull);
-    DelegableToLTModel.findOne.mockReturnValueOnce(sessionSetterReturnsValue);
+    (DirectoryModel.findOne as jest.Mock).mockReturnValueOnce(sessionSetterReturnsNull);
+    (ChargedTokenModel.findOne as jest.Mock).mockReturnValueOnce(sessionSetterReturnsValue);
+    (InterfaceProjectTokenModel.findOne as jest.Mock).mockReturnValueOnce(sessionSetterReturnsNull);
+    (DelegableToLTModel.findOne as jest.Mock).mockReturnValueOnce(sessionSetterReturnsValue);
 
     expect(await db.get("Directory", CHAIN_ID, ADDRESS, session)).toBe(null);
     expect(DirectoryModel.findOne).toBeCalledWith({ chainId: CHAIN_ID, address: ADDRESS });
@@ -180,7 +182,7 @@ describe("DbRepository", () => {
     ];
     const results = contracts.map((contract) => ({ toJSON: jest.fn(() => contract) }));
 
-    ChargedTokenModel.find.mockResolvedValueOnce(results);
+    (ChargedTokenModel.find as jest.Mock).mockResolvedValueOnce(results);
 
     expect(await db.getAllMatching("ChargedToken", { chainId: CHAIN_ID })).toStrictEqual(contracts);
     expect(ChargedTokenModel.find).toBeCalledWith({ chainId: CHAIN_ID });
@@ -189,7 +191,7 @@ describe("DbRepository", () => {
   it("should return the directory for the given chainId", async () => {
     const toJSON = jest.fn(() => "result");
     const document = { toJSON };
-    DirectoryModel.findOne.mockResolvedValueOnce(document);
+    (DirectoryModel.findOne as jest.Mock).mockResolvedValueOnce(document);
 
     const result = await db.getDirectory(CHAIN_ID);
 
@@ -201,7 +203,7 @@ describe("DbRepository", () => {
   it("should return the interface for the given chainId and charged token address", async () => {
     const toJSON = jest.fn(() => "result");
     const document = { toJSON };
-    InterfaceProjectTokenModel.findOne.mockResolvedValueOnce(document);
+    (InterfaceProjectTokenModel.findOne as jest.Mock).mockResolvedValueOnce(document);
 
     const result = await db.getInterfaceByChargedToken(CHAIN_ID, ADDRESS);
 
@@ -218,7 +220,7 @@ describe("DbRepository", () => {
 
     const sessionMock = { session: jest.fn() };
 
-    UserBalanceModel.find.mockReturnValueOnce(sessionMock);
+    (UserBalanceModel.find as jest.Mock).mockReturnValueOnce(sessionMock);
     sessionMock.session.mockResolvedValueOnce([docBalance1, docBalance2]);
 
     const result = await db.getBalances(CHAIN_ID, "0xUSER", session);
@@ -236,7 +238,7 @@ describe("DbRepository", () => {
 
     const sessionMock = { session: jest.fn() };
 
-    UserBalanceModel.findOne.mockReturnValueOnce(sessionMock);
+    (UserBalanceModel.findOne as jest.Mock).mockReturnValueOnce(sessionMock);
     sessionMock.session.mockResolvedValueOnce(docBalance);
 
     const result = await db.getBalance(CHAIN_ID, ADDRESS, "0xUSER", session);
@@ -255,7 +257,7 @@ describe("DbRepository", () => {
 
     const sessionMock = { session: jest.fn() };
 
-    UserBalanceModel.find.mockReturnValueOnce(sessionMock);
+    (UserBalanceModel.find as jest.Mock).mockReturnValueOnce(sessionMock);
     sessionMock.session.mockResolvedValueOnce([docBalance1, docBalance2]);
 
     const result = await db.getBalancesByProjectToken(CHAIN_ID, "0xPT", "0xUSER", session);
@@ -272,7 +274,7 @@ describe("DbRepository", () => {
 
     const sessionMock = { session: jest.fn() };
 
-    UserBalanceModel.findOne.mockReturnValueOnce(sessionMock);
+    (UserBalanceModel.findOne as jest.Mock).mockReturnValueOnce(sessionMock);
     sessionMock.session.mockResolvedValueOnce(balance);
 
     const result = await db.getPTBalance(CHAIN_ID, "0xPT", "0xUSER", session);
@@ -290,7 +292,7 @@ describe("DbRepository", () => {
 
     const sortMock = { sort: jest.fn() };
 
-    EventModel.find.mockReturnValueOnce(sortMock);
+    (EventModel.find as jest.Mock).mockReturnValueOnce(sortMock);
     sortMock.sort.mockResolvedValueOnce([docEvent1, docEvent2]);
 
     const result = await db.getAllEvents();
@@ -310,7 +312,7 @@ describe("DbRepository", () => {
     const skipMock = { skip: jest.fn() };
     const sortMock = { sort: jest.fn() };
 
-    EventModel.find.mockReturnValueOnce(limitMock);
+    (EventModel.find as jest.Mock).mockReturnValueOnce(limitMock);
     limitMock.limit.mockReturnValueOnce(skipMock);
     skipMock.skip.mockReturnValueOnce(sortMock);
     sortMock.sort.mockResolvedValueOnce([docEvent]);
@@ -326,7 +328,7 @@ describe("DbRepository", () => {
   });
 
   it("should check if an interface exists that references the given project token", async () => {
-    InterfaceProjectTokenModel.exists.mockResolvedValueOnce({});
+    (InterfaceProjectTokenModel.exists as jest.Mock).mockResolvedValueOnce({});
 
     const result = await db.isDelegableStillReferenced(CHAIN_ID, "0xPT");
 
@@ -339,9 +341,9 @@ describe("DbRepository", () => {
     const document = { toJSON: jest.fn(() => directory) };
 
     const sessionMock = { session: jest.fn() };
-    DirectoryModel.exists.mockReturnValueOnce(sessionMock);
+    (DirectoryModel.exists as jest.Mock).mockReturnValueOnce(sessionMock);
     sessionMock.session.mockResolvedValueOnce(null);
-    DirectoryModel.save.mockResolvedValueOnce(document);
+    (DirectoryModel as any).save.mockResolvedValueOnce(document);
 
     const result = await db.save("Directory", directory, session);
 
@@ -349,7 +351,7 @@ describe("DbRepository", () => {
     expect(DirectoryModel.exists).toBeCalledWith(directory);
     expect(sessionMock.session).toBeCalled();
     expect(DirectoryModel).toBeCalledWith(directory);
-    expect(DirectoryModel.save).toBeCalledWith({ session });
+    expect((DirectoryModel as any).save).toBeCalledWith({ session });
     expect(document.toJSON).toBeCalled();
   });
 
@@ -357,7 +359,7 @@ describe("DbRepository", () => {
     const directory = { chainId: CHAIN_ID, address: ADDRESS } as IDirectory;
 
     const sessionMock = { session: jest.fn() };
-    DirectoryModel.exists.mockReturnValueOnce(sessionMock);
+    (DirectoryModel.exists as jest.Mock).mockReturnValueOnce(sessionMock);
     sessionMock.session.mockResolvedValueOnce({});
 
     await expect(db.save("Directory", directory, session)).rejects.toThrow();
@@ -365,35 +367,35 @@ describe("DbRepository", () => {
     expect(DirectoryModel.exists).toBeCalledWith(directory);
     expect(sessionMock.session).toBeCalled();
     expect(DirectoryModel).not.toBeCalled();
-    expect(DirectoryModel.save).not.toBeCalled();
+    expect((DirectoryModel as any).save).not.toBeCalled();
   });
 
   it("should save balance as a new document", async () => {
     const balance = { chainId: CHAIN_ID, address: ADDRESS, user: "0xUSER" } as IUserBalance;
 
     const sessionMock = { session: jest.fn() };
-    UserBalanceModel.exists.mockReturnValueOnce(sessionMock);
+    (UserBalanceModel.exists as jest.Mock).mockReturnValueOnce(sessionMock);
     sessionMock.session.mockResolvedValueOnce(null);
 
     await db.saveBalance(balance);
 
     expect(UserBalanceModel.exists).toBeCalledWith(balance);
     expect(UserBalanceModel).toBeCalledWith(balance);
-    expect(UserBalanceModel.save).toBeCalled();
+    expect((UserBalanceModel as any).save).toBeCalled();
   });
 
   it("should refuse saving a duplicate balance as a new document", async () => {
     const balance = { chainId: CHAIN_ID, address: ADDRESS, user: "0xUSER" } as IUserBalance;
 
     const sessionMock = { session: jest.fn() };
-    UserBalanceModel.exists.mockReturnValueOnce(sessionMock);
+    (UserBalanceModel.exists as jest.Mock).mockReturnValueOnce(sessionMock);
     sessionMock.session.mockResolvedValueOnce({});
 
     await expect(db.saveBalance(balance)).rejects.toThrow();
 
     expect(UserBalanceModel.exists).toBeCalledWith(balance);
     expect(UserBalanceModel).not.toBeCalled();
-    expect(UserBalanceModel.save).not.toBeCalled();
+    expect((UserBalanceModel as any).save).not.toBeCalled();
   });
 
   it("should save event as a new document", async () => {
@@ -402,14 +404,14 @@ describe("DbRepository", () => {
     await db.saveEvent(event);
 
     expect(EventModel).toBeCalledWith(event);
-    expect(EventModel.save).toBeCalled();
+    expect((EventModel as any).save).toBeCalled();
   });
 
   it("should update contract in db", async () => {
     const directory = { chainId: CHAIN_ID, address: ADDRESS, directory: [] as string[] } as IDirectory;
 
     const sessionMock = { session: jest.fn() };
-    DirectoryModel.exists.mockReturnValueOnce(sessionMock);
+    (DirectoryModel.exists as jest.Mock).mockReturnValueOnce(sessionMock);
     sessionMock.session.mockResolvedValueOnce({});
 
     await db.update("Directory", directory, session);
@@ -423,7 +425,7 @@ describe("DbRepository", () => {
     const directory = { chainId: CHAIN_ID, address: ADDRESS, directory: [] as string[] } as IDirectory;
 
     const sessionMock = { session: jest.fn() };
-    DirectoryModel.exists.mockReturnValueOnce(sessionMock);
+    (DirectoryModel.exists as jest.Mock).mockReturnValueOnce(sessionMock);
     sessionMock.session.mockResolvedValueOnce(null);
 
     await expect(db.update("Directory", directory, session)).rejects.toThrow();
@@ -437,7 +439,7 @@ describe("DbRepository", () => {
     const balance = { chainId: CHAIN_ID, address: ADDRESS, user: "0xUSER" } as IUserBalance;
 
     const sessionMock = { session: jest.fn() };
-    UserBalanceModel.exists.mockReturnValueOnce(sessionMock);
+    (UserBalanceModel.exists as jest.Mock).mockReturnValueOnce(sessionMock);
     sessionMock.session.mockResolvedValueOnce({});
 
     await db.updateBalance(balance, session);
@@ -451,7 +453,7 @@ describe("DbRepository", () => {
     const balance = { chainId: CHAIN_ID, address: ADDRESS, user: "0xUSER" } as IUserBalance;
 
     const sessionMock = { session: jest.fn() };
-    UserBalanceModel.exists.mockReturnValueOnce(sessionMock);
+    (UserBalanceModel.exists as jest.Mock).mockReturnValueOnce(sessionMock);
     sessionMock.session.mockResolvedValueOnce(null);
 
     await expect(db.updateBalance(balance, session)).rejects.toThrow();
@@ -481,7 +483,7 @@ describe("DbRepository", () => {
     const event = { name: "Transfer", status: "QUEUED" } as IEvent;
 
     const sessionMock = { session: jest.fn() };
-    EventModel.updateOne.mockReturnValueOnce(sessionMock);
+    (EventModel.updateOne as jest.Mock).mockReturnValueOnce(sessionMock);
 
     await db.updateEventStatus(event, "SUCCESS", session);
 
@@ -511,7 +513,7 @@ describe("DbRepository", () => {
   it("should delete pending and failed events", async () => {
     const event = { name: "Transfer", toJSON: jest.fn() };
 
-    EventModel.find.mockResolvedValueOnce([event]).mockResolvedValueOnce([event]);
+    (EventModel.find as jest.Mock).mockResolvedValueOnce([event]).mockResolvedValueOnce([event]);
 
     await db.deletePendingAndFailedEvents(CHAIN_ID);
 

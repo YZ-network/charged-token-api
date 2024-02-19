@@ -22,7 +22,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
   readonly instances: Record<string, ethers.Contract> = {};
   private readonly interfaces: Record<string, ethers.utils.Interface> = {};
-  private handlers: Record<string, AbstractHandler<any>> = {};
+  readonly handlers: Record<string, AbstractHandler<any>> = {};
 
   constructor(
     chainId: number,
@@ -148,7 +148,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     };
   }
 
-  private async loadAndSyncEvents(
+  async loadAndSyncEvents(
     dataType: DataType,
     address: string,
     startBlock: number,
@@ -760,11 +760,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     await this.notifyBalancesUpdateByProjectToken(ptAddress, user, session);
   }
 
-  private async notifyBalancesUpdateByProjectToken(
-    ptAddress: string,
-    user: string,
-    session?: ClientSession,
-  ): Promise<void> {
+  async notifyBalancesUpdateByProjectToken(ptAddress: string, user: string, session?: ClientSession): Promise<void> {
     const updatedBalances = await this.db.getBalancesByProjectToken(this.chainId, ptAddress, user, session);
 
     this.log.trace({

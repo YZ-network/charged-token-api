@@ -62,13 +62,13 @@ export abstract class AbstractHandler<T extends IContract> {
     });
   }
 
-  protected async getLastState(session?: ClientSession): Promise<T> {
+  async getLastState(session?: ClientSession): Promise<T> {
     const lastState = await this.blockchain.getLastState<T>(this.dataType, this.address, session);
     if (lastState === null) throw new Error("Last state not found !");
     return lastState;
   }
 
-  protected async applyUpdateAndNotify(
+  async applyUpdateAndNotify(
     data: Partial<T>,
     blockNumber: number,
     eventName?: string,
@@ -77,7 +77,7 @@ export abstract class AbstractHandler<T extends IContract> {
     await this.blockchain.applyUpdateAndNotify(this.dataType, this.address, data, blockNumber, eventName, session);
   }
 
-  protected async updateBalanceAndNotify(
+  async updateBalanceAndNotify(
     user: string,
     data: Partial<IUserBalance>,
     blockNumber: number,
@@ -88,11 +88,11 @@ export abstract class AbstractHandler<T extends IContract> {
     await this.blockchain.updateBalanceAndNotify(this.address, user, data, blockNumber, ptAddress, eventName, session);
   }
 
-  protected async getBalance(user: string, session?: ClientSession): Promise<IUserBalance | null> {
+  async getBalance(user: string, session?: ClientSession): Promise<IUserBalance | null> {
     return await this.blockchain.getUserBalance(this.address, user, session);
   }
 
-  protected async getPTBalance(user: string, session?: ClientSession): Promise<string | null> {
+  async getPTBalance(user: string, session?: ClientSession): Promise<string | null> {
     return await this.blockchain.getUserPTBalanceFromDb(this.address, user, session);
   }
 

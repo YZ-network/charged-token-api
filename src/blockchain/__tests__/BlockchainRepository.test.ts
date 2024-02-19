@@ -7,6 +7,9 @@ import { MockBroker } from "../../core/__mocks__/MockBroker";
 import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 import { EMPTY_ADDRESS } from "../../vendor";
 import { BlockchainRepository } from "../BlockchainRepository";
+import { EventListener } from "../EventListener";
+import { detectNegativeAmount } from "../functions";
+import { loadContract } from "../loaders";
 
 jest.mock("../topics");
 jest.mock("../functions");
@@ -382,7 +385,7 @@ describe("BlockchainRepository", () => {
   it("should update PT balance on corresponding db items", async () => {
     const notifyUpdate = jest
       .spyOn(blockchain, "notifyBalancesUpdateByProjectToken")
-      .mockImplementationOnce(() => undefined);
+      .mockImplementationOnce(async () => undefined);
 
     await blockchain.updatePTBalanceAndNotify("0xPT", "0xUSER", { balancePT: "20" }, 15, undefined, session);
 
@@ -447,8 +450,6 @@ describe("BlockchainRepository", () => {
   });
 
   it("should check amount fields depending on the data type", () => {
-    const { detectNegativeAmount } = require("../functions");
-
     blockchain.checkUpdateAmounts("Directory", {});
     blockchain.checkUpdateAmounts("InterfaceProjectToken", {});
     blockchain.checkUpdateAmounts("ChargedToken", {});
@@ -487,8 +488,8 @@ describe("BlockchainRepository", () => {
     const getInterface = jest.spyOn(blockchain, "getInterface");
     getInterface.mockReturnValueOnce(iface);
 
-    let callback: (event: ethers.providers.Log) => void;
-    instance.on.mockImplementationOnce((eventFilter, givenCallback) => {
+    let callback: ((event: ethers.providers.Log) => void) | undefined;
+    (instance.on as jest.Mock).mockImplementationOnce((eventFilter, givenCallback) => {
       callback = givenCallback;
     });
 
@@ -507,8 +508,10 @@ describe("BlockchainRepository", () => {
       logIndex: 2,
       topics: ["0x34d5714013380d0dd2de54669941a1e6ffeb94f624def9a559f03abd0e8e4a5c"],
       data: "0xDATA",
-    };
+    } as Log;
     (blockchain.eventListener as unknown as jest.Mocked<EventListener>).queueLog.mockResolvedValueOnce(undefined);
+
+    if (callback === undefined) throw new Error("Callback not yet initialized !");
 
     callback(log);
 
@@ -533,25 +536,25 @@ describe("BlockchainRepository", () => {
       logIndex: 2,
       topics: ["0x34d5714013380d0dd2de54669941a1e6ffeb94f624def9a559f03abd0e8e4a5c"],
       data: "0xDATA",
-    };
+    } as Log;
 
     (blockchain.eventListener as unknown as jest.Mocked<EventListener>).queueLog.mockImplementationOnce(async () => {
       throw new Error();
     });
 
-    let callback: (event: ethers.providers.Log) => void;
-    instance.on.mockImplementationOnce((eventFilter, givenCallback) => (callback = givenCallback));
+    let callback: ((event: ethers.providers.Log) => void) | undefined;
+    (instance.on as jest.Mock).mockImplementationOnce((eventFilter, givenCallback) => (callback = givenCallback));
 
     const mockHandler = jest.fn() as unknown as AbstractHandler<IChargedToken>;
 
     blockchain.subscribeToEvents("ChargedToken", "0xCT", mockHandler);
 
+    if (callback === undefined) throw new Error("Callback not yet initialized !");
+
     callback(log);
   });
 
   it("should load contract from blockchain and save to db then prepare event handler", async () => {
-    const { loadContract } = require("../loaders");
-
     const loaderMock = jest.fn() as unknown as AbstractHandler<IChargedToken>;
 
     const instance = new ethers.Contract("", []);
@@ -568,7 +571,7 @@ describe("BlockchainRepository", () => {
       chainId: CHAIN_ID,
     };
     const savedData = { ...data };
-    loadContract.mockResolvedValueOnce(data);
+    (loadContract as jest.Mock).mockResolvedValueOnce(data);
     db.save.mockResolvedValueOnce(savedData);
 
     const result = await blockchain.registerContract("ChargedToken", "0xCT", 15, loaderMock, session);
@@ -691,7 +694,7 @@ describe("BlockchainRepository", () => {
     db.get.mockResolvedValueOnce(data);
     getInstance.mockReturnValue(instanceMock);
     getInterface.mockReturnValue(interfaceMock);
-    instanceMock.queryFilter.mockResolvedValueOnce(events);
+    (instanceMock.queryFilter as jest.Mock).mockResolvedValueOnce(events);
     db.existsEvent.mockResolvedValueOnce(false).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
 
     const result = await blockchain.registerContract("ChargedToken", "0xCT", 30, loaderMock, session);

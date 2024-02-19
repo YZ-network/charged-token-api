@@ -1,4 +1,3 @@
-import { IEvent } from "../../../core";
 import { AbstractDbRepository } from "../../../core/AbstractDbRepository";
 import { MockDbRepository } from "../../../core/__mocks__/MockDbRepository";
 import {
