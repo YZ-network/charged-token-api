@@ -330,8 +330,10 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   }
 
   unsubscribeEvents(address: string): void {
-    this.instances[address].removeAllListeners();
-    delete this.instances[address];
+    if (this.instances[address] !== undefined) {
+      this.instances[address].removeAllListeners();
+      delete this.instances[address];
+    }
   }
 
   async registerContract<T extends IContract>(
