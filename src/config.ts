@@ -18,6 +18,7 @@ const configDefaults: JsonConfig = {
     rpcPingDelayMs: 3000,
     rpcPongMaxWaitMs: 6000,
     rpcRetryDelayMs: 1000,
+    nodeDownAlertDelayMs: 10000,
   },
 };
 

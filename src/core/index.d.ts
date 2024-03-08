@@ -164,6 +164,7 @@ interface JsonDelaysConfig {
   rpcPingDelayMs: number;
   rpcPongMaxWaitMs: number;
   rpcRetryDelayMs: number;
+  nodeDownAlertDelayMs: number;
 }
 
 interface JsonConfig {

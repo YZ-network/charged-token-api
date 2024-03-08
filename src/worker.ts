@@ -37,6 +37,9 @@ export class ChainWorker {
   pongTimeout: NodeJS.Timeout | undefined;
   workerStatus: WorkerStatus = "WAITING";
 
+  disconnectedTimestamp: number = new Date().getTime();
+  cumulatedNodeDowntime: number = 0;
+
   constructor(
     index: number,
     rpc: string,
@@ -74,6 +77,49 @@ export class ChainWorker {
     };
   }
 
+  private logDisconnectedStateIfNeeded() {
+    const now = new Date().getTime();
+
+    if (this.disconnectedTimestamp < 0) {
+      this.disconnectedTimestamp = now;
+    }
+
+    const deltaMs = now - this.disconnectedTimestamp;
+
+    if (deltaMs >= Config.delays.nodeDownAlertDelayMs) {
+      const firstAlert = this.cumulatedNodeDowntime === 0;
+
+      this.cumulatedNodeDowntime += deltaMs;
+      this.disconnectedTimestamp = now;
+
+      if (firstAlert) {
+        log.error({
+          chainId: this.chainId,
+          msg: "Blockchain provider is down !",
+          downtimeSeconds: Math.round(this.cumulatedNodeDowntime / 1000),
+        });
+      }
+    }
+  }
+
+  private logDowntimeAfterReconnection() {
+    if (this.disconnectedTimestamp < 0 && this.cumulatedNodeDowntime === 0) {
+      return;
+    }
+
+    const deltaMs = new Date().getTime() - this.disconnectedTimestamp;
+    this.cumulatedNodeDowntime += deltaMs;
+
+    log.warn({
+      chainId: this.chainId,
+      msg: "Blockchain provider was down !",
+      downtimeSeconds: Math.round(this.cumulatedNodeDowntime / 1000),
+    });
+
+    this.disconnectedTimestamp = -1;
+    this.cumulatedNodeDowntime = 0;
+  }
+
   private createProvider() {
     this.provider = new AutoWebSocketProvider(this.rpc, {
       chainId: this.chainId,
@@ -87,16 +133,26 @@ export class ChainWorker {
     this.wsStatus = WsStatus[this.provider.websocket.readyState];
 
     this.provider.on("error", (...args) => {
-      if (this.wsStatus === WsStatus[0]) {
-        Metrics.connectionFailed(this.chainId);
+      if (args[0] === "WebSocket closed") {
+        if (this.wsStatus === WsStatus[0]) {
+          Metrics.connectionFailed(this.chainId);
+        }
+        log.warn({
+          msg: `Websocket connection lost to rpc ${this.rpc}`,
+          args,
+          chainId: this.chainId,
+        });
+        this.providerStatus = "DISCONNECTED";
+        this.stop();
+
+        this.logDisconnectedStateIfNeeded();
+      } else if (typeof args[0] === "string") {
+        log.error({
+          msg: `Websocket unknown error on ${this.rpc}`,
+          args,
+          chainId: this.chainId,
+        });
       }
-      log.warn({
-        msg: `Websocket connection lost to rpc ${this.rpc}`,
-        args,
-        chainId: this.chainId,
-      });
-      this.providerStatus = "DISCONNECTED";
-      this.stop();
     });
     this.provider.on("debug", (...args) => {
       log.debug({ args, chainId: this.chainId });
@@ -104,6 +160,8 @@ export class ChainWorker {
 
     this.provider.ready
       .then((network) => {
+        this.logDowntimeAfterReconnection();
+
         log.info({
           msg: "Connected to network",
           network,
@@ -129,6 +187,8 @@ export class ChainWorker {
         this.wsStatus = WsStatus[WebSocket.CLOSED];
         Metrics.connectionFailed(this.chainId);
         this.stop();
+
+        this.logDisconnectedStateIfNeeded();
       });
 
     let prevWsStatus = this.wsStatus;
