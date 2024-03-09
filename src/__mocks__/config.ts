@@ -18,5 +18,6 @@ export const Config: JsonConfig = {
     rpcPingDelayMs: 3000,
     rpcPongMaxWaitMs: 6000,
     rpcRetryDelayMs: 10,
+    nodeDownAlertDelayMs: 100,
   },
 };

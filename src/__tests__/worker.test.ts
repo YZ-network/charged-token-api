@@ -75,28 +75,6 @@ describe("ChainWorker", () => {
     clearTimeout(timeout);
   }
 
-  async function waitForWsToConnect(worker: ChainWorker) {
-    let timeout: NodeJS.Timeout | undefined;
-
-    const waitPromise = new Promise((resolve, reject) => {
-      const interval = setInterval(() => {
-        if (worker.wsStatus === "OPEN") {
-          clearInterval(interval);
-          resolve(undefined);
-        }
-      }, 1);
-
-      timeout = setTimeout(() => {
-        clearInterval(interval);
-        reject(new Error("Timeout reached ! killed it"));
-      }, 1000);
-    });
-
-    await waitPromise;
-
-    clearTimeout(timeout);
-  }
-
   async function waitForWorkerToStop(worker: ChainWorker) {
     let timeout: NodeJS.Timeout | undefined;
 
@@ -186,7 +164,7 @@ describe("ChainWorker", () => {
     (worker.provider as any).handlers.block(BLOCK_NUMBER);
     expect(worker.blockNumberBeforeDisconnect).toBe(BLOCK_NUMBER);
 
-    (worker.provider as any).handlers.error();
+    (worker.provider as any).handlers.error("WebSocket closed");
     await waitForWorkerToStop(worker);
   });
 
@@ -256,7 +234,7 @@ describe("ChainWorker", () => {
     await waitForWorkerToStart(worker);
 
     // triggering error
-    (worker as any).provider.handlers.error();
+    (worker as any).provider.handlers.error("WebSocket closed");
 
     await waitForWorkerToStop(worker);
 
