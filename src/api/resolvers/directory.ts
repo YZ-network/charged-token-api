@@ -1,4 +1,5 @@
 import { GraphQLError } from "graphql";
+import { Config } from "../../config";
 import { AbstractDbRepository } from "../../core/AbstractDbRepository";
 import { rootLogger } from "../../rootLogger";
 import { toGraphQL } from "./functions";
@@ -10,10 +11,14 @@ const log = rootLogger.child({ name: "DirectoryQueryResolver" });
 export const DirectoryQueryResolverFactory =
   (db: AbstractDbRepository) =>
   async (_: any, { chainId }: { chainId: number }) => {
+    if (!Config.networks.map((network) => network.chainId).includes(chainId)) {
+      throw new GraphQLError("UNKNOWN_NETWORK");
+    }
+
     const directory = await db.getDirectory(chainId);
 
     if (directory === null) {
-      const err = new GraphQLError("Directory not found !");
+      const err = new GraphQLError("DIRECTORY_NOT_FOUND");
       log.error({ chainId, msg: err.message, err });
       throw err;
     }
