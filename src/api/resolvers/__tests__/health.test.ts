@@ -13,17 +13,21 @@ describe("Health check query resolver", () => {
   });
 
   it("should return health from matching channel", async () => {
+    const nextMock = jest.fn();
+    nextMock.mockResolvedValueOnce({ value: "pouet", done: false });
+
     const returnMock = jest.fn();
-    returnMock.mockResolvedValueOnce("pouet");
+    returnMock.mockResolvedValueOnce({ done: true });
 
     const resolver = HealthQueryResolverFactory(broker);
 
-    broker.subscribeHealth.mockReturnValueOnce({ return: returnMock } as unknown as Repeater<any>);
+    broker.subscribeHealth.mockReturnValueOnce({ next: nextMock, return: returnMock } as unknown as Repeater<any>);
 
     const result = await resolver();
 
     expect(result).toStrictEqual("pouet");
     expect(broker.subscribeHealth).toBeCalled();
+    expect(nextMock).toBeCalled();
     expect(returnMock).toBeCalled();
   });
 
