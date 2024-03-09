@@ -5,7 +5,11 @@ const log = rootLogger.child({ name: "health" });
 
 export const HealthQueryResolverFactory = (broker: AbstractBroker) => async () => {
   const subscription = broker.subscribeHealth();
-  return await subscription.return();
+  const result = await subscription.next();
+  if (result.done === false) {
+    await subscription.return();
+  }
+  return result.value;
 };
 
 export const HealthSubscriptionResolverFactory = (broker: AbstractBroker) => ({

@@ -1,5 +1,7 @@
 FROM node:18-bullseye
 
+RUN apt update && apt install -y jq
+
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 ADD . .
