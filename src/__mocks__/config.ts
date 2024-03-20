@@ -16,6 +16,12 @@ export const Config: JsonConfig = {
       directory: "0xA8CA002BF4d8253b8493b1c92Fd3055F05A2DF6B",
       enabled: true,
     },
+    {
+      chainId: 666,
+      uri: "ws://0.0.0.0:85455",
+      directory: "0xA8CA002BF4d8253b8493b1c92Fd3055F05A2DF6B",
+      enabled: false,
+    },
   ],
   delays: {
     healthPublishDelayMs: 1000,

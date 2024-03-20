@@ -15,7 +15,7 @@ jest.mock("../worker");
 
 describe("Main class", () => {
   it("Networks config check", () => {
-    expect(Config.networks.length).toBeGreaterThan(0);
+    expect(Config.networks.length).toBe(2);
   });
 
   it("Constructor initialization", () => {
@@ -24,6 +24,7 @@ describe("Main class", () => {
     expect(main.bindAddress).toBeDefined();
     expect(main.bindPort).toBeDefined();
     expect(main.networks).toBeDefined();
+    expect(main.networks.length).toBe(1);
     expect(main.httpServer).toBeDefined();
     expect(main.workers).toEqual([]);
     expect(main.keepAlive).toBeUndefined();
@@ -59,7 +60,7 @@ describe("Main class", () => {
     expect(main.healthTimer).toBeDefined();
     expect(mongoose.set).toHaveBeenNthCalledWith(1, "strictQuery", true);
     expect(mongoose.connect).toHaveBeenNthCalledWith(1, Config.db.uri);
-    expect(main.workers.length).toBe(Config.networks.length);
+    expect(main.workers.length).toBe(main.networks.length);
     expect(main.httpServer.listenerCount("listening")).toBe(listenerCountBefore + 1);
 
     await waitForServerStart(main);

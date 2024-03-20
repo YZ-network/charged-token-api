@@ -2,6 +2,8 @@ import { AbstractDbRepository } from "../../../core/AbstractDbRepository";
 import { MockDbRepository } from "../../../core/__mocks__/MockDbRepository";
 import { DirectoryQueryResolver, DirectoryQueryResolverFactory } from "../directory";
 
+jest.mock("../../../config");
+
 describe("Directory query resolver", () => {
   let db: jest.Mocked<AbstractDbRepository>;
   let resolver: DirectoryQueryResolver;
@@ -19,6 +21,14 @@ describe("Directory query resolver", () => {
     await expect(resolver(undefined, { chainId })).rejects.toThrow("DIRECTORY_NOT_FOUND");
 
     expect(db.getDirectory).toBeCalledWith(chainId);
+  });
+
+  it("should throw when the network is disabled in configuration", async () => {
+    const chainId = 666;
+
+    await expect(resolver(undefined, { chainId })).rejects.toThrow("DISABLED_NETWORK");
+
+    expect(db.getDirectory).not.toBeCalledWith(chainId);
   });
 
   it("should throw when the directory is not found", async () => {
