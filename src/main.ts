@@ -4,6 +4,7 @@ import { configureApiServer } from "./api/server";
 import { Broker } from "./broker";
 import { Config } from "./config";
 import { DbRepository } from "./db/DbRepository";
+import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";
 import { ChainWorker } from "./worker";
 
@@ -33,6 +34,7 @@ export class MainClass {
       log.info("MongoDB connected !");
 
       this.networks.forEach((network, index) => {
+        Metrics.chainInit(network.chainId);
         this.connectChain(index, network.uri, network.directory, network.chainId);
       });
 
