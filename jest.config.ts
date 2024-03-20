@@ -22,7 +22,7 @@ const config: Config = {
   collectCoverage: true,
 
   // An array of glob patterns indicating a set of files for which coverage information should be collected
-  collectCoverageFrom: ["src/**/*.ts", "src/**/*.js", "!src/**/index.ts"],
+  collectCoverageFrom: ["src/**/*.ts", "src/**/*.js", "!src/**/index.ts", "!src/**/*.d.ts"],
 
   // The directory where Jest should output its coverage files
   coverageDirectory: "coverage",
@@ -48,8 +48,8 @@ const config: Config = {
     global: {
       branches: 78,
       functions: 78,
-      lines: 80,
-      statements: 80,
+      lines: 90,
+      statements: 90,
     },
   },
 

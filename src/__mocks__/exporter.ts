@@ -1,1 +1,1 @@
-export const useEventsExporter = jest.fn();
+export const eventsExporterFactory = jest.fn(() => jest.fn());

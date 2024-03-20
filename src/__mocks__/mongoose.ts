@@ -11,6 +11,7 @@ const ClientSession = jest.fn().mockImplementation(() => {
 const Schema = jest.fn().mockImplementation(() => {
   return {
     static: jest.fn(),
+    index: jest.fn(),
   };
 });
 

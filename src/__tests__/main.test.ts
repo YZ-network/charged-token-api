@@ -2,55 +2,42 @@ import { buildHTTPExecutor } from "@graphql-tools/executor-http";
 import gql from "graphql-tag";
 import mongoose from "mongoose";
 import { Socket } from "net";
-import { Config, WorkerStatus } from "../globals";
+import { Config } from "../config";
 import { MainClass } from "../main";
 import { ChainWorker } from "../worker";
 
 jest.unmock("ws");
+jest.unmock("ethers");
+jest.unmock("graphql-yoga");
 
-jest.mock("../globals/config");
-jest.mock("../graphql");
-jest.mock("../exporter");
+jest.mock("../config");
 jest.mock("../worker");
 
 describe("Main class", () => {
-  test("Networks config check", () => {
-    expect(Config.networks.length).toBeGreaterThan(0);
+  it("Networks config check", () => {
+    expect(Config.networks.length).toBe(2);
   });
 
-  test("Constructor initialization", () => {
+  it("Constructor initialization", () => {
     const main = new MainClass();
 
     expect(main.bindAddress).toBeDefined();
     expect(main.bindPort).toBeDefined();
     expect(main.networks).toBeDefined();
-    expect(main.yoga).toBeDefined();
+    expect(main.networks.length).toBe(1);
     expect(main.httpServer).toBeDefined();
-    expect(main.wsServer).toBeDefined();
     expect(main.workers).toEqual([]);
     expect(main.keepAlive).toBeUndefined();
+    expect(main.healthTimer).toBeUndefined();
   });
 
-  test("should return empty health check initially", () => {
+  it("should return empty health check initially", () => {
     const main = new MainClass();
 
     expect(main.health()).toEqual([]);
   });
 
-  test("init function should connect ws server to graphql api", () => {
-    const main = new MainClass();
-
-    expect(main.wsServer.listenerCount("error")).toBe(0);
-    expect(main.wsServer.listenerCount("connection")).toBe(0);
-    expect(main.wsServer.listenerCount("close")).toBe(0);
-
-    main.init();
-
-    expect(main.wsServer.listenerCount("error")).toBe(1);
-    expect(main.wsServer.listenerCount("connection")).toBe(1);
-  });
-
-  test("start function should connect to mongodb before starting api", async () => {
+  it("start function should connect to mongodb before starting api", async () => {
     const main = new MainClass();
 
     const sockets = new Set<Socket>();
@@ -73,15 +60,13 @@ describe("Main class", () => {
     expect(main.healthTimer).toBeDefined();
     expect(mongoose.set).toHaveBeenNthCalledWith(1, "strictQuery", true);
     expect(mongoose.connect).toHaveBeenNthCalledWith(1, Config.db.uri);
-    expect(main.workers.length).toBe(Config.networks.length);
+    expect(main.workers.length).toBe(main.networks.length);
     expect(main.httpServer.listenerCount("listening")).toBe(listenerCountBefore + 1);
 
     await waitForServerStart(main);
 
     // trying some gql queries
-    const executor = buildHTTPExecutor({
-      fetch: main.yoga.fetch,
-    });
+    const executor = buildHTTPExecutor();
 
     const healthSub = await executor({
       document: gql`
@@ -108,7 +93,7 @@ describe("Main class", () => {
     await closeServerAndWait(main, sockets);
   });
 
-  test("failure after start should dispose of timers", async () => {
+  it("failure after start should dispose of timers", async () => {
     const main = new MainClass();
 
     (mongoose as any).connect.mockImplementationOnce(async () => {
@@ -125,7 +110,7 @@ describe("Main class", () => {
     expect(main.healthTimer).toBeUndefined();
   });
 
-  test("dead worker should be respawned automatically", async () => {
+  it("dead worker should be respawned automatically", async () => {
     const main = new MainClass();
 
     const sockets = new Set<Socket>();
@@ -147,7 +132,7 @@ describe("Main class", () => {
     expect(main.workers.length).toBe(1);
     expect(main.workers[0].start).toBeCalledTimes(0);
 
-    main.workers[0].workerStatus = WorkerStatus.DEAD;
+    main.workers[0].workerStatus = "DEAD";
 
     await waitForWorkerToRestart(main.workers[0]);
 

@@ -1,5 +1,7 @@
 export const WebSocketServer = jest.fn().mockImplementation(() => {
-  return {};
+  return {
+    makeServer: jest.fn(() => ({ handleProtocols: [] })),
+  };
 });
 
 export const WebSocket = jest.fn().mockImplementation(() => {

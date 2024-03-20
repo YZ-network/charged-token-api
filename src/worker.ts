@@ -1,36 +1,28 @@
-import mongoose from "mongoose";
 import { WebSocket } from "ws";
-import { Config, EventHandlerStatus, ProviderStatus, WorkerStatus } from "./globals";
-import { Directory } from "./loaders/Directory";
-import { EventListener } from "./loaders/EventListener";
-import { EventModel } from "./models";
-import { subscribeToUserBalancesLoading } from "./subscriptions";
-import { Metrics, rootLogger } from "./util";
-import { AutoWebSocketProvider } from "./util/AutoWebSocketProvider";
+import { AutoWebSocketProvider } from "./blockchain/AutoWebSocketProvider";
+import { BlockchainRepository } from "./blockchain/BlockchainRepository";
+import { Config } from "./config";
+import { AbstractBroker } from "./core/AbstractBroker";
+import { AbstractDbRepository } from "./core/AbstractDbRepository";
+import { ContractsWatcher } from "./core/ContractsWatcher";
+import { Metrics } from "./metrics";
+import { rootLogger } from "./rootLogger";
+import { subscribeToUserBalancesLoading } from "./subscriptions/subscribeToUserBalances";
 
 const log = rootLogger.child({ name: "worker" });
 
 const WsStatus = ["CONNECTING", "OPEN", "CLOSING", "CLOSED"];
-
-export interface ChainHealth {
-  index: number;
-  rpc: string;
-  directory: string;
-  name?: string;
-  chainId?: number;
-  providerStatus: ProviderStatus;
-  workerStatus: WorkerStatus;
-  wsStatus: string;
-  restartCount: number;
-}
 
 export class ChainWorker {
   readonly index: number;
   readonly rpc: string;
   readonly directoryAddress: string;
   readonly chainId: number;
+  readonly db: AbstractDbRepository;
+  readonly broker: AbstractBroker;
 
-  eventListener: EventListener | undefined;
+  contractsWatcher: ContractsWatcher | undefined;
+  blockchain: BlockchainRepository | undefined;
   name: string | undefined;
   restartCount: number = 0;
   blockNumberBeforeDisconnect: number = 0;
@@ -38,20 +30,30 @@ export class ChainWorker {
   provider: AutoWebSocketProvider | undefined;
   worker: Promise<void> | undefined;
 
-  directory: Directory | undefined;
-
-  providerStatus: ProviderStatus = ProviderStatus.STARTING;
+  providerStatus: ProviderStatus = "STARTING";
   wsStatus: string = "STARTING";
   wsWatch: NodeJS.Timeout | undefined;
   pingInterval: NodeJS.Timeout | undefined;
   pongTimeout: NodeJS.Timeout | undefined;
-  workerStatus: WorkerStatus = WorkerStatus.WAITING;
+  workerStatus: WorkerStatus = "WAITING";
 
-  constructor(index: number, rpc: string, directoryAddress: string, chainId: number) {
+  disconnectedTimestamp: number = new Date().getTime();
+  cumulatedNodeDowntime: number = 0;
+
+  constructor(
+    index: number,
+    rpc: string,
+    directoryAddress: string,
+    chainId: number,
+    dbRepository: AbstractDbRepository,
+    broker: AbstractBroker,
+  ) {
     this.index = index;
     this.rpc = rpc;
     this.directoryAddress = directoryAddress;
     this.chainId = chainId;
+    this.db = dbRepository;
+    this.broker = broker;
 
     this.start();
   }
@@ -75,6 +77,49 @@ export class ChainWorker {
     };
   }
 
+  private logDisconnectedStateIfNeeded() {
+    const now = new Date().getTime();
+
+    if (this.disconnectedTimestamp < 0) {
+      this.disconnectedTimestamp = now;
+    }
+
+    const deltaMs = now - this.disconnectedTimestamp;
+
+    if (deltaMs >= Config.delays.nodeDownAlertDelayMs) {
+      const firstAlert = this.cumulatedNodeDowntime === 0;
+
+      this.cumulatedNodeDowntime += deltaMs;
+      this.disconnectedTimestamp = now;
+
+      if (firstAlert) {
+        log.error({
+          chainId: this.chainId,
+          msg: "Blockchain provider is down !",
+          downtimeSeconds: Math.round(this.cumulatedNodeDowntime / 1000),
+        });
+      }
+    }
+  }
+
+  private logDowntimeAfterReconnection() {
+    if (this.disconnectedTimestamp < 0 && this.cumulatedNodeDowntime === 0) {
+      return;
+    }
+
+    const deltaMs = new Date().getTime() - this.disconnectedTimestamp;
+    this.cumulatedNodeDowntime += deltaMs;
+
+    log.warn({
+      chainId: this.chainId,
+      msg: "Blockchain provider was down !",
+      downtimeSeconds: Math.round(this.cumulatedNodeDowntime / 1000),
+    });
+
+    this.disconnectedTimestamp = -1;
+    this.cumulatedNodeDowntime = 0;
+  }
+
   private createProvider() {
     this.provider = new AutoWebSocketProvider(this.rpc, {
       chainId: this.chainId,
@@ -88,16 +133,26 @@ export class ChainWorker {
     this.wsStatus = WsStatus[this.provider.websocket.readyState];
 
     this.provider.on("error", (...args) => {
-      if (this.wsStatus === WsStatus[0]) {
-        Metrics.connectionFailed(this.chainId);
+      if (args[0] === "WebSocket closed") {
+        if (this.wsStatus === WsStatus[0]) {
+          Metrics.connectionFailed(this.chainId);
+        }
+        log.warn({
+          msg: `Websocket connection lost to rpc ${this.rpc}`,
+          args,
+          chainId: this.chainId,
+        });
+        this.providerStatus = "DISCONNECTED";
+        this.stop();
+
+        this.logDisconnectedStateIfNeeded();
+      } else if (typeof args[0] === "string") {
+        log.error({
+          msg: `Websocket unknown error on ${this.rpc}`,
+          args,
+          chainId: this.chainId,
+        });
       }
-      log.warn({
-        msg: `Websocket connection lost to rpc ${this.rpc}`,
-        args,
-        chainId: this.chainId,
-      });
-      this.providerStatus = ProviderStatus.DISCONNECTED;
-      this.stop();
     });
     this.provider.on("debug", (...args) => {
       log.debug({ args, chainId: this.chainId });
@@ -105,6 +160,8 @@ export class ChainWorker {
 
     this.provider.ready
       .then((network) => {
+        this.logDowntimeAfterReconnection();
+
         log.info({
           msg: "Connected to network",
           network,
@@ -116,7 +173,7 @@ export class ChainWorker {
         }
 
         this.name = network.name;
-        this.providerStatus = ProviderStatus.CONNECTED;
+        this.providerStatus = "CONNECTED";
 
         return network;
       })
@@ -126,10 +183,12 @@ export class ChainWorker {
           err,
           chainId: this.chainId,
         });
-        this.providerStatus = ProviderStatus.DISCONNECTED;
+        this.providerStatus = "DISCONNECTED";
         this.wsStatus = WsStatus[WebSocket.CLOSED];
         Metrics.connectionFailed(this.chainId);
         this.stop();
+
+        this.logDisconnectedStateIfNeeded();
       });
 
     let prevWsStatus = this.wsStatus;
@@ -141,21 +200,21 @@ export class ChainWorker {
       if (this.wsStatus !== prevWsStatus) {
         prevWsStatus = this.wsStatus;
 
-        if (this.providerStatus !== ProviderStatus.DISCONNECTED && ["CLOSING", "CLOSED"].includes(this.wsStatus)) {
+        if (this.providerStatus !== "DISCONNECTED" && ["CLOSING", "CLOSED"].includes(this.wsStatus)) {
           log.warn({
             msg: `Websocket crashed : ${this.name}`,
             chainId: this.chainId,
           });
         }
 
-        if (this.providerStatus !== ProviderStatus.CONNECTING && this.wsStatus === "CONNECTING") {
+        if (this.providerStatus !== "CONNECTING" && this.wsStatus === "CONNECTING") {
           log.info({
             msg: `Websocket connecting : ${this.name}`,
             chainId: this.chainId,
           });
         }
 
-        if (this.providerStatus !== ProviderStatus.CONNECTED && this.wsStatus === "OPEN") {
+        if (this.providerStatus !== "CONNECTED" && this.wsStatus === "OPEN") {
           log.info({
             msg: `Websocket connected : ${this.name}`,
             chainId: this.chainId,
@@ -184,7 +243,7 @@ export class ChainWorker {
 
     this.worker = this.provider.ready
       .then(async () => {
-        this.workerStatus = WorkerStatus.STARTED;
+        this.workerStatus = "STARTED";
 
         Metrics.workerStarted(this.chainId);
 
@@ -194,7 +253,7 @@ export class ChainWorker {
               msg: `Worker stopped itself on network ${this.name}`,
               chainId: this.chainId,
             });
-            this.workerStatus = WorkerStatus.CRASHED;
+            this.workerStatus = "CRASHED";
             this.stop();
           })
           .catch((err: any) => {
@@ -203,7 +262,7 @@ export class ChainWorker {
               err,
               chainId: this.chainId,
             });
-            this.workerStatus = WorkerStatus.CRASHED;
+            this.workerStatus = "CRASHED";
             this.stop();
           });
       })
@@ -221,28 +280,13 @@ export class ChainWorker {
     });
 
     try {
-      this.eventListener = new EventListener();
-      this.directory = new Directory(this.eventListener, this.chainId, this.provider, this.directoryAddress);
-      const blockNumber = await this.provider.getBlockNumber();
+      this.blockchain = new BlockchainRepository(this.chainId, this.provider, this.db, this.broker);
+      this.contractsWatcher = new ContractsWatcher(this.chainId, this.blockchain);
 
-      log.info({
-        msg: "Initializing directory",
-        chainId: this.chainId,
-        blockNumber,
-        blockNumberBeforeDisconnect: this.blockNumberBeforeDisconnect,
-      });
+      await this.contractsWatcher.registerDirectory(this.directoryAddress);
 
-      const session = await mongoose.startSession();
-
-      await this.directory.init(session, blockNumber, true);
-      await session.endSession();
-      log.info({
-        msg: `Initialization complete for ${this.name} subscribing to updates`,
-        chainId: this.chainId,
-      });
-      this.directory.subscribeToEvents();
       this.subscribeToNewBlocks();
-      await subscribeToUserBalancesLoading(this.directory);
+      await subscribeToUserBalancesLoading(this.chainId, this.db, this.blockchain, this.broker);
     } catch (err) {
       log.error({
         msg: `Error happened running worker on network ${this.name}`,
@@ -257,15 +301,15 @@ export class ChainWorker {
   }
 
   private async stop() {
-    if (this.providerStatus === ProviderStatus.DEAD && this.workerStatus === WorkerStatus.DEAD) return;
+    if (this.providerStatus === "DEAD" && this.workerStatus === "DEAD") return;
 
     Metrics.workerStopped(this.chainId);
 
-    this.eventListener?.destroy();
-    this.eventListener = undefined;
+    await this.contractsWatcher?.unregisterDirectory(this.directoryAddress);
 
-    this.directory?.destroy();
-    this.directory = undefined;
+    this.blockchain?.destroy();
+    this.blockchain = undefined;
+
     this.provider?.removeAllListeners();
     this.worker = undefined;
 
@@ -287,34 +331,10 @@ export class ChainWorker {
       this.pongTimeout = undefined;
     }
 
-    const pendingEvents = await EventModel.find({
-      chainId: this.chainId,
-      status: EventHandlerStatus.QUEUED,
-    });
-    const failedEvents = await EventModel.find({
-      chainId: this.chainId,
-      status: EventHandlerStatus.FAILURE,
-    });
-    if (pendingEvents.length > 0) {
-      log.warn({
-        msg: `Found ${pendingEvents.length} pending events ! will remove them`,
-        chainId: this.chainId,
-      });
-    }
-    if (failedEvents.length > 0) {
-      log.warn({
-        msg: `Found ${failedEvents.length} failed events ! will remove them`,
-        events: failedEvents.map((event) => event.toJSON()),
-        chainId: this.chainId,
-      });
-    }
-    await EventModel.deleteMany({
-      chainId: this.chainId,
-      status: { $in: [EventHandlerStatus.QUEUED, EventHandlerStatus.FAILURE] },
-    });
+    await this.db.deletePendingAndFailedEvents(this.chainId);
 
-    this.providerStatus = ProviderStatus.DEAD;
-    this.workerStatus = WorkerStatus.DEAD;
+    this.providerStatus = "DEAD";
+    this.workerStatus = "DEAD";
     this.restartCount++;
   }
 }

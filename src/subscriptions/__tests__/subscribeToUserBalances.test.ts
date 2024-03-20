@@ -1,17 +1,26 @@
-import { ClientSession } from "mongodb";
-import mongoose from "mongoose";
-import { pubSub } from "../../graphql";
-import { Directory } from "../../loaders/Directory";
-import { type EventListener } from "../../loaders/EventListener";
-import { type AutoWebSocketProvider } from "../../util";
+import { Repeater } from "graphql-yoga";
+import { AbstractBlockchainRepository } from "../../core/AbstractBlockchainRepository";
+import { AbstractBroker } from "../../core/AbstractBroker";
+import { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import { MockBlockchainRepository } from "../../core/__mocks__/MockBlockchainRepository";
+import { MockBroker } from "../../core/__mocks__/MockBroker";
+import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 import subscribeToUserBalancesLoading from "../subscribeToUserBalances";
 
-jest.mock("../../globals/config");
-jest.mock("../../graphql");
-jest.mock("../../loaders/Directory");
+jest.mock("../../config");
 
 describe("User balances subscriptions", () => {
   let generatorCount = 0;
+
+  let db: jest.Mocked<AbstractDbRepository>;
+  let blockchain: jest.Mocked<AbstractBlockchainRepository>;
+  let broker: jest.Mocked<AbstractBroker>;
+
+  beforeEach(() => {
+    db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
+    blockchain = new MockBlockchainRepository() as jest.Mocked<AbstractBlockchainRepository>;
+    broker = new MockBroker() as jest.Mocked<AbstractBroker>;
+  });
 
   async function waitForGeneratorToComplete(count: number) {
     return new Promise((resolve, reject) => {
@@ -41,72 +50,66 @@ describe("User balances subscriptions", () => {
       generatorCount++;
     }
 
-    const getBlockNumber = jest.fn();
-    const directory = new Directory(
-      undefined as unknown as EventListener,
-      1337,
-      undefined as unknown as AutoWebSocketProvider,
-      "0xDIRECTORY",
-    );
-    Object.defineProperty(directory, "chainId", { value: 1337 });
-    Object.defineProperty(directory, "provider", { value: { getBlockNumber } });
-
-    getBlockNumber.mockResolvedValue(15);
+    blockchain.getBlockNumber.mockResolvedValue(15);
 
     const generatorInstance = generator();
 
-    (pubSub as any).subscribe.mockReturnValueOnce(generatorInstance);
+    broker.subscribeBalanceLoadingRequests.mockReturnValueOnce(generatorInstance as unknown as Repeater<any>);
 
-    const mockSession = new ClientSession();
-    (mongoose as any).startSession.mockResolvedValue(mockSession);
-    (mockSession as any).withTransaction.mockImplementation(async (fn: () => Promise<void>) => await fn());
+    blockchain.getLastState.mockResolvedValue(null);
+    blockchain.loadUserBalances
+      .mockResolvedValueOnce({ user: "0xUSER1", address: "0xADDR1" } as IUserBalance)
+      .mockResolvedValueOnce({ user: "0xUSER2", address: "0xADDR2" } as IUserBalance);
 
-    await subscribeToUserBalancesLoading(directory);
+    await subscribeToUserBalancesLoading(1337, db, blockchain, broker);
     await waitForGeneratorToComplete(3);
 
-    expect(getBlockNumber).toBeCalledTimes(3);
-    expect(pubSub.subscribe).toHaveBeenNthCalledWith(1, "UserBalance.1337/load");
-    expect(mongoose.startSession).toBeCalledTimes(3);
-    expect(mockSession.withTransaction).toBeCalledTimes(3);
-    expect(mockSession.endSession).toBeCalledTimes(3);
-    expect(directory.loadAllUserBalances).toHaveBeenNthCalledWith(1, mockSession, "0xUSER1", 15, "0xADDR1");
-    expect(directory.loadAllUserBalances).toHaveBeenNthCalledWith(2, mockSession, "0xUSER2", 15, "0xADDR2");
-    expect(directory.loadAllUserBalances).toHaveBeenNthCalledWith(3, mockSession, "0xUSER3", 15, undefined);
+    expect(broker.subscribeBalanceLoadingRequests).toHaveBeenCalledTimes(1);
+
+    expect(blockchain.getBlockNumber).toBeCalledTimes(3);
+    expect(blockchain.getLastState).toBeCalledTimes(2);
+    expect(blockchain.loadUserBalances).toHaveBeenNthCalledWith(1, 15, "0xUSER1", "0xADDR1", undefined, undefined);
+    expect(blockchain.loadUserBalances).toHaveBeenNthCalledWith(2, 15, "0xUSER2", "0xADDR2", undefined, undefined);
+    expect(db.saveBalance).toHaveBeenNthCalledWith(1, { user: "0xUSER1", address: "0xADDR1" });
+    expect(db.saveBalance).toHaveBeenNthCalledWith(2, { user: "0xUSER2", address: "0xADDR2" });
+    expect(blockchain.loadAllUserBalances).toBeCalledWith("0xUSER3", 15);
   });
 
-  it("should catch errors on user balances loading requests", async () => {
+  it("should reload user balances when requested", async () => {
     generatorCount = 0;
     function* generator(): Generator<object> {
-      yield { user: "0xUSER1", address: "0xADDR1" };
+      yield { user: "0xUSER1", address: "0xCT" };
       generatorCount++;
     }
 
-    const getBlockNumber = jest.fn();
-    const directory = new Directory(
-      undefined as unknown as EventListener,
-      1337,
-      undefined as unknown as AutoWebSocketProvider,
-      "0xDIRECTORY",
-    );
-    Object.defineProperty(directory, "chainId", { value: 1337 });
-    Object.defineProperty(directory, "provider", { value: { getBlockNumber } });
-
-    getBlockNumber.mockImplementation(async () => 15);
+    blockchain.getBlockNumber.mockResolvedValue(15);
 
     const generatorInstance = generator();
 
-    (pubSub as any).subscribe.mockReturnValueOnce(generatorInstance);
+    broker.subscribeBalanceLoadingRequests.mockReturnValueOnce(generatorInstance as unknown as Repeater<any>);
 
-    (mongoose as any).startSession.mockImplementation(async () => {
-      throw new Error("triggered error");
-    });
+    blockchain.getLastState
+      .mockResolvedValueOnce({ address: "0xCT", interfaceProjectToken: "0xIFACE" })
+      .mockResolvedValueOnce({ projectToken: "0xPT" });
 
-    await subscribeToUserBalancesLoading(directory);
+    blockchain.loadUserBalances.mockResolvedValueOnce({
+      user: "0xUSER1",
+      address: "0xCT",
+      ptAddress: "0xPT",
+    } as IUserBalance);
+
+    await subscribeToUserBalancesLoading(1337, db, blockchain, broker);
     await waitForGeneratorToComplete(1);
 
-    expect(getBlockNumber).toBeCalledTimes(1);
-    expect(pubSub.subscribe).toHaveBeenNthCalledWith(1, "UserBalance.1337/load");
-    expect(mongoose.startSession).toBeCalledTimes(1);
-    expect(directory.loadAllUserBalances).not.toBeCalled();
+    expect(broker.subscribeBalanceLoadingRequests).toBeCalled();
+    expect(blockchain.getBlockNumber).toBeCalled();
+    expect(blockchain.getLastState).toHaveBeenNthCalledWith(1, "ChargedToken", "0xCT");
+    expect(blockchain.getLastState).toHaveBeenNthCalledWith(2, "InterfaceProjectToken", "0xIFACE");
+    expect(blockchain.loadUserBalances).toBeCalledWith(15, "0xUSER1", "0xCT", "0xIFACE", "0xPT");
+    expect(db.saveBalance).toBeCalledWith({
+      user: "0xUSER1",
+      address: "0xCT",
+      ptAddress: "0xPT",
+    });
   });
 });
