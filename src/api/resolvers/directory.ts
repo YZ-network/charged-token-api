@@ -11,8 +11,12 @@ const log = rootLogger.child({ name: "DirectoryQueryResolver" });
 export const DirectoryQueryResolverFactory =
   (db: AbstractDbRepository) =>
   async (_: any, { chainId }: { chainId: number }) => {
-    if (!Config.networks.map((network) => network.chainId).includes(chainId)) {
+    const network = Config.networks.find((network) => network.chainId === chainId);
+
+    if (network === undefined) {
       throw new GraphQLError("UNKNOWN_NETWORK");
+    } else if (!network.enabled) {
+      throw new GraphQLError("DISABLED_NETWORK");
     }
 
     const directory = await db.getDirectory(chainId);

@@ -10,7 +10,7 @@ import { ChainWorker } from "./worker";
 const log = rootLogger.child({ name: "Main" });
 
 export class MainClass {
-  readonly networks = Config.networks;
+  readonly networks = Config.networks.filter((network) => network.enabled === true);
 
   keepAlive: NodeJS.Timeout | undefined;
   healthTimer: NodeJS.Timeout | undefined;

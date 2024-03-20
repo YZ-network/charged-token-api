@@ -154,6 +154,7 @@ interface JsonNetworkConfig {
   chainId: number;
   uri: string;
   directory: string;
+  enabled?: boolean;
 }
 
 interface JsonDelaysConfig {
