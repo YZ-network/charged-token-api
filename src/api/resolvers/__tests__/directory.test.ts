@@ -11,18 +11,26 @@ describe("Directory query resolver", () => {
     resolver = DirectoryQueryResolverFactory(db);
   });
 
-  it("should query for a directory by chain id and throw when not found", async () => {
-    const chainId = 129;
+  it("should throw when the chain id is not in the known networks", async () => {
+    const chainId = 1337;
 
     db.getDirectory.mockResolvedValueOnce(null);
 
-    await expect(resolver(undefined, { chainId })).rejects.toThrow("Directory not found !");
+    await expect(resolver(undefined, { chainId })).rejects.toThrow("DIRECTORY_NOT_FOUND");
 
     expect(db.getDirectory).toBeCalledWith(chainId);
   });
 
-  it("should query for a directory by chain id and return", async () => {
+  it("should throw when the directory is not found", async () => {
     const chainId = 129;
+
+    await expect(resolver(undefined, { chainId })).rejects.toThrow("UNKNOWN_NETWORK");
+
+    expect(db.getDirectory).not.toBeCalled();
+  });
+
+  it("should query for a directory by chain id and return", async () => {
+    const chainId = 1337;
 
     const loadedModel = {
       chainId,
