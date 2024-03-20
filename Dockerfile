@@ -1,6 +1,4 @@
-FROM node:18-bullseye
-
-RUN apt update && apt install -y jq
+FROM node:18-alpine
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
