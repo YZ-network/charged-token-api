@@ -38,5 +38,5 @@ runs:
           sudo docker exec $DB_CONTAINER mongosh \
             --eval "use $DATABASE;" \
             --eval "db.dropDatabase()"
-          sudo docker stop $CONTAINER"
+          sudo docker start $CONTAINER
         EOF
