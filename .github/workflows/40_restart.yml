@@ -26,9 +26,10 @@ jobs:
       - name: Restart
         uses: ./.github/actions/restart-api
         with:
-          SSH_KEY: ${{ secrets.SSH_KEY }}
-          API_HOST: ${{ env.API_HOST }}
-          CONTAINER: ${{ env.TEST_API_CONTAINER }}
+          apiHost: ${{ env.API_HOST }}
+          container: ${{ env.TEST_API_CONTAINER }}
+        secrets:
+          sshKey: ${{ secrets.SSH_KEY }}
 
   restart-production:
     if: inputs.environment == 'production' || inputs.environment == 'both'
@@ -40,6 +41,7 @@ jobs:
       - name: Restart
         uses: ./.github/actions/restart-api
         with:
-          SSH_KEY: ${{ secrets.SSH_KEY }}
-          API_HOST: ${{ env.API_HOST }}
-          CONTAINER: ${{ env.PROD_API_CONTAINER }}
+          apiHost: ${{ env.API_HOST }}
+          container: ${{ env.PROD_API_CONTAINER }}
+        secrets:
+          sshKey: ${{ secrets.SSH_KEY }}
