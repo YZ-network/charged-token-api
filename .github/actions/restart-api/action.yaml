@@ -10,9 +10,6 @@ inputs:
   sshKey:
     type: string
     required: true
-  multiVar:
-    type: string
-    required: true
 
 runs:
   using: "composite"
@@ -23,17 +20,21 @@ runs:
         SSH_KEY: ${{ inputs.sshKey }}
         API_HOST: ${{ inputs.apiHost }}
         CONTAINER: ${{ inputs.container }}
-        MULTI_VAR: ${{ inputs.multiVar }}
       run: |
-        echo $MULTI_VAR > multiVar.txt
-        cat multiVar.txt
+        eval $(ssh-agent -s)
+
+        mkdir -p ~/.ssh
+        touch ~/.ssh/config
+        touch ~/.ssh/known_hosts
+        chmod -R 400 ~/.ssh
+        echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
 
         echo "$SSH_KEY" | tr -d '\r' | ssh-add -
         echo "saving sshkey returned $?"
 
-        ssh-keyscan <ip> >> ~/.ssh/known_hosts
+        ssh-keyscan $API_HOST >> ~/.ssh/known_hosts
         echo "ssh-keyscan returned $?"
 
-        echo running : ssh -vvv -o StrictHostKeyChecking=no -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
-        ssh -vvv -o StrictHostKeyChecking=no -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
+        echo running : ssh -vvv ec2-user@$API_HOST "sudo docker restart $CONTAINER"
+        ssh -vvv ec2-user@$API_HOST "sudo docker restart $CONTAINER"
         echo "ssh command returned $?"
