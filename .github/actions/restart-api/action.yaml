@@ -23,6 +23,7 @@ runs:
       run: |
         eval $(ssh-agent -s)
 
+        chmod 755 ~
         mkdir -p ~/.ssh
         touch ~/.ssh/config
         touch ~/.ssh/known_hosts
