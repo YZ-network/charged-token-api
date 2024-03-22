@@ -36,7 +36,12 @@ runs:
         DB_URL="mongodb://localhost/${DATABASE}?directConnection=true&serverSelectionTimeoutMS=30000"
 
         cat <<EOF | ssh $SSH_CONFIG ec2-user@$API_HOST
+          echo "Stopping $CONTAINER"
           sudo docker stop $CONTAINER
+          
+          echo "Removing $DATABASE database"
           sudo docker exec $DB_CONTAINER mongosh $DB_URL --eval "use ${DATABASE}" --eval "db.dropDatabase()"
+          
+          echo "Starting $CONTAINER"
           sudo docker start $CONTAINER
         EOF
