@@ -4,6 +4,7 @@ import { configureApiServer } from "./api/server";
 import { Broker } from "./broker";
 import { Config } from "./config";
 import { DbRepository } from "./db/DbRepository";
+import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";
 import { ChainWorker } from "./worker";
 
@@ -84,6 +85,7 @@ export class MainClass {
       chainId,
     });
 
+    Metrics.chainInit(chainId);
     this.workers.push(new ChainWorker(index, rpc, directory, chainId, this.db, this.broker));
   }
 }

@@ -44,6 +44,7 @@ describe("Metrics", () => {
   });
 
   it("should update metrics after connected", () => {
+    Metrics.chainInit(chainId);
     Metrics.connected(chainId);
 
     expect(Metrics.connectionStateGaugePerNetId[chainId]).toBe(1);
@@ -54,6 +55,7 @@ describe("Metrics", () => {
   });
 
   it("should update metrics after connectionFailed", () => {
+    Metrics.chainInit(chainId);
     Metrics.connectionFailed(chainId);
 
     expect(Metrics.connectionFailedCounterPerNetId[chainId]).toBe(1);
@@ -64,6 +66,7 @@ describe("Metrics", () => {
   });
 
   it("should update metrics after connectionFailed", () => {
+    Metrics.chainInit(chainId);
     Metrics.connectionFailed(chainId);
 
     expect(Metrics.connectionFailedCounterPerNetId[chainId]).toBe(1);
@@ -74,6 +77,7 @@ describe("Metrics", () => {
   });
 
   it("should update metrics after disconnect", () => {
+    Metrics.chainInit(chainId);
     Metrics.disconnected(chainId);
 
     expect(Metrics.connectionLostCounterPerNetId[chainId]).toBe(1);
@@ -86,6 +90,7 @@ describe("Metrics", () => {
   });
 
   it("should update worker state after started or stopped", () => {
+    Metrics.chainInit(chainId);
     Metrics.workerStarted(chainId);
 
     expect(Metrics.workerStateGaugePerNetId[chainId]).toBe(1);
@@ -104,21 +109,23 @@ describe("Metrics", () => {
   });
 
   it("should update request counters", () => {
-    expect(Metrics.requestCounterPerNetId[chainId]).toBeUndefined();
-    expect(Metrics.requestResponseCounterPerNetId[chainId]).toBeUndefined();
-    expect(Metrics.requestErrorCounterPerNetId[chainId]).toBeUndefined();
+    Metrics.chainInit(chainId);
+
+    expect(Metrics.requestCounterPerNetId[chainId]).toBe(0);
+    expect(Metrics.requestResponseCounterPerNetId[chainId]).toBe(0);
+    expect(Metrics.requestErrorCounterPerNetId[chainId]).toBe(0);
 
     Metrics.requestSent(chainId);
 
     expect(Metrics.requestCounterPerNetId[chainId]).toBe(1);
-    expect(Metrics.requestResponseCounterPerNetId[chainId]).toBeUndefined();
-    expect(Metrics.requestErrorCounterPerNetId[chainId]).toBeUndefined();
+    expect(Metrics.requestResponseCounterPerNetId[chainId]).toBe(0);
+    expect(Metrics.requestErrorCounterPerNetId[chainId]).toBe(0);
 
     Metrics.requestReplied(chainId);
 
     expect(Metrics.requestCounterPerNetId[chainId]).toBe(1);
     expect(Metrics.requestResponseCounterPerNetId[chainId]).toBe(1);
-    expect(Metrics.requestErrorCounterPerNetId[chainId]).toBeUndefined();
+    expect(Metrics.requestErrorCounterPerNetId[chainId]).toBe(0);
 
     Metrics.requestFailed(chainId);
 
@@ -128,7 +135,9 @@ describe("Metrics", () => {
   });
 
   it("should update events counters", () => {
-    expect(Metrics.eventCounterPerNetId[chainId]).toBeUndefined();
+    Metrics.chainInit(chainId);
+
+    expect(Metrics.eventCounterPerNetId[chainId]).toBe(0);
 
     Metrics.eventReceived(chainId);
 
@@ -140,7 +149,9 @@ describe("Metrics", () => {
   });
 
   it("should update subscriptions counters", () => {
-    expect(Metrics.subscriptionGaugePerNetId[chainId]).toBeUndefined();
+    Metrics.chainInit(chainId);
+
+    expect(Metrics.subscriptionGaugePerNetId[chainId]).toBe(0);
 
     Metrics.setSubscriptionCount(chainId, 5);
 
@@ -148,6 +159,8 @@ describe("Metrics", () => {
   });
 
   it("should dump prometheus formatted metrics", () => {
+    Metrics.chainInit(chainId);
+
     Metrics.connected(chainId);
     Metrics.connectionFailed(chainId);
     Metrics.connectionFailed(chainId);

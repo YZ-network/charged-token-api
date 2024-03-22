@@ -54,12 +54,11 @@ class MetricsClass {
   }
 
   connected(chainId: number) {
-    this.chainInit(chainId);
     this.connectionStateGaugePerNetId[chainId] = 1;
   }
 
   connectionFailed(chainId: number) {
-    this.chainInit(chainId);
+    this.connectionStateGaugePerNetId[chainId] = 0;
     this.connectionFailedCounterPerNetId[chainId]++;
   }
 
@@ -72,12 +71,10 @@ class MetricsClass {
   }
 
   workerStarted(chainId: number) {
-    this.chainInit(chainId);
     this.workerStateGaugePerNetId[chainId] = 1;
   }
 
   workerStopped(chainId: number) {
-    this.chainInit(chainId);
     this.workerStateGaugePerNetId[chainId] = 0;
   }
 
