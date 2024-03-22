@@ -8,6 +8,10 @@ inputs:
     type: string
     required: true
   sshKey:
+    type: string
+    required: true
+  multiVar:
+    type: string
     required: true
 
 runs:
