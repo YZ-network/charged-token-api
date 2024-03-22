@@ -1,0 +1,41 @@
+name: Restart API
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Which environment to restart"
+        type: choice
+        options:
+          - testing
+          - production
+          - both
+        required: true
+        default: "testing"
+
+concurrency: ${{ github.ref }}
+
+jobs:
+  restart-testing:
+    if: inputs.environment == 'testing' || inputs.environment == 'both'
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Restart
+        uses: ./actions/restart-api
+        with:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          API_HOST: ${{ env.API_HOST }}
+          CONTAINER: ${{ env.TEST_API_CONTAINER }}
+
+  restart-production:
+    if: inputs.environment == 'production' || inputs.environment == 'both'
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Restart
+        uses: ./actions/restart-api
+        with:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          API_HOST: ${{ env.API_HOST }}
+          CONTAINER: ${{ env.PROD_API_CONTAINER }}
