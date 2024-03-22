@@ -1,0 +1,13 @@
+runs:
+  using: "composite"
+  steps:
+    - name: Restart API container
+      shell: bash
+      env:
+        SSH_KEY: ${{ env.SSH_KEY }}
+        API_HOST: ${{ env.API_HOST }}
+        CONTAINER: ${{ env.CONTAINER }}
+      run: |
+        echo $SSH_KEY > id_rsa
+        ssh -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
+        rm id_rsa
