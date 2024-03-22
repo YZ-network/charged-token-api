@@ -34,7 +34,6 @@ export class MainClass {
       log.info("MongoDB connected !");
 
       this.networks.forEach((network, index) => {
-        Metrics.chainInit(network.chainId);
         this.connectChain(index, network.uri, network.directory, network.chainId);
       });
 
@@ -86,6 +85,7 @@ export class MainClass {
       chainId,
     });
 
+    Metrics.chainInit(chainId);
     this.workers.push(new ChainWorker(index, rpc, directory, chainId, this.db, this.broker));
   }
 }

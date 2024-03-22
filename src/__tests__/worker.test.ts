@@ -24,6 +24,7 @@ describe("ChainWorker", () => {
   beforeEach(() => {
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
     broker = new MockBroker() as jest.Mocked<AbstractBroker>;
+    Metrics.chainInit(CHAIN_ID);
   });
 
   afterEach(() => {
@@ -190,8 +191,8 @@ describe("ChainWorker", () => {
     expect(worker.wsWatch).toBeDefined();
     expect(worker.worker).toBeDefined();
 
-    expect(Metrics.connectionFailedCounterPerNetId[CHAIN_ID]).toBeUndefined();
-    expect(Metrics.workerStateGaugePerNetId[CHAIN_ID]).toBeUndefined();
+    expect(Metrics.connectionFailedCounterPerNetId[CHAIN_ID]).toBe(0);
+    expect(Metrics.workerStateGaugePerNetId[CHAIN_ID]).toBe(0);
     expect(worker.restartCount).toBe(0);
 
     const provider = worker.provider;
@@ -225,8 +226,8 @@ describe("ChainWorker", () => {
     expect(worker.wsWatch).toBeDefined();
     expect(worker.worker).toBeDefined();
 
-    expect(Metrics.connectionFailedCounterPerNetId[CHAIN_ID]).toBeUndefined();
-    expect(Metrics.workerStateGaugePerNetId[CHAIN_ID]).toBeUndefined();
+    expect(Metrics.connectionFailedCounterPerNetId[CHAIN_ID]).toBe(0);
+    expect(Metrics.workerStateGaugePerNetId[CHAIN_ID]).toBe(0);
     expect(worker.restartCount).toBe(0);
 
     const provider = worker.provider;
