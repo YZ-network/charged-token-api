@@ -28,7 +28,6 @@ jobs:
         with:
           apiHost: ${{ env.API_HOST }}
           container: ${{ env.TEST_API_CONTAINER }}
-        secrets:
           sshKey: ${{ secrets.SSH_KEY }}
 
   restart-production:
@@ -43,5 +42,4 @@ jobs:
         with:
           apiHost: ${{ env.API_HOST }}
           container: ${{ env.PROD_API_CONTAINER }}
-        secrets:
           sshKey: ${{ secrets.SSH_KEY }}
