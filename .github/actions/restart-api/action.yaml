@@ -21,5 +21,5 @@ runs:
         CONTAINER: ${{ inputs.container }}
       run: |
         echo $SSH_KEY > id_rsa
-        ssh -q -o "StrictHostKeyChecking accept-new" -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
-        rm id_rsa
+        ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
+        rm -f id_rsa
