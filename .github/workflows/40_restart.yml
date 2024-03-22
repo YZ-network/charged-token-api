@@ -26,8 +26,8 @@ jobs:
       - name: Restart
         uses: ./.github/actions/restart-api
         with:
-          apiHost: ${{ env.API_HOST }}
-          container: ${{ env.TEST_API_CONTAINER }}
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.TEST_API_CONTAINER }}
           sshKey: ${{ secrets.SSH_KEY }}
 
   restart-production:
@@ -40,6 +40,6 @@ jobs:
       - name: Restart
         uses: ./.github/actions/restart-api
         with:
-          apiHost: ${{ env.API_HOST }}
-          container: ${{ env.PROD_API_CONTAINER }}
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.PROD_API_CONTAINER }}
           sshKey: ${{ secrets.SSH_KEY }}
