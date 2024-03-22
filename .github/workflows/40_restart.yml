@@ -22,7 +22,7 @@ jobs:
     environment: dev
     steps:
       - name: Restart
-        uses: ./actions/restart-api
+        uses: ./.github/actions/restart-api
         with:
           SSH_KEY: ${{ secrets.SSH_KEY }}
           API_HOST: ${{ env.API_HOST }}
@@ -34,7 +34,7 @@ jobs:
     environment: dev
     steps:
       - name: Restart
-        uses: ./actions/restart-api
+        uses: ./.github/actions/restart-api
         with:
           SSH_KEY: ${{ secrets.SSH_KEY }}
           API_HOST: ${{ env.API_HOST }}
