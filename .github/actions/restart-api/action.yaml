@@ -28,15 +28,12 @@ runs:
         echo $MULTI_VAR > multiVar.txt
         cat multiVar.txt
 
-        echo $SSH_KEY | tr -d '\r' > id_rsa
+        echo "$SSH_KEY" | tr -d '\r' | ssh-add -
         echo "saving sshkey returned $?"
 
-        chmod 600 id_rsa
-        echo "chmod sshkey returned $?"
+        ssh-keyscan <ip> >> ~/.ssh/known_hosts
+        echo "ssh-keyscan returned $?"
 
-        echo running : ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
-        ssh -vvv -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
+        echo running : ssh -vvv -o StrictHostKeyChecking=no -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
+        ssh -vvv -o StrictHostKeyChecking=no -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
         echo "ssh command returned $?"
-
-        rm -f id_rsa
-        echo "rm returned $?"
