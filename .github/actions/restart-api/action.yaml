@@ -23,19 +23,9 @@ runs:
       run: |
         eval $(ssh-agent -s)
 
-        chmod 755 ~
-        mkdir -p ~/.ssh
-        touch ~/.ssh/config
-        touch ~/.ssh/known_hosts
-        chmod -R 400 ~/.ssh
-        echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-
         echo "$SSH_KEY" | tr -d '\r' | ssh-add -
         echo "saving sshkey returned $?"
 
-        ssh-keyscan $API_HOST >> ~/.ssh/known_hosts
-        echo "ssh-keyscan returned $?"
-
         echo running : ssh -vvv ec2-user@$API_HOST "sudo docker restart $CONTAINER"
-        ssh -vvv ec2-user@$API_HOST "sudo docker restart $CONTAINER"
+        ssh -vvv -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@$API_HOST "sudo docker restart $CONTAINER"
         echo "ssh command returned $?"
