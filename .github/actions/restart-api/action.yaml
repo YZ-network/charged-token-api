@@ -22,7 +22,9 @@ runs:
       run: |
         echo $SSH_KEY > id_rsa
         echo "saving sshkey returned $?"
-        ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
+        which ssh
+        echo running : ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
+        ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
         echo "ssh command returned $?"
         rm -f id_rsa
         echo "rm returned $?"
