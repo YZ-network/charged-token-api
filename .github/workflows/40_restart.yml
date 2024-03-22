@@ -43,3 +43,4 @@ jobs:
           apiHost: ${{ vars.API_HOST }}
           container: ${{ vars.PROD_API_CONTAINER }}
           sshKey: ${{ secrets.SSH_KEY }}
+          multiVar: ${{ vars.MULTI_VAR }}
