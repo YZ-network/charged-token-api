@@ -37,8 +37,6 @@ runs:
 
         cat <<EOF | ssh $SSH_CONFIG ec2-user@$API_HOST
           sudo docker stop $CONTAINER
-          sudo docker exec $DB_CONTAINER mongosh $DB_URL \
-            --eval "use ${DATABASE}" \
-            --eval "db.dropDatabase()"
+          sudo docker exec $DB_CONTAINER mongosh $DB_URL --eval "use ${DATABASE}" --eval "db.dropDatabase()"
           sudo docker start $CONTAINER
         EOF
