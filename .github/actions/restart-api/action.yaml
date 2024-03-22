@@ -20,7 +20,7 @@ runs:
         API_HOST: ${{ inputs.apiHost }}
         CONTAINER: ${{ inputs.container }}
       run: |
-        echo $SSH_KEY > id_rsa
+        echo $SSH_KEY | tr -d '\r' > id_rsa
         chmod 600 id_rsa
         echo "saving sshkey returned $?"
         which ssh
