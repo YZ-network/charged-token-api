@@ -1,0 +1,63 @@
+name: Reset Database
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Which environment to reset"
+        type: choice
+        options:
+          - testing
+          - production
+          - both
+        required: true
+        default: "testing"
+
+concurrency: ${{ github.ref }}
+
+jobs:
+  reset-testing:
+    if: inputs.environment == 'testing' || inputs.environment == 'both'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+
+      - name: Clear DB
+        uses: ./.github/actions/reset-db
+        with:
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.TEST_API_CONTAINER }}
+          dbContainer: ${{ vars.DB_CONTAINER }}
+          database: ${{ vars.TEST_DB_NAME }}
+          sshKey: ${{ secrets.SSH_KEY }}
+
+      - name: Restart
+        uses: ./.github/actions/restart-api
+        with:
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.TEST_API_CONTAINER }}
+          sshKey: ${{ secrets.SSH_KEY }}
+
+  reset-production:
+    if: inputs.environment == 'production' || inputs.environment == 'both'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+
+      - name: Clear DB
+        uses: ./.github/actions/reset-db
+        with:
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.PROD_API_CONTAINER }}
+          dbContainer: ${{ vars.DB_CONTAINER }}
+          database: ${{ vars.PROD_DB_NAME }}
+          sshKey: ${{ secrets.SSH_KEY }}
+
+      - name: Restart
+        uses: ./.github/actions/restart-api
+        with:
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.PROD_API_CONTAINER }}
+          sshKey: ${{ secrets.SSH_KEY }}
