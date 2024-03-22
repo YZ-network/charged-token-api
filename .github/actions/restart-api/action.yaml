@@ -21,6 +21,7 @@ runs:
         CONTAINER: ${{ inputs.container }}
       run: |
         echo $SSH_KEY > id_rsa
+        chmod 600 id_rsa
         echo "saving sshkey returned $?"
         which ssh
         echo running : ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
