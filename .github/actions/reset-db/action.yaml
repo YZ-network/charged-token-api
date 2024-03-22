@@ -33,10 +33,12 @@ runs:
         echo "$SSH_KEY" | tr -d '\r' | ssh-add -
         SSH_CONFIG="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
+        DB_URL=mongodb://localhost/${DATABASE}?directConnection=true
+
         cat <<EOF | ssh $SSH_CONFIG ec2-user@$API_HOST
           sudo docker stop $CONTAINER
-          sudo docker exec $DB_CONTAINER mongosh \
-            --eval "use $DATABASE;" \
+          sudo docker exec $DB_CONTAINER mongosh $DB_URL \
+            --eval "use ${DATABASE}" \
             --eval "db.dropDatabase()"
           sudo docker start $CONTAINER
         EOF
