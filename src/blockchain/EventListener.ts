@@ -76,7 +76,7 @@ export class EventListener {
     const decodedLog = iface.parseLog(log);
     const args = [...decodedLog.args.values()].map((arg) => arg.toString());
 
-    this.log.info({
+    this.log.debug({
       msg: "queuing event",
       contract: this.constructor.name,
       eventName,
@@ -178,7 +178,7 @@ export class EventListener {
     while (this.queue.length > 0) {
       const [{ eventName, log, loader, iface }] = this._queue.splice(0, 1);
 
-      this.log.info({
+      this.log.debug({
         msg: "Popped event from queue",
         chainId: loader.chainId,
         address: loader.address,

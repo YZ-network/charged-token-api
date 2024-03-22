@@ -51,6 +51,15 @@ export class DelegableToLT extends AbstractHandler<IDelegableToLT> {
           eventName,
           session,
         );
+      } else {
+        this.log.warn({
+          msg: "PT Balance not found in database for update !",
+          chainId: this.chainId,
+          ptAddress: this.address,
+          user: from,
+          contract: this.dataType,
+          eventName,
+        });
       }
     }
     if (to !== EMPTY_ADDRESS) {
@@ -70,6 +79,15 @@ export class DelegableToLT extends AbstractHandler<IDelegableToLT> {
           eventName,
           session,
         );
+      } else {
+        this.log.warn({
+          msg: "PT Balance not found in database for update !",
+          chainId: this.chainId,
+          ptAddress: this.address,
+          user: to,
+          contract: this.dataType,
+          eventName,
+        });
       }
     }
     if (from === EMPTY_ADDRESS) {
