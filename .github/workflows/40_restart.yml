@@ -19,23 +19,27 @@ jobs:
   restart-testing:
     if: inputs.environment == 'testing' || inputs.environment == 'both'
     runs-on: ubuntu-latest
-    environment: dev
     steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+
       - name: Restart
-        uses: ./actions/restart-api
+        uses: ./.github/actions/restart-api
         with:
-          SSH_KEY: ${{ secrets.SSH_KEY }}
-          API_HOST: ${{ env.API_HOST }}
-          CONTAINER: ${{ env.TEST_API_CONTAINER }}
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.TEST_API_CONTAINER }}
+          sshKey: ${{ secrets.SSH_KEY }}
 
   restart-production:
     if: inputs.environment == 'production' || inputs.environment == 'both'
     runs-on: ubuntu-latest
-    environment: dev
     steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+
       - name: Restart
-        uses: ./actions/restart-api
+        uses: ./.github/actions/restart-api
         with:
-          SSH_KEY: ${{ secrets.SSH_KEY }}
-          API_HOST: ${{ env.API_HOST }}
-          CONTAINER: ${{ env.PROD_API_CONTAINER }}
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.PROD_API_CONTAINER }}
+          sshKey: ${{ secrets.SSH_KEY }}

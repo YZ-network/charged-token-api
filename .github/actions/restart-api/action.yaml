@@ -1,0 +1,25 @@
+name: restart-api
+description: "Restart an API container"
+inputs:
+  apiHost:
+    type: string
+    required: true
+  container:
+    type: string
+    required: true
+  sshKey:
+    type: string
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Restart API container
+      shell: bash
+      env:
+        SSH_KEY: ${{ inputs.sshKey }}
+        API_HOST: ${{ inputs.apiHost }}
+        CONTAINER: ${{ inputs.container }}
+      run: |
+        echo "$SSH_KEY" | tr -d '\r' | ssh-add -
+        ssh -vvv -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@$API_HOST "sudo docker restart $CONTAINER"
