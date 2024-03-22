@@ -19,8 +19,10 @@ jobs:
   restart-testing:
     if: inputs.environment == 'testing' || inputs.environment == 'both'
     runs-on: ubuntu-latest
-    environment: dev
     steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+
       - name: Restart
         uses: ./.github/actions/restart-api
         with:
@@ -31,8 +33,10 @@ jobs:
   restart-production:
     if: inputs.environment == 'production' || inputs.environment == 'both'
     runs-on: ubuntu-latest
-    environment: dev
     steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+
       - name: Restart
         uses: ./.github/actions/restart-api
         with:
