@@ -29,6 +29,7 @@ jobs:
           apiHost: ${{ vars.API_HOST }}
           container: ${{ vars.TEST_API_CONTAINER }}
           sshKey: ${{ secrets.SSH_KEY }}
+          multiVar: ${{ vars.MULTI_VAR }}
 
   restart-production:
     if: inputs.environment == 'production' || inputs.environment == 'both'
