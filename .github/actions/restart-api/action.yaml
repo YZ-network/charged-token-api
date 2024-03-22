@@ -21,5 +21,6 @@ runs:
         API_HOST: ${{ inputs.apiHost }}
         CONTAINER: ${{ inputs.container }}
       run: |
+        eval $(ssh-agent -s)
         echo "$SSH_KEY" | tr -d '\r' | ssh-add -
         ssh -vvv -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@$API_HOST "sudo docker restart $CONTAINER"
