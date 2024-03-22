@@ -33,7 +33,7 @@ runs:
         echo "$SSH_KEY" | tr -d '\r' | ssh-add -
         SSH_CONFIG="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
-        DB_URL=mongodb://localhost/${DATABASE}?directConnection=true
+        DB_URL="mongodb://localhost/${DATABASE}?directConnection=true&serverSelectionTimeoutMS=30000"
 
         cat <<EOF | ssh $SSH_CONFIG ec2-user@$API_HOST
           sudo docker stop $CONTAINER
