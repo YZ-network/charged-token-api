@@ -35,7 +35,7 @@ runs:
         echo "chmod sshkey returned $?"
 
         echo running : ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
-        ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
+        ssh -vvv -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i id_rsa ec2-user@$API_HOST "sudo docker restart $CONTAINER"
         echo "ssh command returned $?"
 
         rm -f id_rsa
