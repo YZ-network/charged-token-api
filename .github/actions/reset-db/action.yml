@@ -1,0 +1,37 @@
+name: reset-db
+description: "Reset a Mongo database"
+inputs:
+  apiHost:
+    type: string
+    required: true
+  dbContainer:
+    type: string
+    required: true
+  database:
+    type: string
+    required: true
+  sshKey:
+    type: string
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Reset Database
+      shell: bash
+      env:
+        API_HOST: ${{ inputs.apiHost }}
+        DB_CONTAINER: ${{ inputs.dbContainer }}
+        DATABASE: ${{ inputs.database }}
+        SSH_KEY: ${{ inputs.sshKey }}
+      run: |
+        eval $(ssh-agent -s)
+        echo "$SSH_KEY" | tr -d '\r' | ssh-add -
+        SSH_CONFIG="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+
+        DB_URL="mongodb://localhost/${DATABASE}?directConnection=true&serverSelectionTimeoutMS=30000"
+
+        cat <<EOF | ssh $SSH_CONFIG ec2-user@$API_HOST
+          echo "Removing $DATABASE database"
+          sudo docker exec $DB_CONTAINER mongosh --eval "use ${DATABASE}" --eval "db.dropDatabase()" $DB_URL
+        EOF

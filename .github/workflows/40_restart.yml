@@ -24,10 +24,11 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Restart
-        uses: ./.github/actions/restart-api
+        uses: ./.github/actions/container-cmd
         with:
           apiHost: ${{ vars.API_HOST }}
           container: ${{ vars.TEST_API_CONTAINER }}
+          action: restart
           sshKey: ${{ secrets.SSH_KEY }}
 
   restart-production:
@@ -38,8 +39,9 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Restart
-        uses: ./.github/actions/restart-api
+        uses: ./.github/actions/container-cmd
         with:
           apiHost: ${{ vars.API_HOST }}
-          container: ${{ vars.PROD_API_CONTAINER }}
+          container: ${{ vars.TEST_API_CONTAINER }}
+          action: restart
           sshKey: ${{ secrets.SSH_KEY }}
