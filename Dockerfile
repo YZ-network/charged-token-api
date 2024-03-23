@@ -1,5 +1,8 @@
 FROM node:18-alpine
 
+ARG API_VERSION=dev
+ENV API_VERSION=$API_VERSION
+
 # Installing needed tools for healthchecks
 RUN apk update && apk add curl jq  
 

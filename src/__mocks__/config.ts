@@ -1,3 +1,5 @@
+export const ApiVersion = "test";
+
 export const Config: JsonConfig = {
   db: {
     uri: "mongodb://127.0.0.1:27017/test?replicaSet=rs0",

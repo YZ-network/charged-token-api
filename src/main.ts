@@ -2,7 +2,7 @@ import { Server } from "http";
 import mongoose from "mongoose";
 import { configureApiServer } from "./api/server";
 import { Broker } from "./broker";
-import { Config } from "./config";
+import { ApiVersion, Config } from "./config";
 import { DbRepository } from "./db/DbRepository";
 import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";
@@ -81,13 +81,15 @@ export class MainClass {
 
   private connectChain(index: number, rpc: string, directory: string, chainId: number): void {
     log.info({
-      msg: `Creating provider and starting worker for network ${chainId} : ${rpc} and directory ${directory}`,
       chainId,
+      msg: `Creating provider and starting worker for network ${chainId} : ${rpc} and directory ${directory}`,
     });
 
     Metrics.chainInit(chainId);
     this.workers.push(new ChainWorker(index, rpc, directory, chainId, this.db, this.broker));
   }
 }
+
+log.info({ msg: "Starting API", version: ApiVersion });
 
 export const Main = new MainClass();

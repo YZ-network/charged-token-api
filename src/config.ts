@@ -29,5 +29,7 @@ const configDefaults: JsonConfig = {
   },
 };
 
+export const ApiVersion = process.env.API_VERSION !== undefined ? process.env.API_VERSION : "dev";
+
 export const Config: JsonConfig =
   process.env.CONFIG !== undefined ? { ...configDefaults, ...JSON.parse(process.env.CONFIG) } : configDefaults;
