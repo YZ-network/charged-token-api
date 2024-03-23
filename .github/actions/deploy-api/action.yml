@@ -48,10 +48,9 @@ runs:
         sudo docker login --username AWS -p "$TOKEN" 940219468121.dkr.ecr.eu-west-3.amazonaws.com
         sudo docker pull 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
 
-        LOG_OPTS="--log-driver=awslogs --log-opt awslogs-create-group=true"
         CONFIG=$(aws ssm get-parameter --name $CONFIG_VAR --query "Parameter.Value" --output text)
 
-        sudo docker run $LOG_OPTS --log-opt awslogs-group=${LOG_GROUP} \
+        sudo docker run --log-driver=awslogs --log-opt awslogs-create-group=true --log-opt awslogs-group=${LOG_GROUP} \
           -d --name $CONTAINER --restart always --network db_net -e "CONFIG=$CONFIG" \
           --health-cmd "curl -f http://localhost/health" \
           --health-interval 30s --health-timeout 10s --health-retries 5 \
