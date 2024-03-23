@@ -55,6 +55,7 @@ jobs:
           sshKey: ${{ secrets.SSH_KEY }}
 
       - name: Deploy API
+        if: always()
         uses: ./.github/actions/deploy-api
         with:
           apiHost: ${{ vars.API_HOST }}
@@ -98,6 +99,7 @@ jobs:
           sshKey: ${{ secrets.SSH_KEY }}
 
       - name: Deploy API
+        if: always()
         uses: ./.github/actions/deploy-api
         with:
           apiHost: ${{ vars.API_HOST }}
