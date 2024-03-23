@@ -46,7 +46,7 @@ jobs:
           sshKey: ${{ secrets.SSH_KEY }}
 
       - name: Clear DB
-        if: inputs.resetDb
+        if: always() && inputs.resetDb
         uses: ./.github/actions/reset-db
         with:
           apiHost: ${{ vars.API_HOST }}
@@ -89,7 +89,7 @@ jobs:
           sshKey: ${{ secrets.SSH_KEY }}
 
       - name: Clear DB
-        if: inputs.resetDb
+        if: always() && inputs.resetDb
         uses: ./.github/actions/reset-db
         with:
           apiHost: ${{ vars.API_HOST }}
