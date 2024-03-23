@@ -10,9 +10,6 @@ inputs:
   database:
     type: string
     required: true
-  sshKey:
-    type: string
-    required: true
 
 runs:
   using: "composite"
@@ -20,13 +17,10 @@ runs:
     - name: Reset Database
       shell: bash
       env:
-        SSH_KEY: ${{ inputs.sshKey }}
         API_HOST: ${{ inputs.apiHost }}
         DB_CONTAINER: ${{ inputs.dbContainer }}
         DATABASE: ${{ inputs.database }}
       run: |
-        eval $(ssh-agent -s)
-        echo "$SSH_KEY" | tr -d '\r' | ssh-add -
         SSH_CONFIG="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
         DB_URL="mongodb://localhost/${DATABASE}?directConnection=true&serverSelectionTimeoutMS=30000"

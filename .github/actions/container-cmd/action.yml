@@ -7,9 +7,6 @@ inputs:
   container:
     type: string
     required: true
-  sshKey:
-    type: string
-    required: true
   action:
     type: choice
     options:
@@ -24,13 +21,10 @@ runs:
     - name: Stop container
       shell: bash
       env:
-        SSH_KEY: ${{ inputs.sshKey }}
         API_HOST: ${{ inputs.apiHost }}
         CONTAINER: ${{ inputs.container }}
         ACTION: ${{ inputs.action }}
       run: |
-        eval $(ssh-agent -s)
-        echo "$SSH_KEY" | tr -d '\r' | ssh-add -
         SSH_CONFIG="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
         ssh $SSH_CONFIG ec2-user@$API_HOST "echo Executing $ACTION on $CONTAINER && sudo docker $ACTION $CONTAINER"
