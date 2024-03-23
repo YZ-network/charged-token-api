@@ -40,7 +40,7 @@ runs:
           sudo docker stop $CONTAINER
           
           echo "Removing $DATABASE database"
-          sudo docker exec $DB_CONTAINER mongosh $DB_URL --eval "use ${DATABASE}" --eval "db.dropDatabase()"
+          sudo docker exec $DB_CONTAINER mongosh --eval "use ${DATABASE}" --eval "db.dropDatabase()" $DB_URL
           
           echo "Starting $CONTAINER"
           sudo docker start $CONTAINER
