@@ -44,17 +44,26 @@ runs:
 
         cat <<EOF | ssh $SSH_CONFIG ec2-user@$API_HOST
 
+        echo "Fetching ECR auth token"
         TOKEN=$(aws ecr get-login-password --region eu-west-3)
+
+        echo "Authenticating to ECR"
         sudo docker login --username AWS -p "$TOKEN" 940219468121.dkr.ecr.eu-west-3.amazonaws.com
+
+        echo "Pulling ${IMAGE_TAG} image"
         sudo docker pull 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
 
+        echo "Loading configuration from SSM"
         CONFIG=$(aws ssm get-parameter --name $CONFIG_VAR --query "Parameter.Value" --output text)
 
+        echo "Starting container"
         sudo docker run --log-driver=awslogs --log-opt awslogs-create-group=true --log-opt awslogs-group=${LOG_GROUP} \
           -d --name $CONTAINER --restart always --network db_net -e "CONFIG=$CONFIG" \
           --health-cmd "curl -f http://localhost/health" \
           --health-interval 30s --health-timeout 10s --health-retries 5 \
           940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
         sudo docker network connect api_net $CONTAINER
+
+        echo "Done"
 
         EOF
