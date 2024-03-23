@@ -37,6 +37,7 @@ jobs:
           sshKey: ${{ secrets.SSH_KEY }}
 
       - name: Remove container
+        if: always()
         uses: ./.github/actions/container-cmd
         with:
           apiHost: ${{ vars.API_HOST }}
@@ -79,6 +80,7 @@ jobs:
           sshKey: ${{ secrets.SSH_KEY }}
 
       - name: Remove container
+        if: always()
         uses: ./.github/actions/container-cmd
         with:
           apiHost: ${{ vars.API_HOST }}
