@@ -23,21 +23,29 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v3
 
+      - name: Stop container
+        uses: ./.github/actions/container-cmd
+        with:
+          sshKey: ${{ vars.SSH_KEY }}
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.TEST_API_CONTAINER }}
+          action: stop
+
       - name: Clear DB
         uses: ./.github/actions/reset-db
         with:
           apiHost: ${{ vars.API_HOST }}
-          container: ${{ vars.TEST_API_CONTAINER }}
           dbContainer: ${{ vars.DB_CONTAINER }}
           database: ${{ vars.TEST_DB_NAME }}
           sshKey: ${{ secrets.SSH_KEY }}
 
-      - name: Restart
-        uses: ./.github/actions/restart-api
+      - name: Start container
+        uses: ./.github/actions/container-cmd
         with:
+          sshKey: ${{ vars.SSH_KEY }}
           apiHost: ${{ vars.API_HOST }}
           container: ${{ vars.TEST_API_CONTAINER }}
-          sshKey: ${{ secrets.SSH_KEY }}
+          action: start
 
   reset-production:
     if: inputs.environment == 'production' || inputs.environment == 'both'
@@ -46,18 +54,26 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v3
 
+      - name: Stop container
+        uses: ./.github/actions/container-cmd
+        with:
+          sshKey: ${{ vars.SSH_KEY }}
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.PROD_API_CONTAINER }}
+          action: stop
+
       - name: Clear DB
         uses: ./.github/actions/reset-db
         with:
           apiHost: ${{ vars.API_HOST }}
-          container: ${{ vars.PROD_API_CONTAINER }}
           dbContainer: ${{ vars.DB_CONTAINER }}
           database: ${{ vars.PROD_DB_NAME }}
           sshKey: ${{ secrets.SSH_KEY }}
 
-      - name: Restart
-        uses: ./.github/actions/restart-api
+      - name: Start container
+        uses: ./.github/actions/container-cmd
         with:
+          sshKey: ${{ vars.SSH_KEY }}
           apiHost: ${{ vars.API_HOST }}
           container: ${{ vars.PROD_API_CONTAINER }}
-          sshKey: ${{ secrets.SSH_KEY }}
+          action: start

@@ -4,9 +4,6 @@ inputs:
   apiHost:
     type: string
     required: true
-  container:
-    type: string
-    required: true
   dbContainer:
     type: string
     required: true
@@ -20,20 +17,11 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Stop container
-      uses: ./.github/actions/container-cmd
-      with:
-        sshKey: ${{ inputs.sshKey }}
-        apiHost: ${{ inputs.apiHost }}
-        container: ${{ inputs.container }}
-        action: stop
-
     - name: Reset Database
       shell: bash
       env:
         SSH_KEY: ${{ inputs.sshKey }}
         API_HOST: ${{ inputs.apiHost }}
-        CONTAINER: ${{ inputs.container }}
         DB_CONTAINER: ${{ inputs.dbContainer }}
         DATABASE: ${{ inputs.database }}
       run: |
@@ -47,11 +35,3 @@ runs:
           echo "Removing $DATABASE database"
           sudo docker exec $DB_CONTAINER mongosh --eval "use ${DATABASE}" --eval "db.dropDatabase()" $DB_URL
         EOF
-
-    - name: Start container
-      uses: ./.github/actions/container-cmd
-      with:
-        sshKey: ${{ inputs.sshKey }}
-        apiHost: ${{ inputs.apiHost }}
-        container: ${{ inputs.container }}
-        action: start
