@@ -42,7 +42,8 @@ runs:
 
         ssh $SSH_CONFIG ec2-user@$API_HOST "echo Deploying API"
 
-        cat <<EOF | ssh ssh $SSH_CONFIG ec2-user@$API_HOST
+        cat <<EOF | ssh $SSH_CONFIG ec2-user@$API_HOST
+
         TOKEN=$(aws ecr get-login-password --region eu-west-3)
         echo $TOKEN | sudo docker login --username AWS --password-stdin 940219468121.dkr.ecr.eu-west-3.amazonaws.com
         sudo docker pull 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
