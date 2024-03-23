@@ -44,11 +44,8 @@ runs:
 
         cat <<EOF | ssh $SSH_CONFIG ec2-user@$API_HOST
 
-        echo "Fetching ECR auth token"
-        TOKEN=$(aws ecr get-login-password --region eu-west-3)
-
         echo "Authenticating to ECR"
-        sudo docker login --username AWS -p "$TOKEN" 940219468121.dkr.ecr.eu-west-3.amazonaws.com
+        sudo docker login --username AWS -p $(aws ecr get-login-password --region eu-west-3) 940219468121.dkr.ecr.eu-west-3.amazonaws.com
 
         echo "Pulling ${IMAGE_TAG} image"
         sudo docker pull 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
