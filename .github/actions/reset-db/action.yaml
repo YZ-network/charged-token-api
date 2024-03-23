@@ -20,6 +20,14 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Stop container
+      uses: ./.github/actions/container-cmd
+      with:
+        sshKey: ${{ inputs.sshKey }}
+        apiHost: ${{ inputs.apiHost }}
+        container: ${{ inputs.container }}
+        action: stop
+
     - name: Reset Database
       shell: bash
       env:
@@ -36,12 +44,14 @@ runs:
         DB_URL="mongodb://localhost/${DATABASE}?directConnection=true&serverSelectionTimeoutMS=30000"
 
         cat <<EOF | ssh $SSH_CONFIG ec2-user@$API_HOST
-          echo "Stopping $CONTAINER"
-          sudo docker stop $CONTAINER
-          
           echo "Removing $DATABASE database"
           sudo docker exec $DB_CONTAINER mongosh --eval "use ${DATABASE}" --eval "db.dropDatabase()" $DB_URL
-          
-          echo "Starting $CONTAINER"
-          sudo docker start $CONTAINER
         EOF
+
+    - name: Start container
+      uses: ./.github/actions/container-cmd
+      with:
+        sshKey: ${{ inputs.sshKey }}
+        apiHost: ${{ inputs.apiHost }}
+        container: ${{ inputs.container }}
+        action: start

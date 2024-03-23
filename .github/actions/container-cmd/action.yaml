@@ -1,5 +1,5 @@
-name: restart-api
-description: "Restart an API container"
+name: stop-container
+description: "Stop a container"
 inputs:
   apiHost:
     type: string
@@ -10,19 +10,27 @@ inputs:
   sshKey:
     type: string
     required: true
+  action:
+    type: choice
+    options:
+      - start
+      - stop
+      - restart
+    required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Restart API container
+    - name: Stop container
       shell: bash
       env:
         SSH_KEY: ${{ inputs.sshKey }}
         API_HOST: ${{ inputs.apiHost }}
         CONTAINER: ${{ inputs.container }}
+        ACTION: ${{ inputs.action }}
       run: |
         eval $(ssh-agent -s)
         echo "$SSH_KEY" | tr -d '\r' | ssh-add -
         SSH_CONFIG="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
-        ssh $SSH_CONFIG ec2-user@$API_HOST "sudo docker restart $CONTAINER"
+        ssh $SSH_CONFIG ec2-user@$API_HOST "echo Executing $ACTION on $CONTAINER && sudo docker $ACTION $CONTAINER"
