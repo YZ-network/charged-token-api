@@ -45,7 +45,7 @@ runs:
         cat <<EOF | ssh $SSH_CONFIG ec2-user@$API_HOST
 
         TOKEN=$(aws ecr get-login-password --region eu-west-3)
-        echo $TOKEN | sudo docker login --username AWS --password-stdin 940219468121.dkr.ecr.eu-west-3.amazonaws.com
+        sudo docker login --username AWS -p "$TOKEN" 940219468121.dkr.ecr.eu-west-3.amazonaws.com
         sudo docker pull 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
 
         LOG_OPTS="--log-driver=awslogs --log-opt awslogs-create-group=true"
