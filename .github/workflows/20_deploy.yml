@@ -82,7 +82,7 @@ jobs:
         uses: ./.github/actions/container-cmd
         with:
           apiHost: ${{ vars.API_HOST }}
-          container: ${{ vars.TEST_API_CONTAINER }}
+          container: ${{ vars.PROD_API_CONTAINER }}
           action: rm
           sshKey: ${{ secrets.SSH_KEY }}
 
