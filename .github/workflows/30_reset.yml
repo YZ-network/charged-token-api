@@ -23,17 +23,13 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v3
 
-      - name: Setup SSH
-        uses: ./.github/actions/setup-ssh
-        with:
-          sshKey: ${{ secrets.SSH_KEY }}
-
       - name: Stop container
         uses: ./.github/actions/container-cmd
         with:
           apiHost: ${{ vars.API_HOST }}
           container: ${{ vars.TEST_API_CONTAINER }}
           action: stop
+          sshKey: ${{ secrets.SSH_KEY }}
 
       - name: Clear DB
         uses: ./.github/actions/reset-db
@@ -41,6 +37,7 @@ jobs:
           apiHost: ${{ vars.API_HOST }}
           dbContainer: ${{ vars.DB_CONTAINER }}
           database: ${{ vars.TEST_DB_NAME }}
+          sshKey: ${{ secrets.SSH_KEY }}
 
       - name: Start container
         uses: ./.github/actions/container-cmd
@@ -48,6 +45,7 @@ jobs:
           apiHost: ${{ vars.API_HOST }}
           container: ${{ vars.TEST_API_CONTAINER }}
           action: start
+          sshKey: ${{ secrets.SSH_KEY }}
 
   reset-production:
     if: inputs.environment == 'production' || inputs.environment == 'both'
@@ -56,17 +54,13 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v3
 
-      - name: Setup SSH
-        uses: ./.github/actions/setup-ssh
-        with:
-          sshKey: ${{ secrets.SSH_KEY }}
-
       - name: Stop container
         uses: ./.github/actions/container-cmd
         with:
           apiHost: ${{ vars.API_HOST }}
           container: ${{ vars.PROD_API_CONTAINER }}
           action: stop
+          sshKey: ${{ secrets.SSH_KEY }}
 
       - name: Clear DB
         uses: ./.github/actions/reset-db
@@ -82,3 +76,4 @@ jobs:
           apiHost: ${{ vars.API_HOST }}
           container: ${{ vars.PROD_API_CONTAINER }}
           action: start
+          sshKey: ${{ secrets.SSH_KEY }}

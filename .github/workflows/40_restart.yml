@@ -23,17 +23,13 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v3
 
-      - name: Setup SSH
-        uses: ./.github/actions/setup-ssh
-        with:
-          sshKey: ${{ secrets.SSH_KEY }}
-
       - name: Restart
         uses: ./.github/actions/container-cmd
         with:
           apiHost: ${{ vars.API_HOST }}
           container: ${{ vars.TEST_API_CONTAINER }}
           action: restart
+          sshKey: ${{ secrets.SSH_KEY }}
 
   restart-production:
     if: inputs.environment == 'production' || inputs.environment == 'both'
@@ -42,14 +38,10 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v3
 
-      - name: Setup SSH
-        uses: ./.github/actions/setup-ssh
-        with:
-          sshKey: ${{ secrets.SSH_KEY }}
-
       - name: Restart
         uses: ./.github/actions/container-cmd
         with:
           apiHost: ${{ vars.API_HOST }}
           container: ${{ vars.TEST_API_CONTAINER }}
           action: restart
+          sshKey: ${{ secrets.SSH_KEY }}
