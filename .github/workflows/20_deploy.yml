@@ -1,0 +1,106 @@
+name: Deploy API
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Which environment to deploy"
+        type: choice
+        options:
+          - testing
+          - production
+          - both
+        required: true
+        default: "testing"
+      resetDb:
+        description: "Also Reset DB"
+        type: boolean
+        required: false
+        default: falses
+
+concurrency: ${{ github.ref }}
+
+jobs:
+  deploy-testing:
+    if: inputs.environment == 'testing' || inputs.environment == 'both'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+
+      - name: Stop container
+        uses: ./.github/actions/container-cmd
+        with:
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.TEST_API_CONTAINER }}
+          action: stop
+          sshKey: ${{ secrets.SSH_KEY }}
+
+      - name: Remove container
+        uses: ./.github/actions/container-cmd
+        with:
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.TEST_API_CONTAINER }}
+          action: rm
+          sshKey: ${{ secrets.SSH_KEY }}
+
+      - name: Clear DB
+        if: inputs.resetDb
+        uses: ./.github/actions/reset-db
+        with:
+          apiHost: ${{ vars.API_HOST }}
+          dbContainer: ${{ vars.DB_CONTAINER }}
+          database: ${{ vars.TEST_DB_NAME }}
+          sshKey: ${{ secrets.SSH_KEY }}
+
+      - name: Deploy API
+        uses: ./.github/actions/deploy-api
+        with:
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.TEST_API_CONTAINER }}
+          logGroup: ct-api-test
+          imageTag: snapshot
+          configVar: CT_CONFIG_TEST
+          sshKey: ${{ secrets.SSH_KEY }}
+
+  deploy-production:
+    if: inputs.environment == 'production' || inputs.environment == 'both'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+
+      - name: Stop container
+        uses: ./.github/actions/container-cmd
+        with:
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.PROD_API_CONTAINER }}
+          action: stop
+          sshKey: ${{ secrets.SSH_KEY }}
+
+      - name: Remove container
+        uses: ./.github/actions/container-cmd
+        with:
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.TEST_API_CONTAINER }}
+          action: rm
+          sshKey: ${{ secrets.SSH_KEY }}
+
+      - name: Clear DB
+        if: inputs.resetDb
+        uses: ./.github/actions/reset-db
+        with:
+          apiHost: ${{ vars.API_HOST }}
+          dbContainer: ${{ vars.DB_CONTAINER }}
+          database: ${{ vars.PROD_DB_NAME }}
+          sshKey: ${{ secrets.SSH_KEY }}
+
+      - name: Deploy API
+        uses: ./.github/actions/deploy-api
+        with:
+          apiHost: ${{ vars.API_HOST }}
+          container: ${{ vars.PROD_API_CONTAINER }}
+          logGroup: ct-api-prod
+          imageTag: release
+          configVar: CT_CONFIG_PROD
+          sshKey: ${{ secrets.SSH_KEY }}

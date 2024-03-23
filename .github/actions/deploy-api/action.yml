@@ -1,0 +1,60 @@
+name: deploy-api
+description: "Starts or update an API container"
+inputs:
+  apiHost:
+    type: string
+    required: true
+  container:
+    type: string
+    required: true
+  logGroup:
+    type: string
+    required: true
+  imageTag:
+    type: choice
+    options:
+      - snapshot
+      - release
+    required: true
+  configVar:
+    type: string
+    required: true
+  sshKey:
+    type: string
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Deploy API container
+      shell: bash
+      env:
+        API_HOST: ${{ inputs.apiHost }}
+        CONTAINER: ${{ inputs.container }}
+        LOG_GROUP: ${{ inputs.logGroup }}
+        IMAGE_TAG: ${{ inputs.imageTag }}
+        CONFIG_VAR: ${{ inputs.configVar }}
+        SSH_KEY: ${{ inputs.sshKey }}
+      run: |
+        eval $(ssh-agent -s)
+        echo "$SSH_KEY" | tr -d '\r' | ssh-add -
+        SSH_CONFIG="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+
+        ssh $SSH_CONFIG ec2-user@$API_HOST "echo Deploying API"
+
+        cat <<EOF | ssh ssh $SSH_CONFIG ec2-user@$API_HOST
+        TOKEN=$(aws ecr get-login-password --region eu-west-3)
+        echo $TOKEN | sudo docker login --username AWS --password-stdin 940219468121.dkr.ecr.eu-west-3.amazonaws.com
+        sudo docker pull 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
+
+        LOG_OPTS="--log-driver=awslogs --log-opt awslogs-create-group=true"
+        CONFIG=$(aws ssm get-parameter --name $CONFIG_VAR --query "Parameter.Value" --output text)
+
+        sudo docker run $LOG_OPTS --log-opt awslogs-group=${LOG_GROUP} \
+          -d --name $CONTAINER --restart always --network db_net -e "CONFIG=$CONFIG" \
+          --health-cmd "curl -f http://localhost/health" \
+          --health-interval 30s --health-timeout 10s --health-retries 5 \
+          940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
+        sudo docker network connect api_net $CONTAINER
+
+        EOF

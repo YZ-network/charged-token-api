@@ -1,5 +1,5 @@
-name: stop-container
-description: "Stop a container"
+name: container-cmd
+description: "Execute a container command in start, stop, restart, rm"
 inputs:
   apiHost:
     type: string
@@ -13,6 +13,7 @@ inputs:
       - start
       - stop
       - restart
+      - rm
     required: true
   sshKey:
     type: string
@@ -21,7 +22,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Stop container
+    - name: Execute container command
       shell: bash
       env:
         API_HOST: ${{ inputs.apiHost }}
