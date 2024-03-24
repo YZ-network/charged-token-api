@@ -22,23 +22,10 @@ inputs:
   sshKey:
     type: string
     required: true
-  awsKey:
-    type: string
-    required: true
-  awsSecret:
-    type: string
-    required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-region: eu-west-3
-        aws-access-key-id: ${{ inputs.awsKey }}
-        aws-secret-access-key: ${{ inputs.awsSecret }}
-
     - name: Deploy API container
       shell: bash
       env:
@@ -53,24 +40,8 @@ runs:
         echo "$SSH_KEY" | tr -d '\r' | ssh-add -
         SSH_CONFIG="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
-        echo "Loading config from $CONFIG_VAR"
-        CONFIG=$(aws ssm get-parameter --no-paginate --name $CONFIG_VAR --query 'Parameter.Value' --output text)
+        pwd
+        echo $PWD
 
-        cat <<EOF | ssh $SSH_CONFIG ec2-user@$API_HOST /bin/bash
-          echo "Authenticating to ECR"
-          aws ecr get-login-password --region eu-west-3 | sudo docker login --username AWS --password-stdin 940219468121.dkr.ecr.eu-west-3.amazonaws.com
-
-          echo "Pulling ${IMAGE_TAG} image"
-          sudo docker pull 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
-
-          echo "Starting container $CONTAINER"
-          sudo docker run --log-driver=awslogs --log-opt awslogs-create-group=true --log-opt awslogs-group=${LOG_GROUP} \
-            -d --name $CONTAINER --restart always --network db_net \
-            -e "CONFIG=${CONFIG}" \
-            --health-cmd "curl -f http://localhost/health" \
-            --health-interval 30s --health-timeout 10s --health-retries 5 \
-            940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
-          sudo docker network connect api_net $CONTAINER
-
-          echo "Done"
-        EOF
+        scp .github/actions/deploy-api/deploy.sh ec2-user@$API_HOST /tmp
+        ssh ec2-user@$API_HOST "IMAGE_TAG=$IMAGE_TAG CONFIG_VAR=$CONFIG_VAR CONTAINER=$CONTAINER LOG_GROUP=$LOG_GROUP /bin/bash /tmp/deploy.sh"

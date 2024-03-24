@@ -108,5 +108,3 @@ jobs:
           imageTag: release
           configVar: CT_CONFIG_PROD
           sshKey: ${{ secrets.SSH_KEY }}
-          awsKey: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          awsSecret: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
