@@ -3,7 +3,6 @@ const configDefaults: JsonConfig = {
     uri: "mongodb://127.0.0.1:27017/test?replicaSet=rs0",
   },
   api: {
-    version: process.env.API_VERSION || "dev",
     bindAddress: "127.0.0.1",
     bindPort: 4000,
     corsOrigins: "http://localhost:3000",
@@ -29,6 +28,8 @@ const configDefaults: JsonConfig = {
     nodeDownAlertDelayMs: 10000,
   },
 };
+
+export const ApiVersion = process.env.API_VERSION !== undefined ? process.env.API_VERSION : "dev";
 
 export const Config: JsonConfig =
   process.env.CONFIG !== undefined ? { ...configDefaults, ...JSON.parse(process.env.CONFIG) } : configDefaults;

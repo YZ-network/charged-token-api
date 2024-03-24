@@ -2,7 +2,7 @@ import { Server } from "http";
 import mongoose from "mongoose";
 import { configureApiServer } from "./api/server";
 import { Broker } from "./broker";
-import { Config } from "./config";
+import { ApiVersion, Config } from "./config";
 import { DbRepository } from "./db/DbRepository";
 import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";
@@ -90,6 +90,6 @@ export class MainClass {
   }
 }
 
-log.info({ msg: "Starting API", version: Config.api.version });
+log.info({ msg: "Starting API", version: ApiVersion });
 
 export const Main = new MainClass();

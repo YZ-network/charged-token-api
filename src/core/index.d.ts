@@ -143,7 +143,6 @@ interface JsonDbConfig {
 }
 
 interface JsonApiConfig {
-  version: string;
   bindAddress: string;
   bindPort: number;
   corsOrigins: string;
