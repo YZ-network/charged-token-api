@@ -41,24 +41,24 @@ runs:
         SSH_CONFIG="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
         cat <<EOF | ssh $SSH_CONFIG ec2-user@$API_HOST
-          cat <<FOE | sudo /bin/bash
-            echo "Authenticating to ECR"
-            docker login --username AWS -p $(aws ecr get-login-password --region eu-west-3) 940219468121.dkr.ecr.eu-west-3.amazonaws.com
+          ECR_TOKEN=$(aws ecr get-login-password --region eu-west-3)
 
-            echo "Pulling ${IMAGE_TAG} image"
-            docker pull 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
+          echo "Authenticating to ECR"
+          echo $ECR_TOKEN | sudo docker login --username AWS --password-stdin 940219468121.dkr.ecr.eu-west-3.amazonaws.com
 
-            echo "Loading configuration from SSM"
-            CONFIG=$(aws ssm get-parameter --name $CONFIG_VAR --query "Parameter.Value" --output text)
+          echo "Pulling ${IMAGE_TAG} image"
+          sudo docker pull 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
 
-            echo "Starting container"
-            docker run --log-driver=awslogs --log-opt awslogs-create-group=true --log-opt awslogs-group=${LOG_GROUP} \
-              -d --name $CONTAINER --restart always --network db_net -e "CONFIG=$CONFIG" \
-              --health-cmd "curl -f http://localhost/health" \
-              --health-interval 30s --health-timeout 10s --health-retries 5 \
-              940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
-            docker network connect api_net $CONTAINER
+          echo "Loading configuration from SSM"
+          CONFIG=$(aws ssm get-parameter --name $CONFIG_VAR --query "Parameter.Value" --output text)
 
-            echo "Done"
-          FOE
+          echo "Starting container"
+          sudo docker run --log-driver=awslogs --log-opt awslogs-create-group=true --log-opt awslogs-group=${LOG_GROUP} \
+            -d --name $CONTAINER --restart always --network db_net -e "CONFIG=$CONFIG" \
+            --health-cmd "curl -f http://localhost/health" \
+            --health-interval 30s --health-timeout 10s --health-retries 5 \
+            940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
+          sudo docker network connect api_net $CONTAINER
+
+          echo "Done"
         EOF
