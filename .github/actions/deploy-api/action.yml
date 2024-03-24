@@ -40,8 +40,5 @@ runs:
         echo "$SSH_KEY" | tr -d '\r' | ssh-add -
         SSH_CONFIG="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
-        pwd
-        echo $PWD
-
-        scp .github/actions/deploy-api/deploy.sh ec2-user@$API_HOST /tmp
+        scp .github/actions/deploy-api/deploy.sh ec2-user@$API_HOST:/tmp
         ssh ec2-user@$API_HOST "IMAGE_TAG=$IMAGE_TAG CONFIG_VAR=$CONFIG_VAR CONTAINER=$CONTAINER LOG_GROUP=$LOG_GROUP /bin/bash /tmp/deploy.sh"
