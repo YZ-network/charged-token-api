@@ -81,8 +81,8 @@ export class MainClass {
 
   private connectChain(index: number, rpc: string, directory: string, chainId: number): void {
     log.info({
-      msg: `Creating provider and starting worker for network ${chainId} : ${rpc} and directory ${directory}`,
       chainId,
+      msg: `Creating provider and starting worker for network ${chainId} : ${rpc} and directory ${directory}`,
     });
 
     Metrics.chainInit(chainId);
