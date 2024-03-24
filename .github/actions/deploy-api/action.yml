@@ -48,8 +48,8 @@ runs:
           sudo docker pull 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
 
           echo "Loading configuration from SSM"
-          aws ssm get-parameter --name $CONFIG_VAR --query "Parameter.Value" --output text
-          export CONFIG=$(aws ssm get-parameter --name $CONFIG_VAR --query "Parameter.Value" --output text)
+          CONFIG="$(aws ssm get-parameter --name $CONFIG_VAR --query 'Parameter.Value' --output text)"
+          echo $CONFIG
 
           echo "Starting container using CONFIG $CONFIG"
           sudo docker run --log-driver=awslogs --log-opt awslogs-create-group=true --log-opt awslogs-group=${LOG_GROUP} \
