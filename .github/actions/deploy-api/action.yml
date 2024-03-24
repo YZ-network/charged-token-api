@@ -32,12 +32,11 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v4
+    - uses: aws-actions/configure-aws-credentials@v1
       with:
-        aws-region: eu-west-3
         aws-access-key-id: ${{ inputs.awsKey }}
         aws-secret-access-key: ${{ inputs.awsSecret }}
+        aws-region: eu-west-3
 
     - name: Deploy API container
       shell: bash
