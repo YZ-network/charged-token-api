@@ -48,7 +48,9 @@ runs:
           sudo docker pull 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
 
           echo "Loading configuration from SSM"
-          CONFIG=$(aws ssm get-parameter --name $CONFIG_VAR --query 'Parameter.Value' --output text | tr -d '\n')
+          echo CONFIG=$(aws ssm get-parameter --no-paginate --name $CONFIG_VAR --query 'Parameter.Value' --output text | tr -d '\n') >> .env
+          . .env
+          cat .env
           echo Loaded CONFIG : $CONFIG
 
           echo "Starting container using CONFIG $CONFIG"
