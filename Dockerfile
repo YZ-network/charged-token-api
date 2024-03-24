@@ -10,4 +10,6 @@ ADD . .
 RUN npm ci
 RUN npm run build
 
+ENV API_VERSION $API_VERSION
+
 CMD node lib/index.js

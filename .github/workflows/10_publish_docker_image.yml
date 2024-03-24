@@ -34,7 +34,7 @@ jobs:
         env:
           IMAGE_TAG: ${{ inputs.deploymentTag }}
         run: |
-          docker build -t ct-api:latest .
+          docker build -t ct-api:latest --build-arg API_VERSION=$(git rev-parse --verify HEAD) .
           docker tag ct-api:latest 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
           aws ecr get-login-password --region eu-west-3 | docker login --username AWS --password-stdin 940219468121.dkr.ecr.eu-west-3.amazonaws.com
           docker push 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}

@@ -3,6 +3,7 @@ const configDefaults: JsonConfig = {
     uri: "mongodb://127.0.0.1:27017/test?replicaSet=rs0",
   },
   api: {
+    version: process.env.API_VERSION || "dev",
     bindAddress: "127.0.0.1",
     bindPort: 4000,
     corsOrigins: "http://localhost:3000",

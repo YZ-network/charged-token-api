@@ -90,4 +90,6 @@ export class MainClass {
   }
 }
 
+log.info({ msg: "Starting API", version: Config.api.version });
+
 export const Main = new MainClass();
