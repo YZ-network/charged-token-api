@@ -274,21 +274,16 @@ export class ChainWorker {
     });
 
     try {
-      log.info({ msg: "Starting worker" });
-
       this.blockchain = new BlockchainRepository(this.chainId, this.provider, this.db, this.broker);
       this.contractsWatcher = new ContractsWatcher(this.chainId, this.blockchain);
 
-      log.debug({ msg: "Registering directory" });
       await this.contractsWatcher.registerDirectory(this.directoryAddress);
 
-      log.debug({ msg: "Subscribing to new blocks" });
       this.subscribeToNewBlocks();
 
       this.workerStatus = "STARTED";
       Metrics.workerStarted(this.chainId);
 
-      log.debug({ msg: "Subscribing to user balances loading requests" });
       await subscribeToUserBalancesLoading(this.chainId, this.db, this.blockchain, this.broker);
     } catch (err) {
       log.error({
