@@ -2,9 +2,9 @@ type DataType = "ChargedToken" | "Directory" | "InterfaceProjectToken" | "Delega
 
 type EventHandlerStatus = "QUEUED" | "SUCCESS" | "FAILURE";
 
-type ProviderStatus = "STARTING" | "CONNECTING" | "CONNECTED" | "DISCONNECTED" | "DEAD";
+type ProviderStatus = "STARTING" | "CONNECTING" | "CONNECTED" | "DISCONNECTED";
 
-type WorkerStatus = "WAITING" | "STARTED" | "CRASHED" | "DEAD";
+type WorkerStatus = "WAITING" | "STARTED" | "DEAD";
 
 interface IContract {
   chainId: number;

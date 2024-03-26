@@ -243,17 +243,12 @@ export class ChainWorker {
 
     this.worker = this.provider.ready
       .then(async () => {
-        this.workerStatus = "STARTED";
-
-        Metrics.workerStarted(this.chainId);
-
         await this.run()
           .then(() => {
             log.info({
               msg: `Worker stopped itself on network ${this.name}`,
               chainId: this.chainId,
             });
-            this.workerStatus = "CRASHED";
             this.stop();
           })
           .catch((err: any) => {
@@ -262,7 +257,6 @@ export class ChainWorker {
               err,
               chainId: this.chainId,
             });
-            this.workerStatus = "CRASHED";
             this.stop();
           });
       })
@@ -280,12 +274,21 @@ export class ChainWorker {
     });
 
     try {
+      log.info({ msg: "Starting worker" });
+
       this.blockchain = new BlockchainRepository(this.chainId, this.provider, this.db, this.broker);
       this.contractsWatcher = new ContractsWatcher(this.chainId, this.blockchain);
 
+      log.debug({ msg: "Registering directory" });
       await this.contractsWatcher.registerDirectory(this.directoryAddress);
 
+      log.debug({ msg: "Subscribing to new blocks" });
       this.subscribeToNewBlocks();
+
+      this.workerStatus = "STARTED";
+      Metrics.workerStarted(this.chainId);
+
+      log.debug({ msg: "Subscribing to user balances loading requests" });
       await subscribeToUserBalancesLoading(this.chainId, this.db, this.blockchain, this.broker);
     } catch (err) {
       log.error({
@@ -301,7 +304,16 @@ export class ChainWorker {
   }
 
   private async stop() {
-    if (this.providerStatus === "DEAD" && this.workerStatus === "DEAD") return;
+    if (this.providerStatus === "DISCONNECTED" && this.workerStatus === "DEAD") return;
+
+    log.debug({
+      msg: `Stopping worker on chain ${this.name}`,
+      chainId: this.chainId,
+      stack: new Error().stack,
+    });
+
+    this.providerStatus = "DISCONNECTED";
+    this.workerStatus = "DEAD";
 
     Metrics.workerStopped(this.chainId);
 
@@ -333,8 +345,6 @@ export class ChainWorker {
 
     await this.db.deletePendingAndFailedEvents(this.chainId);
 
-    this.providerStatus = "DEAD";
-    this.workerStatus = "DEAD";
     this.restartCount++;
   }
 }
