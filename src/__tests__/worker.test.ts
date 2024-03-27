@@ -42,11 +42,9 @@ describe("ChainWorker", () => {
       on: jest.fn((event, handler) => {
         mockHandlers[event] = handler;
       }),
-      ready: new Promise((resolve) => {
-        resolve({
-          name: "test",
-          chainId: 1337,
-        });
+      ready: Promise.resolve({
+        name: "test",
+        chainId: 1337,
       }),
       getBlockNumber: jest.fn(),
       removeAllListeners: jest.fn(),
@@ -67,7 +65,11 @@ describe("ChainWorker", () => {
 
       timeout = setTimeout(() => {
         clearInterval(interval);
-        reject(new Error("Timeout reached ! killed it"));
+        reject(
+          new Error(
+            `Timeout reached ! killed it, workerStatus : ${worker.workerStatus} providerStatus: ${worker.providerStatus}`,
+          ),
+        );
       }, 1000);
     });
 
@@ -81,7 +83,7 @@ describe("ChainWorker", () => {
 
     const waitPromise = new Promise((resolve, reject) => {
       const interval = setInterval(() => {
-        if (worker.providerStatus === "DEAD" && worker.workerStatus === "DEAD") {
+        if (worker.providerStatus === "DISCONNECTED" && worker.workerStatus === "DEAD") {
           clearInterval(interval);
           resolve(undefined);
         }
@@ -107,7 +109,7 @@ describe("ChainWorker", () => {
         websocket: {
           readyState: 0,
         },
-        ready: new Promise(() => {}),
+        ready: Promise.resolve(),
       };
     });
 
