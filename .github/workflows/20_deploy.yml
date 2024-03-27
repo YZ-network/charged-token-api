@@ -37,7 +37,6 @@ jobs:
           sshKey: ${{ secrets.SSH_KEY }}
 
       - name: Remove container
-        if: always()
         uses: ./.github/actions/container-cmd
         with:
           apiHost: ${{ vars.API_HOST }}
@@ -46,7 +45,7 @@ jobs:
           sshKey: ${{ secrets.SSH_KEY }}
 
       - name: Clear DB
-        if: always() && inputs.resetDb
+        if: inputs.resetDb
         uses: ./.github/actions/reset-db
         with:
           apiHost: ${{ vars.API_HOST }}
@@ -55,7 +54,6 @@ jobs:
           sshKey: ${{ secrets.SSH_KEY }}
 
       - name: Deploy API
-        if: always()
         uses: ./.github/actions/deploy-api
         with:
           apiHost: ${{ vars.API_HOST }}
@@ -88,7 +86,6 @@ jobs:
           sshKey: ${{ secrets.SSH_KEY }}
 
       - name: Remove container
-        if: always()
         uses: ./.github/actions/container-cmd
         with:
           apiHost: ${{ vars.API_HOST }}
@@ -97,7 +94,7 @@ jobs:
           sshKey: ${{ secrets.SSH_KEY }}
 
       - name: Clear DB
-        if: always() && inputs.resetDb
+        if: inputs.resetDb
         uses: ./.github/actions/reset-db
         with:
           apiHost: ${{ vars.API_HOST }}
@@ -106,7 +103,6 @@ jobs:
           sshKey: ${{ secrets.SSH_KEY }}
 
       - name: Deploy API
-        if: always()
         uses: ./.github/actions/deploy-api
         with:
           apiHost: ${{ vars.API_HOST }}
