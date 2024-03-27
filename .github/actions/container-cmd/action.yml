@@ -22,16 +22,47 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Execute container command
-      shell: bash
+    - name: Prepare SSH client
       env:
-        API_HOST: ${{ inputs.apiHost }}
-        CONTAINER: ${{ inputs.container }}
-        ACTION: ${{ inputs.action }}
         SSH_KEY: ${{ inputs.sshKey }}
       run: |
         eval $(ssh-agent -s)
         echo "$SSH_KEY" | tr -d '\r' | ssh-add -
         SSH_CONFIG="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+        echo SSH_CONFIG=$SSH_CONFIG >> $GITHUB_ENV
 
+    - name: Execute container stop
+      if: inputs.action == "stop"
+      shell: bash
+      env:
+        API_HOST: ${{ inputs.apiHost }}
+        CONTAINER: ${{ inputs.container }}
+        ACTION: ${{ inputs.action }}
+      run: |
+        ssh $SSH_CONFIG ec2-user@$API_HOST "echo Executing $ACTION on $CONTAINER && [ -z $(sudo docker ps -q -f name=${CONTAINER}) ] && echo 'Container already stopped' || sudo docker stop $CONTAINER"
+
+    - name: Execute container start
+      if: inputs.action == "start"
+      shell: bash
+      run: |
+        ssh $SSH_CONFIG ec2-user@$API_HOST "echo Executing $ACTION on $CONTAINER && [ -z $(sudo docker ps -q -f name=${CONTAINER}) ] && sudo docker start $CONTAINER || echo 'Container already started'"
+
+    - name: Execute container command
+      if: inputs.action == "rm"
+      shell: bash
+      env:
+        API_HOST: ${{ inputs.apiHost }}
+        CONTAINER: ${{ inputs.container }}
+        ACTION: ${{ inputs.action }}
+      run: |
+        ssh $SSH_CONFIG ec2-user@$API_HOST "echo Executing $ACTION on $CONTAINER && sudo docker rm -f $CONTAINER"
+
+    - name: Execute container command
+      if: inputs.action == "restart"
+      shell: bash
+      env:
+        API_HOST: ${{ inputs.apiHost }}
+        CONTAINER: ${{ inputs.container }}
+        ACTION: ${{ inputs.action }}
+      run: |
         ssh $SSH_CONFIG ec2-user@$API_HOST "echo Executing $ACTION on $CONTAINER && sudo docker $ACTION $CONTAINER"
