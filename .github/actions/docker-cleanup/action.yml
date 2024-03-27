@@ -1,0 +1,24 @@
+name: deploy-api
+description: "Runs docker cleanup commands to save space"
+inputs:
+  apiHost:
+    type: string
+    required: true
+  sshKey:
+    type: string
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Cleanup Docker
+      shell: bash
+      env:
+        API_HOST: ${{ inputs.apiHost }}
+        SSH_KEY: ${{ inputs.sshKey }}
+      run: |
+        eval $(ssh-agent -s)
+        echo "$SSH_KEY" | tr -d '\r' | ssh-add -
+        SSH_CONFIG="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+
+        ssh $SSH_CONFIG ec2-user@$API_HOST "sudo docker image prune -f && sudo docker container prune -f && sudo docker container prune -f"
