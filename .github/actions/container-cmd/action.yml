@@ -23,6 +23,7 @@ runs:
   using: "composite"
   steps:
     - name: Prepare SSH client
+      shell: bash
       env:
         SSH_KEY: ${{ inputs.sshKey }}
       run: |
