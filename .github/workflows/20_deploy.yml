@@ -63,13 +63,6 @@ jobs:
           configVar: CT_CONFIG_TEST
           sshKey: ${{ secrets.SSH_KEY }}
 
-      - name: Cleanup
-        if: always()
-        uses: ./.github/actions/docker-cleanup
-        with:
-          apiHost: ${{ vars.API_HOST }}
-          sshKey: ${{ secrets.SSH_KEY }}
-
   deploy-production:
     if: inputs.environment == 'production' || inputs.environment == 'both'
     runs-on: ubuntu-latest
@@ -112,6 +105,11 @@ jobs:
           configVar: CT_CONFIG_PROD
           sshKey: ${{ secrets.SSH_KEY }}
 
+  cleanup:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [deploy-testing, deploy-production]
+    steps:
       - name: Cleanup
         if: always()
         uses: ./.github/actions/docker-cleanup
