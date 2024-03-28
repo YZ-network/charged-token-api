@@ -249,6 +249,26 @@ describe("DbRepository", () => {
     expect(docBalance.toJSON).toBeCalled();
   });
 
+  it("should return the balances for the given charged token", async () => {
+    const balance1 = { user: "0xUSER1", address: "0xCT", ptAddress: "0xPT" };
+    const balance2 = { user: "0xUSER2", address: "0xCT", ptAddress: "0xPT" };
+    const docBalance1 = { toJSON: jest.fn(() => balance1) };
+    const docBalance2 = { toJSON: jest.fn(() => balance2) };
+
+    const sessionMock = { session: jest.fn() };
+
+    (UserBalanceModel.find as jest.Mock).mockReturnValueOnce(sessionMock);
+    sessionMock.session.mockResolvedValueOnce([docBalance1, docBalance2]);
+
+    const result = await db.getBalancesByContract(CHAIN_ID, "0xCT", session);
+
+    expect(result).toStrictEqual([balance1, balance2]);
+    expect(UserBalanceModel.find).toBeCalledWith({ chainId: CHAIN_ID, address: "0xCT" });
+    expect(sessionMock.session).toBeCalledWith(session);
+    expect(docBalance1.toJSON).toBeCalled();
+    expect(docBalance2.toJSON).toBeCalled();
+  });
+
   it("should return the balances for the given user address and project token", async () => {
     const balance1 = { user: "0xUSER", address: "0xCT1", ptAddress: "0xPT" };
     const balance2 = { user: "0xUSER", address: "0xCT2", ptAddress: "0xPT" };

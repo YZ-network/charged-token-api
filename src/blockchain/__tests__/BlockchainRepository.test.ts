@@ -279,12 +279,12 @@ describe("BlockchainRepository", () => {
     const getPTBalance = jest.spyOn(blockchain, "getUserBalancePT");
     const updateBalance = jest.spyOn(blockchain, "updateBalanceAndNotify");
 
-    db.getBalances.mockResolvedValueOnce(balances);
+    db.getBalancesByContract.mockResolvedValueOnce(balances);
     getPTBalance.mockResolvedValueOnce("10").mockResolvedValueOnce("20");
 
     await blockchain.setProjectTokenAddressOnBalances("0xCT", "0xPT", 15, session);
 
-    expect(db.getBalances).toBeCalledWith(CHAIN_ID, "0xCT", session);
+    expect(db.getBalancesByContract).toBeCalledWith(CHAIN_ID, "0xCT", session);
     expect(getPTBalance).toHaveBeenNthCalledWith(1, "0xPT", "0xUSER1");
     expect(getPTBalance).toHaveBeenNthCalledWith(2, "0xPT", "0xUSER2");
     expect(updateBalance).toHaveBeenNthCalledWith(

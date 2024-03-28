@@ -13,6 +13,7 @@ export const MockDbRepository: jest.Mock<AbstractDbRepository> = jest.fn().mockI
     getDirectory: jest.fn(),
     getInterfaceByChargedToken: jest.fn(),
     getBalances: jest.fn(),
+    getBalancesByContract: jest.fn(),
     getBalance: jest.fn(),
     getPTBalance: jest.fn(),
     getBalancesByProjectToken: jest.fn(),
