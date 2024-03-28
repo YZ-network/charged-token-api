@@ -622,7 +622,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
       chainId: this.chainId,
     });
 
-    const balancesToUpdate = await this.db.getBalances(this.chainId, address, session);
+    const balancesToUpdate = await this.db.getBalancesByContract(this.chainId, address, session);
     this.log.info({
       msg: "user balances to update !",
       count: balancesToUpdate.length,

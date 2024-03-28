@@ -26,6 +26,7 @@ export abstract class AbstractDbRepository {
   abstract getDirectory(chainId: number): Promise<IDirectory | null>;
   abstract getInterfaceByChargedToken(chainId: number, ctAddress: string): Promise<IInterfaceProjectToken | null>;
   abstract getBalances(chainId: number, address: string, session?: ClientSession): Promise<IUserBalance[]>;
+  abstract getBalancesByContract(chainId: number, address: string, session?: ClientSession): Promise<IUserBalance[]>;
   abstract getBalance(
     chainId: number,
     address: string,
