@@ -136,6 +136,17 @@ export class DbRepository extends AbstractDbRepository {
     return result.map((doc) => doc.toJSON());
   }
 
+  async getBalancesByContract(chainId: number, address: string, session: ClientSession | null = null): Promise<IUserBalance[]> {
+    const result = await UserBalanceModel.find({
+      chainId,
+      address,
+    }).session(session);
+
+    if (result === null) return [];
+
+    return result.map((doc) => doc.toJSON());
+  }
+
   async getBalance(
     chainId: number,
     address: string,
