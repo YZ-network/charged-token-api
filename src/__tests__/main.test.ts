@@ -78,9 +78,9 @@ describe("Main class", () => {
       `,
     });
 
-    const subValue = await healthSub;
+    await healthSub;
 
-    const healthQuery = await executor({
+    await executor({
       document: gql`
         query testQuery {
           health {
