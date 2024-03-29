@@ -37,7 +37,7 @@ export function encodeEvents() {
     topicsMap.DelegableToLT[topic] = e.name!;
   }
 
-  log.info({ msg: "Initialized event topics map", topicsMap });
+  log.debug({ msg: "Initialized event topics map", topicsMap });
 
   return topicsMap;
 }

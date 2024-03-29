@@ -123,7 +123,11 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
     this._subs = {};
     this._subIds = {};
     this._retryCount = 0;
-    this._detectNetwork = super.detectNetwork();
+
+    this._detectNetwork = super.detectNetwork().catch((err) => {
+      logger.error({ chainId: this.chainId, msg: "Fatal error !", err });
+      return err;
+    });
 
     this.websocket.onerror = (...args) => {
       this.emit("error", ...args);
