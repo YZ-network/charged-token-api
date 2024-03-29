@@ -18,7 +18,9 @@ on:
         required: false
         default: falses
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   deploy-testing:
