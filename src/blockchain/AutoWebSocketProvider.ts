@@ -16,7 +16,7 @@ import {
   type WebSocketLike,
 } from "@ethersproject/providers/lib/websocket-provider";
 import { ethers } from "ethers";
-import { MessageEvent, WebSocket } from "ws";
+import { ErrorEvent, MessageEvent, WebSocket } from "ws";
 import { Metrics } from "../metrics";
 import { rootLogger } from "../rootLogger";
 
@@ -84,11 +84,11 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
   private _pongTimeout: NodeJS.Timeout | undefined;
   private fauxPoll: NodeJS.Timeout;
 
-  private readonly oncloseListener = (...args) => {
+  private readonly oncloseListener = (...args: any[]) => {
     this.emit("error", ...args);
   };
 
-  private readonly onerrorListener = (event) => {
+  private readonly onerrorListener = (event: ErrorEvent) => {
     this.emit("error", "WebSocket closed", event);
   };
 
