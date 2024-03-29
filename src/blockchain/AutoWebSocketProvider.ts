@@ -478,6 +478,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
     // See: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent#Status_codes
     Metrics.disconnected(this.chainId);
     this.websocket.close(1000);
+    this.websocket.terminate();
   }
 
   private _sendLastRequest() {
