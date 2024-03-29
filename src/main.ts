@@ -26,7 +26,7 @@ export class MainClass {
   readonly bindPort = Config.api.bindPort;
 
   async start(): Promise<void> {
-    log.info(`Connecting to MongoDB at ${Config.db.uri}`);
+    log.info({ mongouri: Config.db.uri, msg: "Connecting to MongoDB" });
 
     try {
       await this.connectDB();
@@ -41,10 +41,30 @@ export class MainClass {
         for (const worker of this.workers) {
           if (worker.workerStatus === "DEAD") {
             log.info({
-              msg: `Restarting worker on rpc ${worker.rpc} and chain ${worker.name} ${worker.chainId}`,
               chainId: worker.chainId,
+              name: worker.name,
+              rpc: worker.rpc,
+              msg: "Restarting worker",
             });
-            worker.start();
+            worker
+              .start()
+              .then(() =>
+                log.info({
+                  chainId: worker.chainId,
+                  name: worker.name,
+                  rpc: worker.rpc,
+                  msg: "Worker restarted",
+                }),
+              )
+              .catch((err) =>
+                log.error({
+                  chainId: worker.chainId,
+                  name: worker.name,
+                  rpc: worker.rpc,
+                  msg: "Worker start failed !",
+                  err,
+                }),
+              );
           }
         }
       }, Config.delays.workerRestartDelayMs);
@@ -55,7 +75,7 @@ export class MainClass {
       }, Config.delays.healthPublishDelayMs);
 
       this.httpServer.listen(this.bindPort, this.bindAddress, () => {
-        log.info(`GraphQL API server started at http://${this.bindAddress}:${this.bindPort}/`);
+        log.info({ address: this.bindAddress, port: this.bindPort, msg: "GraphQL API server started" });
       });
     } catch (err) {
       log.error({ msg: "Error during application startup !", err });
@@ -82,7 +102,9 @@ export class MainClass {
   private connectChain(index: number, rpc: string, directory: string, chainId: number): void {
     log.info({
       chainId,
-      msg: `Creating provider and starting worker for network ${chainId} : ${rpc} and directory ${directory}`,
+      rpc,
+      directory,
+      msg: "Creating provider and starting worker",
     });
 
     Metrics.chainInit(chainId);

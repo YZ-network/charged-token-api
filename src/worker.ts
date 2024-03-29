@@ -58,9 +58,14 @@ export class ChainWorker {
     this.start();
   }
 
-  start() {
-    this.createProvider();
-    this.createWorker();
+  async start() {
+    try {
+      this.createProvider();
+      this.createWorker();
+    } catch (err) {
+      log.error({ chainId: this.chainId, msg: "Error connecting to network !", err });
+      await this.stop();
+    }
   }
 
   status(): ChainHealth {

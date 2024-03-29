@@ -26,10 +26,10 @@ export class ChargedToken extends AbstractHandler<IChargedToken> {
     if (BigNumber.from(value).isZero()) {
       // empty transfer
       this.log.warn({
-        msg: "Skipping transfer event processing since value is zero",
         chainId: this.chainId,
         contract: this.dataType,
         address: this.address,
+        msg: "Skipping transfer event processing since value is zero",
       });
       return;
     }
@@ -90,10 +90,10 @@ export class ChargedToken extends AbstractHandler<IChargedToken> {
           );
         } else {
           this.log.info({
-            msg: "Skipping to balance update since it was not found in db",
             chainId: this.chainId,
             contract: this.dataType,
             address: this.address,
+            msg: "Skipping to balance update since it was not found in db",
           });
         }
       }

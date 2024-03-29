@@ -21,8 +21,10 @@ export async function subscribeToUserBalancesLoading(
   for await (const info of sub) {
     const { user, address } = info;
     log.info({
-      msg: `Got user balances reload message for ${user}@${address}`,
       chainId,
+      user,
+      address,
+      msg: "Got user balances reload message",
     });
 
     const blockNumber = await blockchain.getBlockNumber();

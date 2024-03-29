@@ -77,16 +77,16 @@ export class EventListener {
     const args = [...decodedLog.args.values()].map((arg) => arg.toString());
 
     this.log.debug({
-      msg: "queuing event",
-      contract: this.constructor.name,
-      eventName,
       address: loader.address,
       chainId: loader.chainId,
+      contract: loader.constructor.name,
+      eventName,
+      args,
+      msg: "queuing event",
+      txHash: log.transactionHash,
       blockNumber: log.blockNumber,
       txIndex: log.transactionIndex,
-      txHash: log.transactionHash,
       logIndex: log.logIndex,
-      args,
       queueSize: this.queue.length,
     });
 
@@ -94,11 +94,12 @@ export class EventListener {
       await this.db.existsEvent(loader.chainId, loader.address, log.blockNumber, log.transactionIndex, log.logIndex)
     ) {
       this.log.warn({
-        msg: "Tried to queue same event twice !",
-        eventName,
         chainId: loader.chainId,
         address: loader.address,
         contract: loader.constructor.name,
+        eventName,
+        msg: "Tried to queue same event twice !",
+        txHash: log.transactionHash,
         blockNumber: log.blockNumber,
         txIndex: log.transactionIndex,
         logIndex: log.logIndex,
@@ -133,11 +134,11 @@ export class EventListener {
   ): void {
     if (requeued) {
       this.log.info({
-        msg: "putting back event in the queue",
-        contract: this.constructor.name,
-        eventName,
-        address: loader.address,
         chainId: loader.chainId,
+        address: loader.address,
+        contract: loader.constructor.name,
+        eventName,
+        msg: "putting back event in the queue",
         blockNumber: log.blockNumber,
         txIndex: log.transactionIndex,
         txHash: log.transactionHash,
@@ -179,15 +180,16 @@ export class EventListener {
       const [{ eventName, log, loader, iface }] = this._queue.splice(0, 1);
 
       this.log.debug({
-        msg: "Popped event from queue",
         chainId: loader.chainId,
         address: loader.address,
+        contract: loader.constructor.name,
         eventName,
+        msg: "Popped event from queue",
+        queueSize: this.queue.length,
+        txHash: log.transactionHash,
         blockNumber: log.blockNumber,
         txIndex: log.transactionIndex,
         logIndex: log.logIndex,
-        txHash: log.transactionHash,
-        queueSize: this.queue.length,
       });
 
       session.startTransaction();
@@ -203,15 +205,16 @@ export class EventListener {
         ))
       ) {
         this.log.warn({
-          msg: "Tried to handle event before saving it in database !",
           chainId: loader.chainId,
           address: loader.address,
+          contract: loader.constructor.name,
+          eventName,
+          msg: "Tried to handle event before saving it in database !",
+          txHash: log.transactionHash,
           blockNumber: log.blockNumber,
           lastBlockNumber,
-          eventName,
           txIndex: log.transactionIndex,
           logIndex: log.logIndex,
-          txHash: log.transactionHash,
         });
 
         this.pushEventAndSort(loader, iface, eventName, log, true);
@@ -220,9 +223,8 @@ export class EventListener {
 
       if (lastBlockNumber > 0 && lastBlockNumber !== log.blockNumber) {
         this.log.info({
-          msg: "Got events spanned on different blocks, stopping now",
           chainId: loader.chainId,
-          address: loader.address,
+          msg: "Got events spanned on different blocks, stopping now",
           blockNumber: log.blockNumber,
           lastBlockNumber,
         });
@@ -242,15 +244,16 @@ export class EventListener {
         await session.commitTransaction();
       } catch (err) {
         this.log.error({
-          msg: `Error running event handler on chain ${loader.chainId}`,
-          err,
+          chainId: loader.chainId,
+          contract: loader.constructor.name,
           eventName,
           args,
-          chainId: loader.chainId,
+          msg: "Error running event handler",
+          txHash: log.transactionHash,
+          err,
           blockNumber: log.blockNumber,
           txIndex: log.transactionIndex,
           logIndex: log.logIndex,
-          txHash: log.transactionHash,
         });
 
         await session.abortTransaction();

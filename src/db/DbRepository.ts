@@ -344,15 +344,17 @@ export class DbRepository extends AbstractDbRepository {
     });
     if (pendingEvents.length > 0) {
       this.log.warn({
-        msg: `Found ${pendingEvents.length} pending events ! will remove them`,
         chainId,
+        msg: "Found pending events ! will remove them",
+        pendingEventsCount: pendingEvents.length,
       });
     }
     if (failedEvents.length > 0) {
       this.log.warn({
-        msg: `Found ${failedEvents.length} failed events ! will remove them`,
-        events: failedEvents.map((event: any) => event.toJSON()),
         chainId,
+        msg: "Found failed events ! will remove them",
+        failedEventsCount: failedEvents.length,
+        events: failedEvents.map((event: any) => event.toJSON()),
       });
     }
     await EventModel.deleteMany({

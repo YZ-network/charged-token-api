@@ -36,10 +36,11 @@ export function detectNegativeAmount(
 
   if (Object.keys(faultyFields).length > 0) {
     log.error({
-      ...logData,
-      msg: `Invalid update detected : negative amounts in ${dataType}`,
-      faultyFields,
       chainId,
+      dataType,
+      msg: `Invalid update detected : negative amounts in ${dataType}`,
+      ...logData,
+      faultyFields,
     });
     throw new Error(`Invalid update detected : negative amounts in ${dataType}`);
   }
