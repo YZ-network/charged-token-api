@@ -7,6 +7,7 @@ export const WebSocketServer = jest.fn().mockImplementation(() => {
 export const WebSocket = jest.fn().mockImplementation(() => {
   return {
     on: jest.fn(),
+    off: jest.fn(),
     close: jest.fn(),
     terminate: jest.fn(),
     send: jest.fn(),
