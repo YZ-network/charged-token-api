@@ -140,9 +140,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
     this.websocket.onopen = () => {
       this._wsReady = true;
       this._setupPings();
-      this._detectNetwork.then((network) => {
-        Metrics.connected(network.chainId);
-      });
+      Metrics.connected(this.chainId);
       if (this._requests.length > 0) {
         this._sendLastRequest();
       }
@@ -159,9 +157,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
         } else if (result.error && result.error.code === 429) {
           this._onRateLimitingError();
         } else {
-          this._detectNetwork.then((network) => {
-            Metrics.requestFailed(network.chainId);
-          });
+          Metrics.requestFailed(this.chainId);
 
           logger.warn({
             chainId: this.chainId,
@@ -175,9 +171,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
       } catch (err) {
         logger.warn({ chainId: this.chainId, msg: "Message is not valid JSON, will retry later", data });
         this._onRateLimitingError();
-        this._detectNetwork.then((network) => {
-          Metrics.requestFailed(network.chainId);
-        });
+        Metrics.requestFailed(this.chainId);
       }
     };
 
@@ -203,9 +197,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
     const request = this._requests.shift()!;
 
     if (result.result !== undefined) {
-      this._detectNetwork.then((network) => {
-        Metrics.requestReplied(network.chainId);
-      });
+      Metrics.requestReplied(this.chainId);
 
       logger.debug({
         chainId: this.chainId,
@@ -216,9 +208,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
 
       request.callback(null as unknown as Error, result.result);
     } else {
-      this._detectNetwork.then((network) => {
-        Metrics.requestFailed(network.chainId);
-      });
+      Metrics.requestFailed(this.chainId);
 
       let error: Error | null = null;
       if (result.error) {
@@ -250,9 +240,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
       result,
     });
 
-    this._detectNetwork.then((network) => {
-      Metrics.eventReceived(network.chainId);
-    });
+    Metrics.eventReceived(this.chainId);
 
     // Subscription...
     const sub = this._subs[result.params.subscription];
@@ -267,9 +255,9 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
       chainId: this.chainId,
       msg: "Rate limiting error caught, programming retry of last request",
     });
-    this._detectNetwork.then((network) => {
-      Metrics.requestFailed(network.chainId);
-    });
+
+    Metrics.requestFailed(this.chainId);
+
     setTimeout(() => {
       this._sendLastRequest();
     }, this.options.retryDelayMs);
@@ -362,9 +350,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
     }
     const subId = await subIdPromise;
     this._subs[subId] = { tag, processFunc };
-    this._detectNetwork.then((network) => {
-      Metrics.setSubscriptionCount(network.chainId, Object.keys(this._subIds).length);
-    });
+    Metrics.setSubscriptionCount(this.chainId, Object.keys(this._subIds).length);
   }
 
   _startEvent(event: Event): void {
@@ -455,9 +441,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
         return;
       }
       delete this._subs[subId];
-      this._detectNetwork.then((network) => {
-        Metrics.setSubscriptionCount(network.chainId, Object.keys(this._subIds).length);
-      });
+      Metrics.setSubscriptionCount(this.chainId, Object.keys(this._subIds).length);
       this.send("eth_unsubscribe", [subId]);
     });
   }
@@ -474,33 +458,25 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
     }
 
     // Wait until we have connected before trying to disconnect
+    /* TODO remove if it proves useless
     if (this.websocket.readyState === WebSocket.CONNECTING) {
       await new Promise((resolve) => {
-        const self = this;
-
-        this.websocket.onopen = function () {
-          self._detectNetwork.then((network) => {
-            Metrics.connected(network.chainId);
-          });
-
+        this.websocket.onopen = () => {
+          Metrics.connected(this.chainId);
           resolve(true);
         };
 
-        this.websocket.onerror = function () {
-          self._detectNetwork.then((network) => {
-            Metrics.disconnected(network.chainId);
-          });
-
+        this.websocket.onerror = () => {
+          Metrics.disconnected(this.chainId);
           resolve(false);
         };
       });
     }
+    */
 
     // Hangup
     // See: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent#Status_codes
-    this._detectNetwork.then((network) => {
-      Metrics.disconnected(network.chainId);
-    });
+    Metrics.disconnected(this.chainId);
     this.websocket.close(1000);
   }
 
@@ -529,9 +505,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
       request,
     });
 
-    this._detectNetwork.then((network) => {
-      Metrics.requestSent(network.chainId);
-    });
+    Metrics.requestSent(this.chainId);
   }
 
   private _setupPings() {
@@ -543,9 +517,9 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
             chainId: this.chainId,
             msg: "Websocket crashed",
           });
-          this._detectNetwork.then((network) => {
-            Metrics.disconnected(network.chainId);
-          });
+
+          Metrics.disconnected(this.chainId);
+
           if (this._pingInterval !== undefined) {
             clearInterval(this._pingInterval);
             this._pingInterval = undefined;
