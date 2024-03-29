@@ -84,6 +84,55 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
   private _pongTimeout: NodeJS.Timeout | undefined;
   private fauxPoll: NodeJS.Timeout;
 
+  private readonly oncloseListener = (...args) => {
+    this.emit("error", ...args);
+  };
+
+  private readonly onerrorListener = (event) => {
+    this.emit("error", "WebSocket closed", event);
+  };
+
+  private readonly onopenListener = () => {
+    // Stall sending requests until the socket is open...
+    this._wsReady = true;
+    this._setupPings();
+    Metrics.connected(this.chainId);
+    if (this._requests.length > 0) {
+      this._sendLastRequest();
+    }
+  };
+
+  private readonly onmessageListener = (messageEvent: MessageEvent) => {
+    const data = messageEvent.data as string;
+    try {
+      const result = JSON.parse(data);
+      if (result.id != null && result.id !== 0) {
+        this._onRequestResponse(data, result);
+      } else if (result.method === "eth_subscription") {
+        this._onSubscriptionMessage(result);
+      } else if (result.error && result.error.code === 429) {
+        this._onRateLimitingError();
+      } else {
+        Metrics.requestFailed(this.chainId);
+
+        logger.warn({
+          chainId: this.chainId,
+          action: "error",
+          msg: "Unknown error handling message",
+          messageEvent,
+        });
+
+        logger.warn({ chainId: this.chainId, msg: "this should not happen" });
+      }
+    } catch (err) {
+      logger.warn({ chainId: this.chainId, msg: "Message is not valid JSON, will retry later", data });
+      this._onRateLimitingError();
+      Metrics.requestFailed(this.chainId);
+    }
+  };
+
+  private onpongListener: ((this: WebSocket, ...args: any[]) => void) | undefined;
+
   constructor(
     url: string | WebSocketLike,
     options: Partial<AutoWebSocketProviderOptions> & { chainId: number },
@@ -129,51 +178,10 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
       return err;
     });
 
-    this.websocket.onerror = (...args) => {
-      this.emit("error", ...args);
-    };
-    this._websocket.onclose = (event) => {
-      this.emit("error", "WebSocket closed", event);
-    };
-
-    // Stall sending requests until the socket is open...
-    this.websocket.onopen = () => {
-      this._wsReady = true;
-      this._setupPings();
-      Metrics.connected(this.chainId);
-      if (this._requests.length > 0) {
-        this._sendLastRequest();
-      }
-    };
-
-    this.websocket.onmessage = (messageEvent: MessageEvent) => {
-      const data = messageEvent.data as string;
-      try {
-        const result = JSON.parse(data);
-        if (result.id != null && result.id !== 0) {
-          this._onRequestResponse(data, result);
-        } else if (result.method === "eth_subscription") {
-          this._onSubscriptionMessage(result);
-        } else if (result.error && result.error.code === 429) {
-          this._onRateLimitingError();
-        } else {
-          Metrics.requestFailed(this.chainId);
-
-          logger.warn({
-            chainId: this.chainId,
-            action: "error",
-            msg: "Unknown error handling message",
-            messageEvent,
-          });
-
-          logger.warn({ chainId: this.chainId, msg: "this should not happen" });
-        }
-      } catch (err) {
-        logger.warn({ chainId: this.chainId, msg: "Message is not valid JSON, will retry later", data });
-        this._onRateLimitingError();
-        Metrics.requestFailed(this.chainId);
-      }
-    };
+    this._websocket.onerror = this.onerrorListener;
+    this._websocket.onclose = this.oncloseListener;
+    this._websocket.onopen = this.onopenListener;
+    this._websocket.onmessage = this.onmessageListener;
 
     // This Provider does not actually poll, but we want to trigger
     // poll events for things that depend on them (like stalling for
@@ -477,8 +485,14 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
     // Hangup
     // See: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent#Status_codes
     Metrics.disconnected(this.chainId);
-    this.websocket.close(1000);
-    this.websocket.terminate();
+
+    if (this.onpongListener !== undefined) {
+      this._websocket.off("pong", this.onpongListener);
+      this.onpongListener = undefined;
+    }
+
+    this._websocket.close(1000);
+    this._websocket.terminate();
   }
 
   private _sendLastRequest() {
@@ -525,16 +539,19 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
             clearInterval(this._pingInterval);
             this._pingInterval = undefined;
           }
-          this._websocket.terminate();
+
+          this.destroy();
         }, this.options.pongMaxWaitMs);
       }
     }, this.options.pingDelayMs);
 
-    this._websocket.on("pong", () => {
+    this.onpongListener = () => {
       if (this._pongTimeout !== undefined) {
         clearTimeout(this._pongTimeout);
         this._pongTimeout = undefined;
       }
-    });
+    };
+
+    this._websocket.on("pong", this.onpongListener);
   }
 }
