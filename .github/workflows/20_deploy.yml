@@ -18,7 +18,7 @@ on:
         required: false
         default: falses
 
-concurrency: ${{ github.ref }}
+concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   deploy-testing:
