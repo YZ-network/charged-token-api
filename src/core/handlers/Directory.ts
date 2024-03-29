@@ -88,9 +88,10 @@ export class Directory extends AbstractHandler<IDirectory> {
     };
 
     this.log.info({
-      msg: "Removing charged token from directory and database",
       chainId: this.chainId,
+      dataType: this.dataType,
       address: contract,
+      msg: "Removing charged token from directory and database",
     });
 
     await this.blockchain.unregisterContract("ChargedToken", contract, true, session);

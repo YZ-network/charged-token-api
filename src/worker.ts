@@ -54,13 +54,16 @@ export class ChainWorker {
     this.chainId = chainId;
     this.db = dbRepository;
     this.broker = broker;
-
-    this.start();
   }
 
-  start() {
-    this.createProvider();
-    this.createWorker();
+  async start() {
+    try {
+      this.createProvider();
+      this.createWorker();
+    } catch (err) {
+      log.error({ chainId: this.chainId, msg: "Error connecting to network !", err });
+      await this.stop();
+    }
   }
 
   status(): ChainHealth {
@@ -138,9 +141,10 @@ export class ChainWorker {
           Metrics.connectionFailed(this.chainId);
         }
         log.warn({
-          msg: `Websocket connection lost to rpc ${this.rpc}`,
-          args,
           chainId: this.chainId,
+          msg: "Websocket connection lost",
+          rpc: this.rpc,
+          args,
         });
         this.providerStatus = "DISCONNECTED";
         this.stop();
@@ -148,14 +152,15 @@ export class ChainWorker {
         this.logDisconnectedStateIfNeeded();
       } else if (typeof args[0] === "string") {
         log.error({
-          msg: `Websocket unknown error on ${this.rpc}`,
-          args,
           chainId: this.chainId,
+          msg: "Websocket unknown error",
+          rpc: this.rpc,
+          args,
         });
       }
     });
     this.provider.on("debug", (...args) => {
-      log.debug({ args, chainId: this.chainId });
+      log.debug({ chainId: this.chainId, args });
     });
 
     this.provider.ready
@@ -163,9 +168,9 @@ export class ChainWorker {
         this.logDowntimeAfterReconnection();
 
         log.info({
+          chainId: this.chainId,
           msg: "Connected to network",
           network,
-          chainId: this.chainId,
         });
 
         if (this.chainId !== network.chainId) {
@@ -179,9 +184,10 @@ export class ChainWorker {
       })
       .catch((err) => {
         log.error({
-          msg: `Error connecting to network ${this.rpc}`,
-          err,
           chainId: this.chainId,
+          msg: "Error connecting to network",
+          rpc: this.rpc,
+          err,
         });
         this.providerStatus = "DISCONNECTED";
         this.wsStatus = WsStatus[WebSocket.CLOSED];
@@ -202,22 +208,25 @@ export class ChainWorker {
 
         if (this.providerStatus !== "DISCONNECTED" && ["CLOSING", "CLOSED"].includes(this.wsStatus)) {
           log.warn({
-            msg: `Websocket crashed : ${this.name}`,
             chainId: this.chainId,
+            msg: "Websocket crashed",
+            network: this.name,
           });
         }
 
         if (this.providerStatus !== "CONNECTING" && this.wsStatus === "CONNECTING") {
           log.info({
-            msg: `Websocket connecting : ${this.name}`,
             chainId: this.chainId,
+            msg: "Websocket connecting",
+            network: this.name,
           });
         }
 
         if (this.providerStatus !== "CONNECTED" && this.wsStatus === "OPEN") {
           log.info({
-            msg: `Websocket connected : ${this.name}`,
             chainId: this.chainId,
+            msg: "Websocket connected",
+            network: this.name,
           });
         }
       }
@@ -246,16 +255,19 @@ export class ChainWorker {
         await this.run()
           .then(() => {
             log.info({
-              msg: `Worker stopped itself on network ${this.name}`,
               chainId: this.chainId,
+              msg: "Worker stopped itself",
+              network: this.name,
             });
             this.stop();
           })
           .catch((err: any) => {
             log.error({
-              msg: `Worker crashed on : ${this.rpc}, ${this.name}`,
-              err,
               chainId: this.chainId,
+              msg: "Worker crashed",
+              rpc: this.rpc,
+              network: this.name,
+              err,
             });
             this.stop();
           });
@@ -269,8 +281,9 @@ export class ChainWorker {
     }
 
     log.info({
-      msg: `Starting worker on chain ${this.name}`,
       chainId: this.chainId,
+      msg: "Starting worker",
+      network: this.name,
     });
 
     try {
@@ -287,14 +300,16 @@ export class ChainWorker {
       await subscribeToUserBalancesLoading(this.chainId, this.db, this.blockchain, this.broker);
     } catch (err) {
       log.error({
-        msg: `Error happened running worker on network ${this.name}`,
-        err,
         chainId: this.chainId,
+        msg: "Error happened running worker",
+        network: this.name,
+        err,
       });
     }
     log.info({
-      msg: `Worker stopped on chain ${this.name}`,
       chainId: this.chainId,
+      msg: "Worker stopped",
+      network: this.name,
     });
   }
 
@@ -302,8 +317,9 @@ export class ChainWorker {
     if (this.providerStatus === "DISCONNECTED" && this.workerStatus === "DEAD") return;
 
     log.debug({
-      msg: `Stopping worker on chain ${this.name}`,
       chainId: this.chainId,
+      msg: "Stopping worker",
+      network: this.name,
       stack: new Error().stack,
     });
 
@@ -320,6 +336,7 @@ export class ChainWorker {
     this.provider?.removeAllListeners();
     this.worker = undefined;
 
+    log.info({ chainId: this.chainId, msg: "Destroying provider", provider: this.provider });
     await this.provider?.destroy();
     this.provider = undefined;
 

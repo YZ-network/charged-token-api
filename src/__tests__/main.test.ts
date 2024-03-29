@@ -78,9 +78,9 @@ describe("Main class", () => {
       `,
     });
 
-    const subValue = await healthSub;
+    await healthSub;
 
-    const healthQuery = await executor({
+    await executor({
       document: gql`
         query testQuery {
           health {
@@ -130,7 +130,7 @@ describe("Main class", () => {
     await waitForServerStart(main);
 
     expect(main.workers.length).toBe(1);
-    expect(main.workers[0].start).toBeCalledTimes(0);
+    expect(main.workers[0].start).toBeCalledTimes(1);
 
     main.workers[0].workerStatus = "DEAD";
 

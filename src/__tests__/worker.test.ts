@@ -100,7 +100,7 @@ describe("ChainWorker", () => {
     clearTimeout(timeout);
   }
 
-  test("should start and try connecting upon creation", async () => {
+  test("should try connecting upon start", async () => {
     (AutoWebSocketProvider as any).mockImplementationOnce(() => {
       const base = mockProviderBase();
 
@@ -116,6 +116,7 @@ describe("ChainWorker", () => {
     db.getAllEvents.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
     const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID, db, broker);
+    await worker.start();
 
     expect(worker.provider).toBeDefined();
     expect(worker.provider?.on).toHaveBeenNthCalledWith(1, "error", expect.anything());
@@ -141,6 +142,8 @@ describe("ChainWorker", () => {
     (AutoWebSocketProvider as any).mockReturnValueOnce(mockProviderBase());
 
     const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID, db, broker);
+    await worker.start();
+
     await waitForWorkerToStart(worker);
 
     expect(worker.status()).toEqual({
@@ -187,6 +190,7 @@ describe("ChainWorker", () => {
     });
 
     const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID, db, broker);
+    await worker.start();
 
     expect(worker.provider).toBeDefined();
     expect(worker.provider?.on).toHaveBeenNthCalledWith(1, "error", expect.anything());
@@ -222,6 +226,7 @@ describe("ChainWorker", () => {
     (AutoWebSocketProvider as any).mockReturnValueOnce(mockProviderBase());
 
     const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID, db, broker);
+    await worker.start();
 
     expect(worker.provider).toBeDefined();
     expect(worker.provider?.on).toHaveBeenNthCalledWith(1, "error", expect.anything());

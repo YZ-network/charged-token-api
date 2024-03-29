@@ -14,15 +14,17 @@ export async function subscribeToUserBalancesLoading(
 ): Promise<void> {
   const sub = broker.subscribeBalanceLoadingRequests(chainId);
   log.info({
-    msg: `listening to balance update requests for ${chainId}`,
     chainId,
+    msg: "listening to balance update requests",
   });
 
   for await (const info of sub) {
     const { user, address } = info;
     log.info({
-      msg: `Got user balances reload message for ${user}@${address}`,
       chainId,
+      user,
+      address,
+      msg: "Got user balances reload message",
     });
 
     const blockNumber = await blockchain.getBlockNumber();

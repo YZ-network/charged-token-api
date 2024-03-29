@@ -56,9 +56,10 @@ export const ResolverFactory = {
           stop.then((err) => {
             sub.return();
             log.debug({
-              msg: `client subscription to ${dataType} ${chainId} stopped by error`,
-              err,
               chainId,
+              dataType,
+              msg: "client subscription stopped by error",
+              err,
             });
           });
 
@@ -72,14 +73,16 @@ export const ResolverFactory = {
               await push(toGraphQL(value));
             }
             log.debug({
-              msg: `client subscription to ${dataType} ${chainId} ended`,
               chainId,
+              dataType,
+              msg: "client subscription ended",
             });
           } catch (err) {
             log.debug({
-              msg: `client subscription to ${dataType} ${chainId} stopped with error`,
-              err,
               chainId,
+              dataType,
+              msg: "client subscription stopped with error",
+              err,
             });
             stop(err);
           }
@@ -98,9 +101,11 @@ export const ResolverFactory = {
           stop.then((err) => {
             sub.return();
             log.debug({
-              msg: `client subscription to ${dataType} ${chainId} ${address} stopped with error`,
-              err,
               chainId,
+              dataType,
+              address,
+              msg: "client subscription stopped with error",
+              err,
             });
           });
 
@@ -114,14 +119,18 @@ export const ResolverFactory = {
               await push(toGraphQL(value));
             }
             log.debug({
-              msg: `client subscription to ${dataType} ${chainId} ${address} ended`,
               chainId,
+              dataType,
+              address,
+              msg: "client subscription ended",
             });
           } catch (err) {
             log.debug({
-              msg: `client subscription to ${dataType} ${chainId} ${address} stopped with error`,
-              err,
               chainId,
+              dataType,
+              address,
+              msg: "client subscription stopped with error",
+              err,
             });
             stop("sub closed");
           }

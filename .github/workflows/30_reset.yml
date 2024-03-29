@@ -13,7 +13,9 @@ on:
         required: true
         default: "testing"
 
-concurrency: ${{ github.ref }}
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   reset-testing:

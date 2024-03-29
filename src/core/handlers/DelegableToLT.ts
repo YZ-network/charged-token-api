@@ -26,10 +26,10 @@ export class DelegableToLT extends AbstractHandler<IDelegableToLT> {
     if (BigNumber.from(value).isZero()) {
       // empty transfers
       this.log.warn({
-        msg: "Skipping transfer event processing since value is zero",
         chainId: this.chainId,
         contract: this.dataType,
         address: this.address,
+        msg: "Skipping transfer event processing since value is zero",
       });
       return;
     }
@@ -53,11 +53,11 @@ export class DelegableToLT extends AbstractHandler<IDelegableToLT> {
         );
       } else {
         this.log.warn({
-          msg: "PT Balance not found in database for update !",
           chainId: this.chainId,
-          ptAddress: this.address,
-          user: from,
           contract: this.dataType,
+          address: this.address,
+          msg: "PT Balance not found in database for update !",
+          user: from,
           eventName,
         });
       }
@@ -81,11 +81,11 @@ export class DelegableToLT extends AbstractHandler<IDelegableToLT> {
         );
       } else {
         this.log.warn({
-          msg: "PT Balance not found in database for update !",
           chainId: this.chainId,
-          ptAddress: this.address,
-          user: to,
           contract: this.dataType,
+          address: this.address,
+          msg: "PT Balance not found in database for update !",
+          user: to,
           eventName,
         });
       }

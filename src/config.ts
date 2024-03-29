@@ -18,8 +18,8 @@ const configDefaults: JsonConfig = {
     },
   ],
   delays: {
-    healthPublishDelayMs: 1000,
-    workerRestartDelayMs: 3000,
+    healthPublishDelayMs: 3000,
+    workerRestartDelayMs: 30000,
     rpcMaxParallelRequests: 4,
     rpcMaxRetryCount: 3,
     rpcPingDelayMs: 3000,

@@ -13,10 +13,10 @@ export type UserBalanceQueryResolver = (
 export const UserBalanceQueryResolverFactory =
   (db: AbstractDbRepository, broker: AbstractBroker) =>
   async (_: any, { chainId, user, address }: { chainId: number; user: string; address?: string }) => {
-    log.debug({ msg: "checking existing balances", chainId, user, address });
+    log.debug({ chainId, user, address, msg: "checking existing balances" });
 
     if (await db.isUserBalancesLoaded(chainId, user)) {
-      log.debug(`returning cached balances for ${chainId} ${user} ${address}`);
+      log.debug({ chainId, user, address, msg: "returning cached balances" });
 
       if (address !== undefined) {
         const balance = await db.getBalance(chainId, address, user);
@@ -27,10 +27,10 @@ export const UserBalanceQueryResolverFactory =
     }
 
     log.info({
-      msg: "Notifying worker to load balances",
-      user,
       chainId,
+      user,
       address,
+      msg: "Notifying worker to load balances",
     });
     broker.notifyBalanceLoadingRequired(chainId, { user, address });
 
@@ -45,10 +45,10 @@ export const UserBalanceSubscriptionResolverFactory = (db: AbstractDbRepository,
       stop.then((err) => {
         sub.return();
         log.debug({
+          chainId,
+          user,
           msg: "client user balances subscription stopped by",
           err,
-          user,
-          chainId,
         });
       });
 
@@ -60,24 +60,24 @@ export const UserBalanceSubscriptionResolverFactory = (db: AbstractDbRepository,
 
         for await (const value of sub) {
           log.debug({
+            chainId,
+            user,
             msg: "sending balances to subscription",
             data: value,
-            user,
-            chainId,
           });
           await push(value);
         }
         log.debug({
-          msg: "client user balances subscription ended",
-          user,
           chainId,
+          user,
+          msg: "client user balances subscription ended",
         });
       } catch (err) {
         log.debug({
+          chainId,
+          user,
           msg: "client user balances subscription stopped with error",
           err,
-          user,
-          chainId,
         });
         stop(err);
       }
