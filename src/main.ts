@@ -33,9 +33,9 @@ export class MainClass {
 
       log.info("MongoDB connected !");
 
-      this.networks.forEach((network, index) => {
-        this.connectChain(index, network.uri, network.directory, network.chainId);
-      });
+      await this.networks.map((network, index) =>
+        this.connectChain(index, network.uri, network.directory, network.chainId),
+      );
 
       this.keepAlive = setInterval(() => {
         for (const worker of this.workers) {
@@ -99,7 +99,7 @@ export class MainClass {
     return await mongoose.connect(Config.db.uri);
   }
 
-  private connectChain(index: number, rpc: string, directory: string, chainId: number): void {
+  private async connectChain(index: number, rpc: string, directory: string, chainId: number): Promise<void> {
     log.info({
       chainId,
       rpc,
@@ -108,7 +108,20 @@ export class MainClass {
     });
 
     Metrics.chainInit(chainId);
-    this.workers.push(new ChainWorker(index, rpc, directory, chainId, this.db, this.broker));
+
+    const worker = new ChainWorker(index, rpc, directory, chainId, this.db, this.broker);
+
+    this.workers.push(worker);
+
+    await worker.start().catch((err) =>
+      log.error({
+        chainId,
+        msg: "Error starting worker !",
+        rpc,
+        directory,
+        err,
+      }),
+    );
   }
 }
 

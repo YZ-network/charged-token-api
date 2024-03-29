@@ -54,8 +54,6 @@ export class ChainWorker {
     this.chainId = chainId;
     this.db = dbRepository;
     this.broker = broker;
-
-    this.start();
   }
 
   async start() {
