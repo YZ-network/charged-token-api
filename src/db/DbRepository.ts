@@ -131,18 +131,28 @@ export class DbRepository extends AbstractDbRepository {
       user,
     }).session(session);
 
-    if (result === null) return [];
+    if (result === null) {
+      this.log.warn({ chainId, user, msg: "No balances found by user" });
+      return [];
+    }
 
     return result.map((doc) => doc.toJSON());
   }
 
-  async getBalancesByContract(chainId: number, address: string, session: ClientSession | null = null): Promise<IUserBalance[]> {
+  async getBalancesByContract(
+    chainId: number,
+    address: string,
+    session: ClientSession | null = null,
+  ): Promise<IUserBalance[]> {
     const result = await UserBalanceModel.find({
       chainId,
       address,
     }).session(session);
 
-    if (result === null) return [];
+    if (result === null) {
+      this.log.warn({ chainId, address, msg: "No balances found by contract" });
+      return [];
+    }
 
     return result.map((doc) => doc.toJSON());
   }
@@ -159,7 +169,10 @@ export class DbRepository extends AbstractDbRepository {
       user,
     }).session(session);
 
-    if (result === null) return null;
+    if (result === null) {
+      this.log.warn({ chainId, address, user, msg: "No balance found by user and contract" });
+      return null;
+    }
 
     return result.toJSON();
   }
@@ -176,7 +189,10 @@ export class DbRepository extends AbstractDbRepository {
       user,
     }).session(session);
 
-    if (result === null) return [];
+    if (result === null) {
+      this.log.warn({ chainId, ptAddress, user, msg: "No balance found by user and project token" });
+      return [];
+    }
 
     return result.map((doc: any) => doc.toJSON());
   }
@@ -193,7 +209,10 @@ export class DbRepository extends AbstractDbRepository {
       user,
     }).session(session);
 
-    if (result === null) return null;
+    if (result === null) {
+      this.log.warn({ chainId, ptAddress, user, msg: "Not one balance found by user and project token" });
+      return null;
+    }
 
     return result.balancePT;
   }
