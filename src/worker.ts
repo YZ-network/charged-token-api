@@ -336,6 +336,7 @@ export class ChainWorker {
     this.provider?.removeAllListeners();
     this.worker = undefined;
 
+    log.info({ chainId: this.chainId, msg: "Destroying provider", provider: this.provider });
     await this.provider?.destroy();
     this.provider = undefined;
 
