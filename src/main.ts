@@ -125,6 +125,6 @@ export class MainClass {
   }
 }
 
-log.info({ msg: "Starting API", version: ApiVersion });
+log.info({ msg: "Starting API", version: ApiVersion, config: Config });
 
 export const Main = new MainClass();
