@@ -14,6 +14,11 @@ export const DirectoryQueryResolverFactory =
     const network = Config.networks.find((network) => network.chainId === chainId);
 
     if (network === undefined) {
+      log.warn({
+        chainId,
+        msg: "Network not found in configuration",
+        configuredIds: Config.networks.map((network) => network.chainId),
+      });
       throw new GraphQLError("UNKNOWN_NETWORK");
     } else if (!network.enabled) {
       throw new GraphQLError("DISABLED_NETWORK");
