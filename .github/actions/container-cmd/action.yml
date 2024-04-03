@@ -35,7 +35,7 @@ runs:
         echo "$SSH_KEY" | tr -d '\r' | ssh-add -
         SSH_CONFIG="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
-        ssh $SSH_CONFIG ec2-user@$API_HOST "echo Executing $ACTION on $CONTAINER && [ -z $(sudo docker ps -q -f name=${CONTAINER}) ] && echo 'Container already stopped' || sudo docker stop $CONTAINER"
+        ssh $SSH_CONFIG ec2-user@$API_HOST "echo Executing $ACTION on $CONTAINER && [ -z \$(sudo docker ps -q -f name=${CONTAINER}) ] && echo 'Container already stopped' || sudo docker stop $CONTAINER"
 
     - name: Execute container start
       if: inputs.action == 'start'
@@ -50,7 +50,7 @@ runs:
         echo "$SSH_KEY" | tr -d '\r' | ssh-add -
         SSH_CONFIG="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
-        ssh $SSH_CONFIG ec2-user@$API_HOST "echo Executing $ACTION on $CONTAINER && [ -z $(sudo docker ps -q -f name=${CONTAINER}) ] && sudo docker start $CONTAINER || echo 'Container already started'"
+        ssh $SSH_CONFIG ec2-user@$API_HOST "echo Executing $ACTION on $CONTAINER && [ -z \$(sudo docker ps -q -f name=${CONTAINER}) ] && sudo docker start $CONTAINER || echo 'Container already started'"
 
     - name: Execute container command
       if: inputs.action == 'rm'

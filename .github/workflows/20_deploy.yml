@@ -121,3 +121,11 @@ jobs:
         with:
           apiHost: ${{ vars.API_HOST }}
           sshKey: ${{ secrets.SSH_KEY }}
+
+      - name: Nginx restart
+        uses: ./.github/actions/container-cmd
+        with:
+          apiHost: ${{ vars.API_HOST }}
+          container: yz-nginx
+          action: restart
+          sshKey: ${{ secrets.SSH_KEY }}
