@@ -13,10 +13,10 @@ export type UserBalanceQueryResolver = (
 export const UserBalanceQueryResolverFactory =
   (db: AbstractDbRepository, broker: AbstractBroker) =>
   async (_: any, { chainId, user, address }: { chainId: number; user: string; address?: string }) => {
-    log.debug({ chainId, user, address, msg: "checking existing balances" });
+    log.info({ chainId, user, address, msg: "checking existing balances" });
 
     if (await db.isUserBalancesLoaded(chainId, user)) {
-      log.debug({ chainId, user, address, msg: "returning cached balances" });
+      log.info({ chainId, user, address, msg: "returning cached balances" });
 
       if (address !== undefined) {
         const balance = await db.getBalance(chainId, address, user);
@@ -44,7 +44,7 @@ export const UserBalanceSubscriptionResolverFactory = (db: AbstractDbRepository,
     return new Repeater(async (push, stop) => {
       stop.then((err) => {
         sub.return();
-        log.debug({
+        log.info({
           chainId,
           user,
           msg: "client user balances subscription stopped by",
@@ -59,7 +59,7 @@ export const UserBalanceSubscriptionResolverFactory = (db: AbstractDbRepository,
         }
 
         for await (const value of sub) {
-          log.debug({
+          log.info({
             chainId,
             user,
             msg: "sending balances to subscription",
@@ -67,13 +67,13 @@ export const UserBalanceSubscriptionResolverFactory = (db: AbstractDbRepository,
           });
           await push(value);
         }
-        log.debug({
+        log.info({
           chainId,
           user,
           msg: "client user balances subscription ended",
         });
       } catch (err) {
-        log.debug({
+        log.error({
           chainId,
           user,
           msg: "client user balances subscription stopped with error",

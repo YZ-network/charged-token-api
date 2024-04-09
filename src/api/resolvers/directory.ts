@@ -21,6 +21,11 @@ export const DirectoryQueryResolverFactory =
       });
       throw new GraphQLError("UNKNOWN_NETWORK");
     } else if (!network.enabled) {
+      log.warn({
+        chainId,
+        msg: "Network is disabled",
+        configuredIds: Config.networks.map((network) => network.chainId),
+      });
       throw new GraphQLError("DISABLED_NETWORK");
     }
 
