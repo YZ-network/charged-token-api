@@ -151,6 +151,7 @@ const schemaFactory = (db: AbstractDbRepository, broker: AbstractBroker) =>
   }
 
   type Query {
+    version: String!
     Directory(chainId: Int!): IDirectory
     allChargedTokens(chainId: Int!): [IChargedToken!]!
     ChargedToken(chainId: Int!, address: String!): IChargedToken!
