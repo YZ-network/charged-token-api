@@ -1,15 +1,18 @@
 import { ExecutionArgs, GraphQLError } from "graphql";
 import { Context, SubscribeMessage } from "graphql-ws";
 import { Extra, useServer } from "graphql-ws/lib/use/ws";
-import { YogaServerInstance, createYoga } from "graphql-yoga";
+import { YogaServerInstance, createYoga, maskError } from "graphql-yoga";
 import { Server, createServer } from "http";
 import { WebSocketServer } from "ws";
 import { Config } from "../config";
 import { AbstractBroker } from "../core/AbstractBroker";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
+import { rootLogger } from "../rootLogger";
 import { eventsExporterFactory } from "./exporter";
 import { usePrometheus } from "./prometheus";
 import schemaFactory from "./schema";
+
+const log = rootLogger.child({ name: "GQL" });
 
 export function buildCorsHeaders(request: Request) {
   const requestOrigin = request.headers.get("origin") as string;
@@ -59,6 +62,12 @@ export function configureApiServer(db: AbstractDbRepository, broker: AbstractBro
       : false,
     cors: buildCorsHeaders,
     plugins: [usePrometheus(), eventsExporterFactory(db)()],
+    maskedErrors: {
+      maskError(error: unknown, message: string, isDev: boolean | undefined) {
+        log.error({ msg: message, error, isDev });
+        return maskError(error, message, isDev);
+      },
+    },
   });
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
