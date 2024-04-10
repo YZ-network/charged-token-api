@@ -146,7 +146,6 @@ export class ChainWorker {
           rpc: this.rpc,
           args,
         });
-        this.providerStatus = "DISCONNECTED";
         this.logStopResult(this.stop());
 
         this.logDisconnectedStateIfNeeded();
@@ -189,7 +188,6 @@ export class ChainWorker {
           rpc: this.rpc,
           err,
         });
-        this.providerStatus = "DISCONNECTED";
         this.wsStatus = WsStatus[WebSocket.CLOSED];
         Metrics.connectionFailed(this.chainId);
         this.logStopResult(this.stop());
