@@ -530,7 +530,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
         this._pongTimeout = setTimeout(() => {
           logger.warn({
             chainId: this.chainId,
-            msg: "Websocket crashed",
+            msg: "pong timeout, Websocket crashed",
           });
 
           Metrics.disconnected(this.chainId);

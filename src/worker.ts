@@ -212,17 +212,29 @@ export class ChainWorker {
             msg: "Websocket crashed",
             network: this.name,
           });
-        }
-
-        if (this.providerStatus !== "CONNECTING" && this.wsStatus === "CONNECTING") {
+          this.stop()
+            .then(() => {
+              log.info({
+                chainId: this.chainId,
+                msg: "Worker stopped after websocket crashed",
+                network: this.name,
+              });
+            })
+            .catch((err) => {
+              log.info({
+                chainId: this.chainId,
+                msg: "Error stopping worker after websocket crashed",
+                network: this.name,
+                err,
+              });
+            });
+        } else if (this.providerStatus !== "CONNECTING" && this.wsStatus === "CONNECTING") {
           log.info({
             chainId: this.chainId,
             msg: "Websocket connecting",
             network: this.name,
           });
-        }
-
-        if (this.providerStatus !== "CONNECTED" && this.wsStatus === "OPEN") {
+        } else if (this.providerStatus !== "CONNECTED" && this.wsStatus === "OPEN") {
           log.info({
             chainId: this.chainId,
             msg: "Websocket connected",
@@ -336,7 +348,7 @@ export class ChainWorker {
     this.provider?.removeAllListeners();
     this.worker = undefined;
 
-    log.info({ chainId: this.chainId, msg: "Destroying provider", provider: this.provider });
+    log.info({ chainId: this.chainId, msg: "Destroying provider" });
     await this.provider?.destroy();
     this.provider = undefined;
 
