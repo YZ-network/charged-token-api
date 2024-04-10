@@ -213,7 +213,7 @@ export class ChainWorker {
       if (this.wsStatus !== prevWsStatus) {
         prevWsStatus = this.wsStatus;
 
-        if (this.providerStatus !== "DISCONNECTED" && ["CLOSING", "CLOSED"].includes(this.wsStatus)) {
+        if (["CLOSING", "CLOSED"].includes(this.wsStatus)) {
           log.warn({
             chainId: this.chainId,
             msg: "Websocket crashed",
