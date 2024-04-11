@@ -365,6 +365,21 @@ export class ChainWorker {
         lastBlock,
       });
     }
+
+    const previousBlockNumber = Object.keys(this.blocksMap)
+      .map(Number)
+      .reduce((prev, cur) => {
+        return Number(prev) > cur ? Number(prev) : cur;
+      }, 0);
+
+    if (blockNumber !== previousBlockNumber + 1) {
+      log.warn({
+        chainId: this.chainId,
+        blockNumber,
+        previousBlockNumber,
+        msg: "New block is not continuous !",
+      });
+    }
   }
 
   private addBlockAndDetectReorg(blockNumber: number, lastBlock: ethers.providers.Block) {
