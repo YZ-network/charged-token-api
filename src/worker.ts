@@ -1,3 +1,4 @@
+import { ethers } from "ethers";
 import { WebSocket } from "ws";
 import { AutoWebSocketProvider } from "./blockchain/AutoWebSocketProvider";
 import { BlockchainRepository } from "./blockchain/BlockchainRepository";
@@ -35,6 +36,8 @@ export class ChainWorker {
   wsStatus: string = "STARTING";
   wsWatch: NodeJS.Timeout | undefined;
   workerStatus: WorkerStatus = "WAITING";
+
+  blocksMap: Record<number, ethers.providers.Block> = {};
 
   disconnectedTimestamp: number = new Date().getTime();
   cumulatedNodeDowntime: number = 0;
@@ -312,11 +315,79 @@ export class ChainWorker {
       throw new Error("No provider to subscribe for new blocks !");
     }
 
-    this.provider.on("block", (blockNumber: number) => {
-      if (this.blockNumberBeforeDisconnect < blockNumber) {
-        this.blockNumberBeforeDisconnect = blockNumber;
-      }
+    this.provider.on("block", (blockNumber: number) => this.onNewBlock(blockNumber));
+  }
+
+  private async onNewBlock(blockNumber: number) {
+    log.debug({
+      chainId: this.chainId,
+      blockNumber,
+      msg: "New block header",
+      blockNumberBeforeDisconnect: this.blockNumberBeforeDisconnect,
     });
+    if (this.blockNumberBeforeDisconnect < blockNumber) {
+      this.blockNumberBeforeDisconnect = blockNumber;
+    }
+
+    try {
+      const lastBlock = await this.provider?.getBlock(blockNumber);
+
+      if (lastBlock === undefined) {
+        log.warn({
+          chainId: this.chainId,
+          blockNumber,
+          msg: "Failed reading new block",
+          lastBlock,
+        });
+        return;
+      }
+
+      this.checkBlockNumber(blockNumber, lastBlock);
+      this.addBlockAndDetectReorg(blockNumber, lastBlock);
+    } catch (err) {
+      log.warn({ chainId: this.chainId, blockNumber, msg: "Failed reading new block data" });
+    }
+  }
+
+  private checkBlockNumber(blockNumber: number, lastBlock: ethers.providers.Block) {
+    if (lastBlock.number !== blockNumber) {
+      log.warn({
+        chainId: this.chainId,
+        blockNumber,
+        msg: "Fetched block number doesn't match header !",
+        lastBlock,
+      });
+    } else {
+      log.debug({
+        chainId: this.chainId,
+        blockNumber,
+        msg: "Fetched new block",
+        lastBlock,
+      });
+    }
+  }
+
+  private addBlockAndDetectReorg(blockNumber: number, lastBlock: ethers.providers.Block) {
+    const knownBlock = this.blocksMap[blockNumber];
+    if (knownBlock === undefined) {
+      this.blocksMap[blockNumber] = lastBlock;
+    } else if (knownBlock.hash === lastBlock.hash) {
+      log.debug({
+        chainId: this.chainId,
+        blockNumber,
+        msg: "Duplicate block notification",
+        lastBlock,
+        knownBlock,
+      });
+    } else {
+      log.warn({
+        chainId: this.chainId,
+        blockNumber,
+        msg: "Chain reorg detected !",
+        lastBlock,
+        knownBlock,
+      });
+    }
   }
 
   private createWorker() {
@@ -414,6 +485,7 @@ export class ChainWorker {
     this.blockchain = undefined;
 
     this.provider?.removeAllListeners();
+    this.blocksMap = {};
     this.worker = undefined;
 
     log.info({ chainId: this.chainId, msg: "Destroying provider", providerIndex: this.providerIndex });
