@@ -33,8 +33,6 @@ export class ChainWorker {
   providerStatus: ProviderStatus = "STARTING";
   wsStatus: string = "STARTING";
   wsWatch: NodeJS.Timeout | undefined;
-  pingInterval: NodeJS.Timeout | undefined;
-  pongTimeout: NodeJS.Timeout | undefined;
   workerStatus: WorkerStatus = "WAITING";
 
   disconnectedTimestamp: number = new Date().getTime();
@@ -124,6 +122,8 @@ export class ChainWorker {
   }
 
   private createProvider() {
+    log.info({ chainId: this.chainId, msg: "Creating provider" });
+
     this.provider = new AutoWebSocketProvider(this.rpc, {
       chainId: this.chainId,
       maxParallelRequests: Config.delays.rpcMaxParallelRequests,
@@ -195,6 +195,8 @@ export class ChainWorker {
         this.logDisconnectedStateIfNeeded();
       });
 
+    log.info({ chainId: this.chainId, msg: "Starting websocket watch", wsWatch: this.wsWatch });
+
     let prevWsStatus = this.wsStatus;
     this.wsWatch = setInterval(() => {
       if (this.provider?.websocket === undefined) {
@@ -204,6 +206,8 @@ export class ChainWorker {
       this.wsStatus = WsStatus[this.provider.websocket.readyState];
 
       if (this.wsStatus !== prevWsStatus) {
+        const memoizedPrevWsStatus = prevWsStatus;
+
         prevWsStatus = this.wsStatus;
 
         if (["CLOSING", "CLOSED"].includes(this.wsStatus)) {
@@ -211,6 +215,8 @@ export class ChainWorker {
             chainId: this.chainId,
             msg: "Websocket crashed",
             network: this.name,
+            prevWsStatus: memoizedPrevWsStatus,
+            readyState: this.provider.websocket.readyState,
           });
           this.logStopResult(this.stop());
         } else if (this.providerStatus !== "CONNECTING" && this.wsStatus === "CONNECTING") {
@@ -218,12 +224,16 @@ export class ChainWorker {
             chainId: this.chainId,
             msg: "Websocket connecting",
             network: this.name,
+            prevWsStatus: memoizedPrevWsStatus,
+            readyState: this.provider.websocket.readyState,
           });
         } else if (this.providerStatus !== "CONNECTED" && this.wsStatus === "OPEN") {
           log.info({
             chainId: this.chainId,
             msg: "Websocket connected",
             network: this.name,
+            prevWsStatus: memoizedPrevWsStatus,
+            readyState: this.provider.websocket.readyState,
           });
         } else {
           log.warn({
@@ -232,6 +242,8 @@ export class ChainWorker {
             network: this.name,
             providerStatus: this.providerStatus,
             wsStatus: this.wsStatus,
+            prevWsStatus: memoizedPrevWsStatus,
+            readyState: this.provider.websocket.readyState,
           });
         }
       }
@@ -366,18 +378,10 @@ export class ChainWorker {
     this.provider = undefined;
 
     if (this.wsWatch !== undefined) {
+      log.info({ chainId: this.chainId, msg: "Stopping websocket watch" });
+
       clearInterval(this.wsWatch);
       this.wsWatch = undefined;
-    }
-
-    if (this.pingInterval !== undefined) {
-      clearInterval(this.pingInterval);
-      this.pingInterval = undefined;
-    }
-
-    if (this.pongTimeout !== undefined) {
-      clearTimeout(this.pongTimeout);
-      this.pongTimeout = undefined;
     }
 
     await this.db.deletePendingAndFailedEvents(this.chainId);

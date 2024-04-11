@@ -457,10 +457,14 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
   async destroy(): Promise<void> {
     clearInterval(this.fauxPoll);
     if (this._pingInterval !== undefined) {
+      logger.info({ chainId: this.chainId, msg: "Stopping ping interval" });
+
       clearInterval(this._pingInterval);
       this._pingInterval = undefined;
     }
     if (this._pongTimeout !== undefined) {
+      logger.info({ chainId: this.chainId, msg: "Stopping pending pong timeout" });
+
       clearTimeout(this._pongTimeout);
       this._pongTimeout = undefined;
     }
@@ -524,29 +528,50 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
   }
 
   private _setupPings() {
+    logger.info({
+      chainId: this.chainId,
+      msg: "setting ping timers on provider",
+    });
+
+    let now: Date;
+
     this._pingInterval = setInterval(() => {
       if (this._pongTimeout === undefined) {
+        now = new Date();
+
+        logger.info({ chainId: this.chainId, msg: "ping", now: now.toISOString() });
         this._websocket.ping();
+
         this._pongTimeout = setTimeout(() => {
           logger.warn({
             chainId: this.chainId,
             msg: "pong timeout, Websocket crashed",
+            now: now.toISOString(),
+            maxWaitMs: this.options.pongMaxWaitMs,
           });
 
           Metrics.disconnected(this.chainId);
 
-          if (this._pingInterval !== undefined) {
-            clearInterval(this._pingInterval);
-            this._pingInterval = undefined;
-          }
-
           this.destroy();
         }, this.options.pongMaxWaitMs);
+      } else {
+        logger.warn({
+          chainId: this.chainId,
+          msg: "still waiting for previous pong",
+          now: now.toISOString(),
+        });
       }
     }, this.options.pingDelayMs);
 
     this.onpongListener = () => {
       if (this._pongTimeout !== undefined) {
+        logger.info({
+          chainId: this.chainId,
+          msg: "pong",
+          now: now.toISOString(),
+          pongDelayMs: new Date().getTime() - now.getTime(),
+        });
+
         clearTimeout(this._pongTimeout);
         this._pongTimeout = undefined;
       }
