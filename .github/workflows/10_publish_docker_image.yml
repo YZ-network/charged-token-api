@@ -64,7 +64,7 @@ jobs:
         shell: bash
         run: |
           API_VERSION=$(git rev-parse --verify HEAD)
-          echo Building docker image for commit $API_VERSION
+          echo Building docker image for commit $API_VERSION and tag $IMAGE_TAG
 
           docker build --build-arg="API_VERSION=$API_VERSION" -t ct-api:latest .
 
