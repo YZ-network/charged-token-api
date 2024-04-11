@@ -198,11 +198,6 @@ export class ChainWorker {
     let prevWsStatus = this.wsStatus;
     this.wsWatch = setInterval(() => {
       if (this.provider?.websocket === undefined) {
-        log.warn({
-          chainId: this.chainId,
-          msg: "Provider has no websocket !",
-          network: this.name,
-        });
         return;
       }
 
