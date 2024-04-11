@@ -222,6 +222,7 @@ export class ChainWorker {
             chainId: this.chainId,
             msg: "Websocket crashed",
             network: this.name,
+            wsStatus: this.wsStatus,
             prevWsStatus: memoizedPrevWsStatus,
             readyState: this.provider.websocket.readyState,
           });
@@ -231,6 +232,7 @@ export class ChainWorker {
             chainId: this.chainId,
             msg: "Websocket connecting",
             network: this.name,
+            wsStatus: this.wsStatus,
             prevWsStatus: memoizedPrevWsStatus,
             readyState: this.provider.websocket.readyState,
           });
@@ -239,6 +241,7 @@ export class ChainWorker {
             chainId: this.chainId,
             msg: "Websocket connected",
             network: this.name,
+            wsStatus: this.wsStatus,
             prevWsStatus: memoizedPrevWsStatus,
             readyState: this.provider.websocket.readyState,
           });
