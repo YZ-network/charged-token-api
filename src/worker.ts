@@ -138,9 +138,10 @@ export class ChainWorker {
   }
 
   private createProvider() {
+    this.providerIndex++;
+
     log.info({ chainId: this.chainId, msg: "Creating provider", providerIndex: this.providerIndex });
 
-    this.providerIndex++;
     this.provider = new AutoWebSocketProvider(this.rpc, {
       chainId: this.chainId,
       maxParallelRequests: Config.delays.rpcMaxParallelRequests,
