@@ -76,6 +76,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
   _retryCount: number;
 
   readonly chainId: number;
+  readonly providerIndex: number;
   readonly options: AutoWebSocketProviderOptions;
 
   _wsReady: boolean;
@@ -120,12 +121,18 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
           action: "error",
           msg: "Unknown error handling message",
           messageEvent,
+          providerIndex: this.providerIndex,
         });
 
-        logger.warn({ chainId: this.chainId, msg: "this should not happen" });
+        logger.warn({ chainId: this.chainId, msg: "this should not happen", providerIndex: this.providerIndex });
       }
     } catch (err) {
-      logger.warn({ chainId: this.chainId, msg: "Message is not valid JSON, will retry later", data });
+      logger.warn({
+        chainId: this.chainId,
+        msg: "Message is not valid JSON, will retry later",
+        data,
+        providerIndex: this.providerIndex,
+      });
       this._onRateLimitingError();
       Metrics.requestFailed(this.chainId);
     }
@@ -135,7 +142,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
 
   constructor(
     url: string | WebSocketLike,
-    options: Partial<AutoWebSocketProviderOptions> & { chainId: number },
+    options: Partial<AutoWebSocketProviderOptions> & { chainId: number; providerIndex: number },
     network?: Networkish,
   ) {
     // This will be added in the future; please open an issue to expedite
@@ -150,6 +157,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
     }
 
     this.chainId = options.chainId;
+    this.providerIndex = options.providerIndex;
 
     this.options = {
       ...DEFAULTS,
@@ -174,7 +182,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
     this._retryCount = 0;
 
     this._detectNetwork = super.detectNetwork().catch((err) => {
-      logger.error({ chainId: this.chainId, msg: "Fatal error !", err });
+      logger.error({ chainId: this.chainId, msg: "Fatal error !", err, providerIndex: this.providerIndex });
       return err;
     });
 
@@ -232,6 +240,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
         action: "response",
         error,
         request: JSON.parse(request.payload),
+        providerIndex: this.providerIndex,
       });
 
       request.callback(error, undefined);
@@ -246,6 +255,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
       chainId: this.chainId,
       action: "subscribe",
       result,
+      providerIndex: this.providerIndex,
     });
 
     Metrics.eventReceived(this.chainId);
@@ -262,6 +272,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
     logger.warn({
       chainId: this.chainId,
       msg: "Rate limiting error caught, programming retry of last request",
+      providerIndex: this.providerIndex,
     });
 
     Metrics.requestFailed(this.chainId);
@@ -312,6 +323,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
       id,
       method,
       params,
+      providerIndex: this.providerIndex,
     });
 
     return await new Promise((resolve, reject) => {
@@ -334,6 +346,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
         chainId: this.chainId,
         action: "queue-request",
         request: JSON.parse(payload),
+        providerIndex: this.providerIndex,
       });
 
       this._requests.push({ id, callback, payload });
@@ -457,10 +470,14 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
   async destroy(): Promise<void> {
     clearInterval(this.fauxPoll);
     if (this._pingInterval !== undefined) {
+      logger.info({ chainId: this.chainId, msg: "Stopping ping interval", providerIndex: this.providerIndex });
+
       clearInterval(this._pingInterval);
       this._pingInterval = undefined;
     }
     if (this._pongTimeout !== undefined) {
+      logger.info({ chainId: this.chainId, msg: "Stopping pending pong timeout", providerIndex: this.providerIndex });
+
       clearTimeout(this._pongTimeout);
       this._pongTimeout = undefined;
     }
@@ -508,6 +525,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
         payload: request.payload,
         retryCount: this._retryCount,
         maxRetryCount: this.options.maxRetryCount,
+        providerIndex: this.providerIndex,
       });
       throw new Error("Too many retries failed, crashing");
     }
@@ -518,35 +536,61 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
       action: "send-request",
       payload: JSON.parse(request.payload),
       request,
+      providerIndex: this.providerIndex,
     });
 
     Metrics.requestSent(this.chainId);
   }
 
   private _setupPings() {
+    logger.info({
+      chainId: this.chainId,
+      msg: "setting ping timers on provider",
+      providerIndex: this.providerIndex,
+    });
+
+    let now: Date;
+
     this._pingInterval = setInterval(() => {
       if (this._pongTimeout === undefined) {
+        now = new Date();
+
+        logger.debug({ chainId: this.chainId, msg: "ping", now: now.toISOString(), providerIndex: this.providerIndex });
         this._websocket.ping();
+
         this._pongTimeout = setTimeout(() => {
           logger.warn({
             chainId: this.chainId,
             msg: "pong timeout, Websocket crashed",
+            now: now.toISOString(),
+            maxWaitMs: this.options.pongMaxWaitMs,
+            providerIndex: this.providerIndex,
           });
 
           Metrics.disconnected(this.chainId);
 
-          if (this._pingInterval !== undefined) {
-            clearInterval(this._pingInterval);
-            this._pingInterval = undefined;
-          }
-
           this.destroy();
         }, this.options.pongMaxWaitMs);
+      } else {
+        logger.warn({
+          chainId: this.chainId,
+          msg: "still waiting for previous pong",
+          now: now.toISOString(),
+          providerIndex: this.providerIndex,
+        });
       }
     }, this.options.pingDelayMs);
 
     this.onpongListener = () => {
       if (this._pongTimeout !== undefined) {
+        logger.debug({
+          chainId: this.chainId,
+          msg: "pong",
+          now: now.toISOString(),
+          pongDelayMs: new Date().getTime() - now.getTime(),
+          providerIndex: this.providerIndex,
+        });
+
         clearTimeout(this._pongTimeout);
         this._pongTimeout = undefined;
       }

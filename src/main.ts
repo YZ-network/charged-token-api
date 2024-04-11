@@ -33,8 +33,10 @@ export class MainClass {
 
       log.info("MongoDB connected !");
 
-      await this.networks.map((network, index) =>
-        this.connectChain(index, network.uri, network.directory, network.chainId),
+      await Promise.all(
+        this.networks.map((network, index) =>
+          this.connectChain(index, network.uri, network.directory, network.chainId),
+        ),
       );
 
       this.keepAlive = setInterval(() => {
