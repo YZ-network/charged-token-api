@@ -40,6 +40,11 @@ jobs:
           echo Building docker image for commit $API_VERSION
 
           docker build --build-arg="API_VERSION=$API_VERSION" -t ct-api:latest .
-          docker tag ct-api:latest 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
+
           aws ecr get-login-password --region eu-west-3 | docker login --username AWS --password-stdin 940219468121.dkr.ecr.eu-west-3.amazonaws.com
-          docker push 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:${IMAGE_TAG}
+
+          [ "$IMAGE_TAG" == "release"] && docker tag ct-api:latest 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:release
+          docker tag ct-api:latest 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:snapshot
+
+          [ "$IMAGE_TAG" == "release" ] && docker push 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:release
+          docker push 940219468121.dkr.ecr.eu-west-3.amazonaws.com/yz-image:snapshot
