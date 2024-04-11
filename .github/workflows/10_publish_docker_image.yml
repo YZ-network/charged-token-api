@@ -41,19 +41,19 @@ jobs:
           aws-region: eu-west-3
 
       - name: Set release
-        if: github.event_name == "pull_request" && github.event.pull_request.merged == true
+        if: ${{ github.event_name == "pull_request" && github.event.pull_request.merged == true }}
         shell: bash
         run: |
           echo IMAGE_TAG=release >> $GITHUB_ENV
 
       - name: Set snapshot
-        if: github.event_name == "pull_request" && github.event.pull_request.merged == false
+        if: ${{ github.event_name == "pull_request" && github.event.pull_request.merged == false }}
         shell: bash
         run: |
           echo IMAGE_TAG=snapshot >> $GITHUB_ENV
 
       - name: Take input tag
-        if: github.event_name == "workflow_dispatch"
+        if: ${{ github.event_name == "workflow_dispatch" }}
         shell: bash
         env:
           IMAGE_TAG: ${{ inputs.deploymentTag }}
