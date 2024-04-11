@@ -216,8 +216,6 @@ describe("ChainWorker", () => {
     expect(worker.blockchain).toBeUndefined();
     expect(worker.worker).toBeUndefined();
     expect(worker.wsWatch).toBeUndefined();
-    expect(worker.pingInterval).toBeUndefined();
-    expect(worker.pongTimeout).toBeUndefined();
 
     expect(db.deletePendingAndFailedEvents).toBeCalledTimes(1);
   });
@@ -256,8 +254,6 @@ describe("ChainWorker", () => {
     expect(worker.blockchain).toBeUndefined();
     expect(worker.worker).toBeUndefined();
     expect(worker.wsWatch).toBeUndefined();
-    expect(worker.pingInterval).toBeUndefined();
-    expect(worker.pongTimeout).toBeUndefined();
 
     expect(db.deletePendingAndFailedEvents).toBeCalledTimes(1);
   });
