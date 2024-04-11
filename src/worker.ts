@@ -46,7 +46,6 @@ export class ChainWorker {
     chainId: number,
     dbRepository: AbstractDbRepository,
     broker: AbstractBroker,
-    providerIndex: number,
   ) {
     this.index = index;
     this.rpc = rpc;
@@ -54,7 +53,6 @@ export class ChainWorker {
     this.chainId = chainId;
     this.db = dbRepository;
     this.broker = broker;
-    this.providerIndex = providerIndex;
   }
 
   async start() {

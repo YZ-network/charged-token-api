@@ -7,10 +7,11 @@ describe("AutoWebSocketProvider", () => {
   const chainId = 1337;
 
   it("should connect and start pinging to detect disconnects", async () => {
-    const provider = new AutoWebSocketProvider(URL, { chainId, pingDelayMs: 1 });
+    const provider = new AutoWebSocketProvider(URL, { chainId, providerIndex: 1, pingDelayMs: 1 });
 
     Object.defineProperty(provider._websocket, "readyState", { value: 0 });
 
+    expect(provider.providerIndex).toBe(1);
     expect(provider.websocket.onerror).toBeDefined();
     expect(provider.websocket.onclose).toBeDefined();
     expect(provider.websocket.onopen).toBeDefined();
@@ -42,7 +43,7 @@ describe("AutoWebSocketProvider", () => {
   });
 
   it("should process request message responses by calling callback", async () => {
-    const provider = new AutoWebSocketProvider(URL, { chainId, pingDelayMs: 1 });
+    const provider = new AutoWebSocketProvider(URL, { chainId, providerIndex: 1, pingDelayMs: 1 });
 
     Object.defineProperty(provider._websocket, "readyState", { value: 0 });
     const sendMock = jest.spyOn(provider, "send");
@@ -67,7 +68,7 @@ describe("AutoWebSocketProvider", () => {
   });
 
   it("should process request error responses by calling callback", async () => {
-    const provider = new AutoWebSocketProvider(URL, { chainId, pingDelayMs: 1 });
+    const provider = new AutoWebSocketProvider(URL, { chainId, providerIndex: 1, pingDelayMs: 1 });
 
     Object.defineProperty(provider._websocket, "readyState", { value: 0 });
     const sendMock = jest.spyOn(provider, "send");
@@ -92,7 +93,7 @@ describe("AutoWebSocketProvider", () => {
   });
 
   it("should process subscription messages by calling callback", async () => {
-    const provider = new AutoWebSocketProvider(URL, { chainId, pingDelayMs: 1 });
+    const provider = new AutoWebSocketProvider(URL, { chainId, providerIndex: 1, pingDelayMs: 1 });
 
     Object.defineProperty(provider._websocket, "readyState", { value: 0 });
     const sendMock = jest.spyOn(provider, "send");
@@ -118,7 +119,7 @@ describe("AutoWebSocketProvider", () => {
   });
 
   it("should handle rate limiting errors gracefully", async () => {
-    const provider = new AutoWebSocketProvider(URL, { chainId, pingDelayMs: 1, retryDelayMs: 1 });
+    const provider = new AutoWebSocketProvider(URL, { chainId, providerIndex: 1, pingDelayMs: 1, retryDelayMs: 1 });
 
     Object.defineProperty(provider._websocket, "readyState", { value: 0 });
     const sendMock = jest.spyOn(provider, "send");
@@ -152,7 +153,7 @@ describe("AutoWebSocketProvider", () => {
   });
 
   it("should put new requests in queue if there is already a pending one", async () => {
-    const provider = new AutoWebSocketProvider(URL, { chainId, pingDelayMs: 1 });
+    const provider = new AutoWebSocketProvider(URL, { chainId, providerIndex: 1, pingDelayMs: 1 });
 
     Object.defineProperty(provider._websocket, "readyState", { value: 0 });
 
@@ -182,7 +183,7 @@ describe("AutoWebSocketProvider", () => {
   });
 
   it("should add new subscription to the queue and process messages coming from it", async () => {
-    const provider = new AutoWebSocketProvider(URL, { chainId, pingDelayMs: 1 });
+    const provider = new AutoWebSocketProvider(URL, { chainId, providerIndex: 1, pingDelayMs: 1 });
 
     Object.defineProperty(provider._websocket, "readyState", { value: 0 });
 
@@ -316,7 +317,7 @@ describe("AutoWebSocketProvider", () => {
   });
 
   it("should unsubscribe event and remove subscription listener", async () => {
-    const provider = new AutoWebSocketProvider(URL, { chainId, pingDelayMs: 1 });
+    const provider = new AutoWebSocketProvider(URL, { chainId, providerIndex: 1, pingDelayMs: 1 });
 
     Object.defineProperty(provider._websocket, "readyState", { value: 0 });
 
@@ -390,7 +391,7 @@ describe("AutoWebSocketProvider", () => {
   });
 
   it("should throw if trying to enable polling", async () => {
-    const provider = new AutoWebSocketProvider(URL, { chainId, pingDelayMs: 1 });
+    const provider = new AutoWebSocketProvider(URL, { chainId, providerIndex: 1, pingDelayMs: 1 });
 
     expect(() => (provider.polling = false)).not.toThrow();
     expect(() => (provider.polling = true)).toThrowError("cannot set polling on AutoWebSocketProvider");
@@ -399,7 +400,7 @@ describe("AutoWebSocketProvider", () => {
   });
 
   it("should wait till connected before disconnecting", async () => {
-    const provider = new AutoWebSocketProvider(URL, { chainId, pingDelayMs: 1 });
+    const provider = new AutoWebSocketProvider(URL, { chainId, providerIndex: 1, pingDelayMs: 1 });
 
     // setting connecting status
     Object.defineProperty(provider._websocket, "readyState", { value: 0 });
