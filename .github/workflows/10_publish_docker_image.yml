@@ -1,23 +1,15 @@
 name: Publish Docker image to ECR
 
 on:
-  push:
-    branches:
-      - "main"
-    paths:
-      - "src/**"
-      - "Dockerfile"
-      - "!**/__tests__/**"
-      - "!**/__mocks__/**"
-    tags: "*"
-
   pull_request:
+    types: [opened, merged]
     paths:
       - "src/**"
+      - "package.json"
+      - "package-lock.json"
       - "Dockerfile"
       - "!**/__tests__/**"
       - "!**/__mocks__/**"
-
   workflow_dispatch:
     inputs:
       deploymentTag:
@@ -49,13 +41,13 @@ jobs:
           aws-region: eu-west-3
 
       - name: Set release
-        if: github.event_name == "push"
+        if: github.event_name == "pull_request" && github.event.pull_request.merged == true
         shell: bash
         run: |
           echo IMAGE_TAG=release >> $GITHUB_ENV
 
       - name: Set snapshot
-        if: github.event_name == "pull_request"
+        if: github.event_name == "pull_request" && github.event.pull_request.merged == false
         shell: bash
         run: |
           echo IMAGE_TAG=snapshot >> $GITHUB_ENV
