@@ -97,7 +97,6 @@ export class ChainWorker {
         log.error({
           chainId: this.chainId,
           msg: "Blockchain provider is down !",
-          downtimeSeconds: Math.round(this.cumulatedNodeDowntime / 1000),
         });
       }
     }
@@ -111,11 +110,19 @@ export class ChainWorker {
     const deltaMs = new Date().getTime() - this.disconnectedTimestamp;
     this.cumulatedNodeDowntime += deltaMs;
 
-    log.warn({
-      chainId: this.chainId,
-      msg: "Blockchain provider was down !",
-      downtimeSeconds: Math.round(this.cumulatedNodeDowntime / 1000),
-    });
+    if (this.cumulatedNodeDowntime >= 60000) {
+      log.warn({
+        chainId: this.chainId,
+        msg: "Blockchain provider was down for more than a minute !",
+        downtimeSeconds: Math.round(this.cumulatedNodeDowntime / 1000),
+      });
+    } else {
+      log.info({
+        chainId: this.chainId,
+        msg: "Blockchain provider was down !",
+        downtimeSeconds: Math.round(this.cumulatedNodeDowntime / 1000),
+      });
+    }
 
     this.disconnectedTimestamp = -1;
     this.cumulatedNodeDowntime = 0;
