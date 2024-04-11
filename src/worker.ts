@@ -365,24 +365,15 @@ export class ChainWorker {
         lastBlock,
       });
     }
+  }
 
+  private addBlockAndDetectReorg(blockNumber: number, lastBlock: ethers.providers.Block) {
     const previousBlockNumber = Object.keys(this.blocksMap)
       .map(Number)
       .reduce((prev, cur) => {
         return Number(prev) > cur ? Number(prev) : cur;
       }, 0);
 
-    if (blockNumber !== previousBlockNumber + 1) {
-      log.warn({
-        chainId: this.chainId,
-        blockNumber,
-        previousBlockNumber,
-        msg: "New block is not continuous !",
-      });
-    }
-  }
-
-  private addBlockAndDetectReorg(blockNumber: number, lastBlock: ethers.providers.Block) {
     const knownBlock = this.blocksMap[blockNumber];
     if (knownBlock === undefined) {
       this.blocksMap[blockNumber] = lastBlock;
@@ -393,6 +384,13 @@ export class ChainWorker {
         msg: "Duplicate block notification",
         lastBlock,
         knownBlock,
+      });
+    } else if (blockNumber !== previousBlockNumber + 1) {
+      log.warn({
+        chainId: this.chainId,
+        blockNumber,
+        previousBlockNumber,
+        msg: "New block is not continuous !",
       });
     } else {
       log.warn({
