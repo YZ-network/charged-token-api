@@ -146,8 +146,7 @@ export class ChainWorker {
           rpc: this.rpc,
           args,
         });
-        this.providerStatus = "DISCONNECTED";
-        this.stop();
+        this.logStopResult(this.stop());
 
         this.logDisconnectedStateIfNeeded();
       } else if (typeof args[0] === "string") {
@@ -189,45 +188,36 @@ export class ChainWorker {
           rpc: this.rpc,
           err,
         });
-        this.providerStatus = "DISCONNECTED";
         this.wsStatus = WsStatus[WebSocket.CLOSED];
         Metrics.connectionFailed(this.chainId);
-        this.stop();
+        this.logStopResult(this.stop());
 
         this.logDisconnectedStateIfNeeded();
       });
 
     let prevWsStatus = this.wsStatus;
     this.wsWatch = setInterval(() => {
-      if (this.provider?.websocket === undefined) return;
+      if (this.provider?.websocket === undefined) {
+        log.warn({
+          chainId: this.chainId,
+          msg: "Provider has no websocket !",
+          network: this.name,
+        });
+        return;
+      }
 
       this.wsStatus = WsStatus[this.provider.websocket.readyState];
 
       if (this.wsStatus !== prevWsStatus) {
         prevWsStatus = this.wsStatus;
 
-        if (this.providerStatus !== "DISCONNECTED" && ["CLOSING", "CLOSED"].includes(this.wsStatus)) {
+        if (["CLOSING", "CLOSED"].includes(this.wsStatus)) {
           log.warn({
             chainId: this.chainId,
             msg: "Websocket crashed",
             network: this.name,
           });
-          this.stop()
-            .then(() => {
-              log.info({
-                chainId: this.chainId,
-                msg: "Worker stopped after websocket crashed",
-                network: this.name,
-              });
-            })
-            .catch((err) => {
-              log.info({
-                chainId: this.chainId,
-                msg: "Error stopping worker after websocket crashed",
-                network: this.name,
-                err,
-              });
-            });
+          this.logStopResult(this.stop());
         } else if (this.providerStatus !== "CONNECTING" && this.wsStatus === "CONNECTING") {
           log.info({
             chainId: this.chainId,
@@ -240,9 +230,37 @@ export class ChainWorker {
             msg: "Websocket connected",
             network: this.name,
           });
+        } else {
+          log.warn({
+            chainId: this.chainId,
+            msg: "Unknown websocket state !",
+            network: this.name,
+            providerStatus: this.providerStatus,
+            wsStatus: this.wsStatus,
+          });
         }
       }
     }, 50);
+  }
+
+  private logStopResult(promise: Promise<void>) {
+    promise
+      .then(() => {
+        log.info({
+          chainId: this.chainId,
+          msg: "Worker stopped after websocket crashed",
+          network: this.name,
+          stack: new Error().stack,
+        });
+      })
+      .catch((err) => {
+        log.info({
+          chainId: this.chainId,
+          msg: "Error stopping worker after websocket crashed",
+          network: this.name,
+          err,
+        });
+      });
   }
 
   private subscribeToNewBlocks() {
@@ -271,7 +289,7 @@ export class ChainWorker {
               msg: "Worker stopped itself",
               network: this.name,
             });
-            this.stop();
+            this.logStopResult(this.stop());
           })
           .catch((err: any) => {
             log.error({
@@ -281,7 +299,7 @@ export class ChainWorker {
               network: this.name,
               err,
             });
-            this.stop();
+            this.logStopResult(this.stop());
           });
       })
       .catch(() => {});
