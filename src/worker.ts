@@ -27,6 +27,7 @@ export class ChainWorker {
   restartCount: number = 0;
   blockNumberBeforeDisconnect: number = 0;
 
+  providerIndex: number = 0;
   provider: AutoWebSocketProvider | undefined;
   worker: Promise<void> | undefined;
 
@@ -45,6 +46,7 @@ export class ChainWorker {
     chainId: number,
     dbRepository: AbstractDbRepository,
     broker: AbstractBroker,
+    providerIndex: number,
   ) {
     this.index = index;
     this.rpc = rpc;
@@ -52,6 +54,7 @@ export class ChainWorker {
     this.chainId = chainId;
     this.db = dbRepository;
     this.broker = broker;
+    this.providerIndex = providerIndex;
   }
 
   async start() {
@@ -59,7 +62,12 @@ export class ChainWorker {
       this.createProvider();
       this.createWorker();
     } catch (err) {
-      log.error({ chainId: this.chainId, msg: "Error connecting to network !", err });
+      log.error({
+        chainId: this.chainId,
+        msg: "Error connecting to network !",
+        err,
+        providerIndex: this.providerIndex,
+      });
       await this.stop();
     }
   }
@@ -97,6 +105,7 @@ export class ChainWorker {
         log.error({
           chainId: this.chainId,
           msg: "Blockchain provider is down !",
+          providerIndex: this.providerIndex,
         });
       }
     }
@@ -115,12 +124,14 @@ export class ChainWorker {
         chainId: this.chainId,
         msg: "Blockchain provider was down for more than a minute !",
         downtimeSeconds: Math.round(this.cumulatedNodeDowntime / 1000),
+        providerIndex: this.providerIndex,
       });
     } else {
       log.info({
         chainId: this.chainId,
         msg: "Blockchain provider was down !",
         downtimeSeconds: Math.round(this.cumulatedNodeDowntime / 1000),
+        providerIndex: this.providerIndex,
       });
     }
 
@@ -129,8 +140,9 @@ export class ChainWorker {
   }
 
   private createProvider() {
-    log.info({ chainId: this.chainId, msg: "Creating provider" });
+    log.info({ chainId: this.chainId, msg: "Creating provider", providerIndex: this.providerIndex });
 
+    this.providerIndex++;
     this.provider = new AutoWebSocketProvider(this.rpc, {
       chainId: this.chainId,
       maxParallelRequests: Config.delays.rpcMaxParallelRequests,
@@ -138,6 +150,7 @@ export class ChainWorker {
       pingDelayMs: Config.delays.rpcPingDelayMs,
       pongMaxWaitMs: Config.delays.rpcPongMaxWaitMs,
       retryDelayMs: Config.delays.rpcRetryDelayMs,
+      providerIndex: this.providerIndex,
     });
 
     this.wsStatus = WsStatus[this.provider.websocket.readyState];
@@ -152,6 +165,7 @@ export class ChainWorker {
           msg: "Websocket connection lost",
           rpc: this.rpc,
           args,
+          providerIndex: this.providerIndex,
         });
         this.logStopResult(this.stop());
 
@@ -162,11 +176,12 @@ export class ChainWorker {
           msg: "Websocket unknown error",
           rpc: this.rpc,
           args,
+          providerIndex: this.providerIndex,
         });
       }
     });
     this.provider.on("debug", (...args) => {
-      log.debug({ chainId: this.chainId, args });
+      log.debug({ chainId: this.chainId, args, providerIndex: this.providerIndex });
     });
 
     this.provider.ready
@@ -177,6 +192,7 @@ export class ChainWorker {
           chainId: this.chainId,
           msg: "Connected to network",
           network,
+          providerIndex: this.providerIndex,
         });
 
         if (this.chainId !== network.chainId) {
@@ -194,6 +210,7 @@ export class ChainWorker {
           msg: "Error connecting to network",
           rpc: this.rpc,
           err,
+          providerIndex: this.providerIndex,
         });
         this.wsStatus = WsStatus[WebSocket.CLOSED];
         Metrics.connectionFailed(this.chainId);
@@ -202,7 +219,12 @@ export class ChainWorker {
         this.logDisconnectedStateIfNeeded();
       });
 
-    log.info({ chainId: this.chainId, msg: "Starting websocket watch", wsWatch: this.wsWatch });
+    log.info({
+      chainId: this.chainId,
+      msg: "Starting websocket watch",
+      wsWatch: this.wsWatch,
+      providerIndex: this.providerIndex,
+    });
 
     let prevWsStatus = this.wsStatus;
     this.wsWatch = setInterval(() => {
@@ -225,6 +247,7 @@ export class ChainWorker {
             wsStatus: this.wsStatus,
             prevWsStatus: memoizedPrevWsStatus,
             readyState: this.provider.websocket.readyState,
+            providerIndex: this.providerIndex,
           });
           this.logStopResult(this.stop());
         } else if (this.providerStatus !== "CONNECTING" && this.wsStatus === "CONNECTING") {
@@ -235,6 +258,7 @@ export class ChainWorker {
             wsStatus: this.wsStatus,
             prevWsStatus: memoizedPrevWsStatus,
             readyState: this.provider.websocket.readyState,
+            providerIndex: this.providerIndex,
           });
         } else if (this.providerStatus !== "CONNECTED" && this.wsStatus === "OPEN") {
           log.info({
@@ -244,6 +268,7 @@ export class ChainWorker {
             wsStatus: this.wsStatus,
             prevWsStatus: memoizedPrevWsStatus,
             readyState: this.provider.websocket.readyState,
+            providerIndex: this.providerIndex,
           });
         } else {
           log.warn({
@@ -254,6 +279,7 @@ export class ChainWorker {
             wsStatus: this.wsStatus,
             prevWsStatus: memoizedPrevWsStatus,
             readyState: this.provider.websocket.readyState,
+            providerIndex: this.providerIndex,
           });
         }
       }
@@ -268,6 +294,7 @@ export class ChainWorker {
           msg: "Worker stopped after websocket crashed",
           network: this.name,
           stack: new Error().stack,
+          providerIndex: this.providerIndex,
         });
       })
       .catch((err) => {
@@ -276,6 +303,7 @@ export class ChainWorker {
           msg: "Error stopping worker after websocket crashed",
           network: this.name,
           err,
+          providerIndex: this.providerIndex,
         });
       });
   }
@@ -305,6 +333,7 @@ export class ChainWorker {
               chainId: this.chainId,
               msg: "Worker stopped itself",
               network: this.name,
+              providerIndex: this.providerIndex,
             });
             this.logStopResult(this.stop());
           })
@@ -315,6 +344,7 @@ export class ChainWorker {
               rpc: this.rpc,
               network: this.name,
               err,
+              providerIndex: this.providerIndex,
             });
             this.logStopResult(this.stop());
           });
@@ -331,6 +361,7 @@ export class ChainWorker {
       chainId: this.chainId,
       msg: "Starting worker",
       network: this.name,
+      providerIndex: this.providerIndex,
     });
 
     try {
@@ -351,12 +382,14 @@ export class ChainWorker {
         msg: "Error happened running worker",
         network: this.name,
         err,
+        providerIndex: this.providerIndex,
       });
     }
     log.info({
       chainId: this.chainId,
       msg: "Worker stopped",
       network: this.name,
+      providerIndex: this.providerIndex,
     });
   }
 
@@ -368,6 +401,7 @@ export class ChainWorker {
       msg: "Stopping worker",
       network: this.name,
       stack: new Error().stack,
+      providerIndex: this.providerIndex,
     });
 
     this.providerStatus = "DISCONNECTED";
@@ -383,12 +417,12 @@ export class ChainWorker {
     this.provider?.removeAllListeners();
     this.worker = undefined;
 
-    log.info({ chainId: this.chainId, msg: "Destroying provider" });
+    log.info({ chainId: this.chainId, msg: "Destroying provider", providerIndex: this.providerIndex });
     await this.provider?.destroy();
     this.provider = undefined;
 
     if (this.wsWatch !== undefined) {
-      log.info({ chainId: this.chainId, msg: "Stopping websocket watch" });
+      log.info({ chainId: this.chainId, msg: "Stopping websocket watch", providerIndex: this.providerIndex });
 
       clearInterval(this.wsWatch);
       this.wsWatch = undefined;
