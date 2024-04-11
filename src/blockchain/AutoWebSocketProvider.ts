@@ -555,7 +555,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
       if (this._pongTimeout === undefined) {
         now = new Date();
 
-        logger.info({ chainId: this.chainId, msg: "ping", now: now.toISOString(), providerIndex: this.providerIndex });
+        logger.debug({ chainId: this.chainId, msg: "ping", now: now.toISOString(), providerIndex: this.providerIndex });
         this._websocket.ping();
 
         this._pongTimeout = setTimeout(() => {
@@ -583,7 +583,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
 
     this.onpongListener = () => {
       if (this._pongTimeout !== undefined) {
-        logger.info({
+        logger.debug({
           chainId: this.chainId,
           msg: "pong",
           now: now.toISOString(),
