@@ -229,7 +229,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
       address,
       contract: dataType,
       fromBlock,
-      msg: "Querying missed events from fromBlock",
+      msg: "Querying missed events",
     });
 
     const missedEvents = await this.loadEvents(dataType, address, fromBlock);
@@ -285,19 +285,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
     const instance = this.getInstance(dataType, address);
 
-    const events = await instance.queryFilter(eventFilter, startBlock);
-
-    if (events.length === 0) {
-      this.log.info({
-        chainId: this.chainId,
-        address,
-        contract: dataType,
-        msg: "No events missed",
-      });
-      return [] as ethers.Event[];
-    }
-
-    return events;
+    return await instance.queryFilter(eventFilter, startBlock);
   }
 
   private async removeKnownEvents(events: ethers.Event[]): Promise<ethers.Event[]> {
