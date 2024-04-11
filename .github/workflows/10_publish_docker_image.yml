@@ -1,6 +1,23 @@
 name: Publish Docker image to ECR
 
 on:
+  push:
+    branches:
+      - "main"
+    paths:
+      - "src/**"
+      - "Dockerfile"
+      - "!**/__tests__/**"
+      - "!**/__mocks__/**"
+    tags: "*"
+
+  pull_request:
+    paths:
+      - "src/**"
+      - "Dockerfile"
+      - "!**/__tests__/**"
+      - "!**/__mocks__/**"
+
   workflow_dispatch:
     inputs:
       deploymentTag:
@@ -31,10 +48,28 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-3
 
-      - name: Build image
+      - name: Set release
+        if: github.event_name == "push"
+        shell: bash
+        run: |
+          echo IMAGE_TAG=release >> $GITHUB_ENV
+
+      - name: Set snapshot
+        if: github.event_name == "pull_request"
+        shell: bash
+        run: |
+          echo IMAGE_TAG=snapshot >> $GITHUB_ENV
+
+      - name: Take input tag
+        if: github.event_name == "workflow_dispatch"
         shell: bash
         env:
           IMAGE_TAG: ${{ inputs.deploymentTag }}
+        run: |
+          echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
+
+      - name: Build image
+        shell: bash
         run: |
           API_VERSION=$(git rev-parse --verify HEAD)
           echo Building docker image for commit $API_VERSION
