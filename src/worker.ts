@@ -377,26 +377,38 @@ export class ChainWorker {
     const knownBlock = this.blocksMap[blockNumber];
     if (knownBlock === undefined) {
       this.blocksMap[blockNumber] = lastBlock;
-    } else if (knownBlock.hash === lastBlock.hash) {
-      log.debug({
-        chainId: this.chainId,
-        blockNumber,
-        msg: "Duplicate block notification",
-        lastBlock,
-        knownBlock,
-      });
+    } else if (knownBlock.number === lastBlock.number) {
+      if (knownBlock.hash === lastBlock.hash) {
+        log.debug({
+          chainId: this.chainId,
+          blockNumber,
+          msg: "Duplicate block notification",
+          lastBlock,
+          knownBlock,
+        });
+      } else {
+        log.warn({
+          chainId: this.chainId,
+          blockNumber,
+          msg: "Chain reorg detected !",
+          lastBlock,
+          knownBlock,
+        });
+      }
     } else if (blockNumber !== previousBlockNumber + 1) {
       log.warn({
         chainId: this.chainId,
         blockNumber,
         previousBlockNumber,
         msg: "New block is not continuous !",
+        lastBlock,
+        knownBlock,
       });
     } else {
       log.warn({
         chainId: this.chainId,
         blockNumber,
-        msg: "Chain reorg detected !",
+        msg: "Unexpected block !",
         lastBlock,
         knownBlock,
       });
