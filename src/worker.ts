@@ -368,14 +368,39 @@ export class ChainWorker {
   }
 
   private addBlockAndDetectReorg(blockNumber: number, lastBlock: ethers.providers.Block) {
+    const previousBlockNumber = Object.keys(this.blocksMap)
+      .map(Number)
+      .reduce((prev, cur) => {
+        return Number(prev) > cur ? Number(prev) : cur;
+      }, 0);
+
     const knownBlock = this.blocksMap[blockNumber];
     if (knownBlock === undefined) {
       this.blocksMap[blockNumber] = lastBlock;
-    } else if (knownBlock.hash === lastBlock.hash) {
-      log.debug({
+    } else if (knownBlock.number === lastBlock.number) {
+      if (knownBlock.hash === lastBlock.hash) {
+        log.debug({
+          chainId: this.chainId,
+          blockNumber,
+          msg: "Duplicate block notification",
+          lastBlock,
+          knownBlock,
+        });
+      } else {
+        log.warn({
+          chainId: this.chainId,
+          blockNumber,
+          msg: "Chain reorg detected !",
+          lastBlock,
+          knownBlock,
+        });
+      }
+    } else if (blockNumber !== previousBlockNumber + 1) {
+      log.warn({
         chainId: this.chainId,
         blockNumber,
-        msg: "Duplicate block notification",
+        previousBlockNumber,
+        msg: "New block is not continuous !",
         lastBlock,
         knownBlock,
       });
@@ -383,7 +408,7 @@ export class ChainWorker {
       log.warn({
         chainId: this.chainId,
         blockNumber,
-        msg: "Chain reorg detected !",
+        msg: "Unexpected block !",
         lastBlock,
         knownBlock,
       });
