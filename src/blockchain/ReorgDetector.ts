@@ -9,6 +9,7 @@ export class ReorgDetector {
 
   blockNumberBeforeDisconnect: number = 0;
   blocksMap: Record<number, ethers.providers.Block> = {};
+  blocksByHashMap: Record<string, ethers.providers.Block> = {};
 
   constructor(chainId: number, provider: ethers.providers.JsonRpcProvider) {
     this.chainId = chainId;
@@ -59,7 +60,7 @@ export class ReorgDetector {
       }
 
       this.checkBlockNumber(blockNumber, lastBlock);
-      this.addBlockAndDetectReorg(blockNumber, lastBlock);
+      await this.addBlockAndDetectReorg(blockNumber, lastBlock);
     } catch (err) {
       this.log.warn({ blockNumber, msg: "Failed reading new block data", err });
     }
@@ -67,11 +68,7 @@ export class ReorgDetector {
 
   private checkBlockNumber(blockNumber: number, lastBlock: ethers.providers.Block) {
     if (lastBlock.number !== blockNumber) {
-      this.log.warn({
-        blockNumber,
-        msg: "Fetched block number doesn't match header !",
-        lastBlock,
-      });
+      throw new Error("Fetched block number doesn't match header !");
     } else {
       this.log.debug({
         chainId: this.chainId,
@@ -79,10 +76,11 @@ export class ReorgDetector {
         msg: "Fetched new block",
         lastBlock,
       });
+      this.blocksByHashMap[lastBlock.hash] = lastBlock;
     }
   }
 
-  private addBlockAndDetectReorg(blockNumber: number, lastBlock: ethers.providers.Block) {
+  private async addBlockAndDetectReorg(blockNumber: number, lastBlock: ethers.providers.Block) {
     const previousBlockNumber = Object.keys(this.blocksMap)
       .map(Number)
       .reduce((prev, cur) => {
@@ -101,12 +99,7 @@ export class ReorgDetector {
           knownBlock,
         });
       } else {
-        this.log.warn({
-          blockNumber,
-          msg: "Chain reorg detected !",
-          lastBlock,
-          knownBlock,
-        });
+        await this.logReorgDelta(lastBlock);
       }
     } else if (blockNumber !== previousBlockNumber + 1) {
       this.log.warn({
@@ -124,5 +117,31 @@ export class ReorgDetector {
         knownBlock,
       });
     }
+  }
+
+  private async logReorgDelta(lastBlock: ethers.providers.Block) {
+    let head = lastBlock;
+    const blocks = [head];
+
+    while (this.blocksByHashMap[head.parentHash] === undefined) {
+      head = await this.provider.getBlock(head.parentHash);
+      this.blocksByHashMap[head.hash] = head;
+      blocks.push(head);
+    }
+
+    this.log.warn({
+      msg: "Rewritting history after reorg",
+      blockNumber: lastBlock.number,
+      forkBlockNumber: head.number,
+      reorgLength: blocks.length + 1,
+      reorgStart: head.number,
+      reorgStartHash: head.hash,
+      reorgStartOriginalHash: this.blocksMap[head.number].hash,
+      reorgEnd: lastBlock.number,
+      reorgEndHash: lastBlock.hash,
+      reorgEndOriginalHash: this.blocksMap[lastBlock.number].hash,
+    });
+
+    blocks.forEach((block) => (this.blocksMap[block.number] = block));
   }
 }
