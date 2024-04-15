@@ -80,6 +80,8 @@ const Interface = jest.fn().mockImplementation(() => {
 
 const JsonRpcProvider = jest.fn().mockImplementation(() => {
   return {
+    on: jest.fn(),
+    off: jest.fn(),
     getBlock: jest.fn(),
     getBlockNumber: jest.fn(),
   };

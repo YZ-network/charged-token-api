@@ -42,6 +42,9 @@ describe("ChainWorker", () => {
       on: jest.fn((event, handler) => {
         mockHandlers[event] = handler;
       }),
+      off: jest.fn((event) => {
+        mockHandlers[event] = undefined;
+      }),
       ready: Promise.resolve({
         name: "test",
         chainId: 1337,

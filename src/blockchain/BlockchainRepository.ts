@@ -6,6 +6,7 @@ import { AbstractHandler } from "../core/AbstractHandler";
 import { rootLogger } from "../rootLogger";
 import { ClientSession, EMPTY_ADDRESS } from "../vendor";
 import { EventListener } from "./EventListener";
+import { ReorgDetector } from "./ReorgDetector";
 import { contracts } from "./contracts";
 import { detectNegativeAmount } from "./functions";
 import { loadContract } from "./loaders";
@@ -24,6 +25,8 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   private readonly interfaces: Record<string, ethers.utils.Interface> = {};
   readonly handlers: Record<string, AbstractHandler<any>> = {};
 
+  readonly reorgDetector: ReorgDetector;
+
   constructor(
     chainId: number,
     provider: ethers.providers.JsonRpcProvider,
@@ -36,7 +39,12 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     this.provider = provider;
     this.db = db;
     this.broker = broker;
+    this.reorgDetector = new ReorgDetector(chainId, provider);
     this.eventListener = new EventListener(db, provider, startEventLoop);
+  }
+
+  get blockNumberBeforeDisconnect(): number {
+    return this.reorgDetector.blockNumberBeforeDisconnect;
   }
 
   getInstance(dataType: DataType, address: string): ethers.Contract {
@@ -820,5 +828,6 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     Object.values(this.instances).forEach((instance) => instance.removeAllListeners);
 
     this.eventListener.destroy();
+    this.reorgDetector.destroy();
   }
 }
