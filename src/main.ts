@@ -8,9 +8,8 @@ import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";
 import { ChainWorker } from "./worker";
 
-const log = rootLogger.child({ name: "Main" });
-
 export class MainClass {
+  private readonly log = rootLogger.child({ name: "Main" });
   readonly networks = Config.networks.filter((network) => network.enabled === true);
 
   keepAlive: NodeJS.Timeout | undefined;
@@ -26,12 +25,14 @@ export class MainClass {
   readonly bindPort = Config.api.bindPort;
 
   async start(): Promise<void> {
-    log.info({ mongouri: Config.db.uri, msg: "Connecting to MongoDB" });
+    this.log.info({ msg: "Starting API", version: ApiVersion, config: Config });
+
+    this.log.info({ msg: "Connecting to MongoDB", mongouri: Config.db.uri });
 
     try {
       await this.connectDB();
 
-      log.info("MongoDB connected !");
+      this.log.info("MongoDB connected !");
 
       await Promise.all(
         this.networks.map((network, index) =>
@@ -42,28 +43,28 @@ export class MainClass {
       this.keepAlive = setInterval(() => {
         for (const worker of this.workers) {
           if (worker.workerStatus === "DEAD") {
-            log.info({
+            this.log.info({
               chainId: worker.chainId,
-              name: worker.name,
-              rpc: worker.rpc,
               msg: "Restarting worker",
+              worker: worker.name,
+              rpc: worker.rpc,
             });
             worker
               .start()
               .then(() =>
-                log.info({
+                this.log.info({
                   chainId: worker.chainId,
-                  name: worker.name,
-                  rpc: worker.rpc,
                   msg: "Worker restarted",
+                  worker: worker.name,
+                  rpc: worker.rpc,
                 }),
               )
               .catch((err) =>
-                log.error({
+                this.log.error({
                   chainId: worker.chainId,
-                  name: worker.name,
-                  rpc: worker.rpc,
                   msg: "Worker start failed !",
+                  worker: worker.name,
+                  rpc: worker.rpc,
                   err,
                 }),
               );
@@ -72,15 +73,15 @@ export class MainClass {
       }, Config.delays.workerRestartDelayMs);
 
       this.healthTimer = setInterval(() => {
-        log.debug({ msg: "pushing health status" });
+        this.log.trace("pushing health status");
         this.broker.notifyHealth(this.health());
       }, Config.delays.healthPublishDelayMs);
 
       this.httpServer.listen(this.bindPort, this.bindAddress, () => {
-        log.info({ address: this.bindAddress, port: this.bindPort, msg: "GraphQL API server started" });
+        this.log.info({ msg: "GraphQL API server started", address: this.bindAddress, port: this.bindPort });
       });
     } catch (err) {
-      log.error({ msg: "Error during application startup !", err });
+      this.log.error({ msg: "Error during application startup !", err });
       if (this.keepAlive !== undefined) {
         clearInterval(this.keepAlive);
         this.keepAlive = undefined;
@@ -102,11 +103,11 @@ export class MainClass {
   }
 
   private async connectChain(index: number, rpc: string, directory: string, chainId: number): Promise<void> {
-    log.info({
+    this.log.info({
       chainId,
+      msg: "Creating provider and starting worker",
       rpc,
       directory,
-      msg: "Creating provider and starting worker",
     });
 
     Metrics.chainInit(chainId);
@@ -116,7 +117,7 @@ export class MainClass {
     this.workers.push(worker);
 
     await worker.start().catch((err) =>
-      log.error({
+      this.log.error({
         chainId,
         msg: "Error starting worker !",
         rpc,
@@ -126,7 +127,5 @@ export class MainClass {
     );
   }
 }
-
-log.info({ msg: "Starting API", version: ApiVersion, config: Config });
 
 export const Main = new MainClass();

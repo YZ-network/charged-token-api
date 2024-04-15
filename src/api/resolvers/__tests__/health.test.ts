@@ -1,4 +1,6 @@
 import { Repeater } from "graphql-yoga";
+import { Logger } from "pino";
+import { MockLogger } from "../../../__mocks__/MockLogger";
 import { AbstractBroker } from "../../../core/AbstractBroker";
 import { MockBroker } from "../../../core/__mocks__/MockBroker";
 import { HealthQueryResolverFactory, HealthSubscriptionResolverFactory } from "../health";
@@ -7,9 +9,11 @@ jest.mock("../../../main");
 
 describe("Health check query resolver", () => {
   let broker: jest.Mocked<AbstractBroker>;
+  let log: jest.Mocked<Logger>;
 
   beforeEach(() => {
     broker = new MockBroker() as jest.Mocked<AbstractBroker>;
+    log = new MockLogger() as jest.Mocked<Logger>;
   });
 
   it("should return health from matching channel", async () => {
@@ -43,7 +47,7 @@ describe("Health check query resolver", () => {
       return { value: undefined, done: true };
     });
 
-    const resolver = HealthSubscriptionResolverFactory(broker);
+    const resolver = HealthSubscriptionResolverFactory(broker, log);
 
     broker.subscribeHealth.mockReturnValueOnce({ next: nextMock, return: returnMock } as unknown as Repeater<any>);
 

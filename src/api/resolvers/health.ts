@@ -1,7 +1,5 @@
+import { Logger } from "pino";
 import { AbstractBroker } from "../../core/AbstractBroker";
-import { rootLogger } from "../../rootLogger";
-
-const log = rootLogger.child({ name: "health" });
 
 export const HealthQueryResolverFactory = (broker: AbstractBroker) => async () => {
   const subscription = broker.subscribeHealth();
@@ -12,11 +10,9 @@ export const HealthQueryResolverFactory = (broker: AbstractBroker) => async () =
   return result.value;
 };
 
-export const HealthSubscriptionResolverFactory = (broker: AbstractBroker) => ({
+export const HealthSubscriptionResolverFactory = (broker: AbstractBroker, log: Logger) => ({
   subscribe: (_: any) => {
-    log.debug({
-      msg: "client subscribing to health checks",
-    });
+    log.debug("client subscribing to health checks");
 
     return broker.subscribeHealth();
   },

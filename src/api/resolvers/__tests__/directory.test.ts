@@ -1,3 +1,5 @@
+import { Logger } from "pino";
+import { MockLogger } from "../../../__mocks__/MockLogger";
 import { AbstractDbRepository } from "../../../core/AbstractDbRepository";
 import { MockDbRepository } from "../../../core/__mocks__/MockDbRepository";
 import { DirectoryQueryResolver, DirectoryQueryResolverFactory } from "../directory";
@@ -6,11 +8,13 @@ jest.mock("../../../config");
 
 describe("Directory query resolver", () => {
   let db: jest.Mocked<AbstractDbRepository>;
+  let log: jest.Mocked<Logger>;
   let resolver: DirectoryQueryResolver;
 
   beforeEach(() => {
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
-    resolver = DirectoryQueryResolverFactory(db);
+    log = new MockLogger() as jest.Mocked<Logger>;
+    resolver = DirectoryQueryResolverFactory(db, log);
   });
 
   it("should throw when the chain id is not in the known networks", async () => {

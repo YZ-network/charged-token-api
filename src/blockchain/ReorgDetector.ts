@@ -14,7 +14,7 @@ export class ReorgDetector {
   constructor(chainId: number, provider: ethers.providers.JsonRpcProvider) {
     this.chainId = chainId;
     this.provider = provider;
-    this.log = rootLogger.child({ chainId, name: "ReorgDetector" });
+    this.log = rootLogger.child({ chainId, name: "Reorgs" });
 
     this.start();
   }
@@ -34,15 +34,15 @@ export class ReorgDetector {
 
   private async onNewBlock(blockNumber: number) {
     this.log.debug({
-      blockNumber,
       msg: "New block header",
+      blockNumber,
       blockNumberBeforeDisconnect: this.blockNumberBeforeDisconnect,
     });
     if (this.blockNumberBeforeDisconnect < blockNumber) {
       this.log.debug({
         msg: "updating block number before disconnect",
-        blockNumberBeforeDisconnect: this.blockNumberBeforeDisconnect,
         blockNumber,
+        blockNumberBeforeDisconnect: this.blockNumberBeforeDisconnect,
       });
       this.blockNumberBeforeDisconnect = blockNumber;
     }
@@ -52,8 +52,8 @@ export class ReorgDetector {
 
       if (lastBlock === undefined) {
         this.log.warn({
-          blockNumber,
           msg: "Failed reading new block",
+          blockNumber,
           lastBlock,
         });
         return;
@@ -62,7 +62,7 @@ export class ReorgDetector {
       this.checkBlockNumber(blockNumber, lastBlock);
       await this.addBlockAndDetectReorg(blockNumber, lastBlock);
     } catch (err) {
-      this.log.warn({ blockNumber, msg: "Failed reading new block data", err });
+      this.log.warn({ msg: "Failed reading new block data", blockNumber, err });
     }
   }
 
@@ -71,9 +71,8 @@ export class ReorgDetector {
       throw new Error("Fetched block number doesn't match header !");
     } else {
       this.log.debug({
-        chainId: this.chainId,
-        blockNumber,
         msg: "Fetched new block",
+        blockNumber,
         lastBlock,
       });
       this.blocksByHashMap[lastBlock.hash] = lastBlock;
@@ -93,8 +92,8 @@ export class ReorgDetector {
     } else if (knownBlock.number === lastBlock.number) {
       if (knownBlock.hash === lastBlock.hash) {
         this.log.debug({
-          blockNumber,
           msg: "Duplicate block notification",
+          blockNumber,
           lastBlock,
           knownBlock,
         });
@@ -103,16 +102,16 @@ export class ReorgDetector {
       }
     } else if (blockNumber !== previousBlockNumber + 1) {
       this.log.warn({
+        msg: "New block is not continuous !",
         blockNumber,
         previousBlockNumber,
-        msg: "New block is not continuous !",
         lastBlock,
         knownBlock,
       });
     } else {
       this.log.warn({
-        blockNumber,
         msg: "Unexpected block !",
+        blockNumber,
         lastBlock,
         knownBlock,
       });

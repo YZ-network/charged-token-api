@@ -123,6 +123,7 @@ describe("ChargedToken loader", () => {
 
   test("InterfaceProjectTokenSet should trigger interface and project token registrations", async () => {
     blockchain.getLastState.mockResolvedValueOnce({ projectToken: "0xPROJECT" });
+
     loaderFactory
       .mockReturnValueOnce(new InterfaceProjectToken(CHAIN_ID, blockchain, "0xINTERFACE", loaderFactory))
       .mockReturnValueOnce(new DelegableToLT(CHAIN_ID, blockchain, "0xPROJECT", loaderFactory));

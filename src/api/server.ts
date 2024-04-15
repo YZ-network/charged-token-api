@@ -12,8 +12,6 @@ import { eventsExporterFactory } from "./exporter";
 import { usePrometheus } from "./prometheus";
 import schemaFactory from "./schema";
 
-const log = rootLogger.child({ name: "GQL" });
-
 export function buildCorsHeaders(request: Request) {
   const requestOrigin = request.headers.get("origin") as string;
   return {
@@ -52,9 +50,11 @@ export const onSubscribeFactory =
     return args;
   };
 
+const apiLogger = rootLogger.child({ name: "Api", msgPrefix: "[GQL] " });
+
 export function configureApiServer(db: AbstractDbRepository, broker: AbstractBroker): Server {
   const yoga = createYoga({
-    schema: schemaFactory(db, broker),
+    schema: schemaFactory(db, broker, apiLogger),
     graphiql: Config.api.enableGraphiql
       ? {
           subscriptionsProtocol: "WS",
@@ -64,7 +64,7 @@ export function configureApiServer(db: AbstractDbRepository, broker: AbstractBro
     plugins: [usePrometheus(), eventsExporterFactory(db)()],
     maskedErrors: {
       maskError(error: unknown, message: string, isDev: boolean | undefined) {
-        log.error({ msg: message, error, isDev });
+        apiLogger.error({ msg: message, error, isDev });
         return maskError(error, message, isDev);
       },
     },

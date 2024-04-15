@@ -25,12 +25,7 @@ export class ChargedToken extends AbstractHandler<IChargedToken> {
   ): Promise<void> {
     if (BigNumber.from(value).isZero()) {
       // empty transfer
-      this.log.warn({
-        chainId: this.chainId,
-        contract: this.dataType,
-        address: this.address,
-        msg: "Skipping transfer event processing since value is zero",
-      });
+      this.log.warn("Skipping transfer event processing since value is zero");
       return;
     }
 
@@ -56,12 +51,7 @@ export class ChargedToken extends AbstractHandler<IChargedToken> {
             session,
           );
         } else {
-          this.log.info({
-            msg: "Skipping from balance update since it was not found in db",
-            chainId: this.chainId,
-            contract: this.dataType,
-            address: this.address,
-          });
+          this.log.info("Skipping from balance update since it was not found in db");
         }
       }
     }
@@ -89,12 +79,7 @@ export class ChargedToken extends AbstractHandler<IChargedToken> {
             session,
           );
         } else {
-          this.log.info({
-            chainId: this.chainId,
-            contract: this.dataType,
-            address: this.address,
-            msg: "Skipping to balance update since it was not found in db",
-          });
+          this.log.info("Skipping to balance update since it was not found in db");
         }
       }
     }

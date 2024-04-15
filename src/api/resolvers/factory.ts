@@ -1,10 +1,8 @@
 import { Repeater } from "graphql-yoga";
+import { Logger } from "pino";
 import { AbstractBroker } from "../../core/AbstractBroker";
 import { AbstractDbRepository } from "../../core/AbstractDbRepository";
-import { rootLogger } from "../../rootLogger";
 import { toGraphQL } from "./functions";
-
-const log = rootLogger.child({ name: "resolverFactory" });
 
 export interface ResolverFactory {
   findAll: (
@@ -47,7 +45,7 @@ export const ResolverFactory = {
     };
   },
 
-  subscribeByName: <T>(db: AbstractDbRepository, broker: AbstractBroker, dataType: DataType) => {
+  subscribeByName: <T>(db: AbstractDbRepository, broker: AbstractBroker, log: Logger, dataType: DataType) => {
     return {
       subscribe: (_: any, { chainId }: { chainId: number }) => {
         const sub = broker.subscribeUpdates(dataType, chainId);
@@ -56,9 +54,9 @@ export const ResolverFactory = {
           stop.then((err) => {
             sub.return();
             log.debug({
+              msg: "client subscription stopped by error",
               chainId,
               dataType,
-              msg: "client subscription stopped by error",
               err,
             });
           });
@@ -73,15 +71,15 @@ export const ResolverFactory = {
               await push(toGraphQL(value));
             }
             log.debug({
+              msg: "client subscription ended",
               chainId,
               dataType,
-              msg: "client subscription ended",
             });
           } catch (err) {
             log.debug({
+              msg: "client subscription stopped with error",
               chainId,
               dataType,
-              msg: "client subscription stopped with error",
               err,
             });
             stop(err);
@@ -92,7 +90,7 @@ export const ResolverFactory = {
     };
   },
 
-  subscribeByNameAndAddress: <T>(db: AbstractDbRepository, broker: AbstractBroker, dataType: DataType) => {
+  subscribeByNameAndAddress: <T>(db: AbstractDbRepository, broker: AbstractBroker, log: Logger, dataType: DataType) => {
     return {
       subscribe: (_: any, { chainId, address }: { chainId: number; address: string }) => {
         const sub = broker.subscribeUpdatesByAddress(dataType, chainId, address);
@@ -101,10 +99,10 @@ export const ResolverFactory = {
           stop.then((err) => {
             sub.return();
             log.debug({
+              msg: "client subscription stopped with error",
               chainId,
               dataType,
               address,
-              msg: "client subscription stopped with error",
               err,
             });
           });
@@ -119,17 +117,17 @@ export const ResolverFactory = {
               await push(toGraphQL(value));
             }
             log.debug({
+              msg: "client subscription ended",
               chainId,
               dataType,
               address,
-              msg: "client subscription ended",
             });
           } catch (err) {
             log.debug({
+              msg: "client subscription stopped with error",
               chainId,
               dataType,
               address,
-              msg: "client subscription stopped with error",
               err,
             });
             stop("sub closed");
