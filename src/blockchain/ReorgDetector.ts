@@ -39,7 +39,7 @@ export class ReorgDetector {
       blockNumberBeforeDisconnect: this.blockNumberBeforeDisconnect,
     });
     if (this.blockNumberBeforeDisconnect < blockNumber) {
-      this.log.info({
+      this.log.debug({
         msg: "updating block number before disconnect",
         blockNumberBeforeDisconnect: this.blockNumberBeforeDisconnect,
         blockNumber,
@@ -121,7 +121,7 @@ export class ReorgDetector {
 
   private async logReorgDelta(lastBlock: ethers.providers.Block) {
     let head = lastBlock;
-    const blocks = [head];
+    const blocks = [lastBlock];
 
     while (this.blocksByHashMap[head.parentHash] === undefined) {
       head = await this.provider.getBlock(head.parentHash);
@@ -133,7 +133,7 @@ export class ReorgDetector {
       msg: "Rewritting history after reorg",
       blockNumber: lastBlock.number,
       forkBlockNumber: head.number,
-      reorgLength: blocks.length + 1,
+      reorgLength: blocks.length,
       reorgStart: head.number,
       reorgStartHash: head.hash,
       reorgStartOriginalHash: this.blocksMap[head.number].hash,
