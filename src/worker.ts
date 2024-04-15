@@ -5,7 +5,7 @@ import { BlockchainRepository } from "./blockchain/BlockchainRepository";
 import { Config } from "./config";
 import { AbstractBroker } from "./core/AbstractBroker";
 import { AbstractDbRepository } from "./core/AbstractDbRepository";
-import { ContractsWatcher } from "./core/ContractsWatcher";
+import { ContractsRegistry } from "./core/ContractsRegistry";
 import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";
 import { subscribeToUserBalancesLoading } from "./subscriptions/subscribeToUserBalances";
@@ -22,7 +22,7 @@ export class ChainWorker {
   readonly db: AbstractDbRepository;
   readonly broker: AbstractBroker;
 
-  contractsWatcher: ContractsWatcher | undefined;
+  contractsRegistry: ContractsRegistry | undefined;
   blockchain: BlockchainRepository | undefined;
   name: string | undefined;
   restartCount: number = 0;
@@ -461,9 +461,9 @@ export class ChainWorker {
 
     try {
       this.blockchain = new BlockchainRepository(this.chainId, this.provider, this.db, this.broker);
-      this.contractsWatcher = new ContractsWatcher(this.chainId, this.blockchain);
+      this.contractsRegistry = new ContractsRegistry(this.chainId, this.blockchain);
 
-      await this.contractsWatcher.registerDirectory(this.directoryAddress);
+      await this.contractsRegistry.registerDirectory(this.directoryAddress);
 
       this.subscribeToNewBlocks();
 
@@ -504,7 +504,7 @@ export class ChainWorker {
 
     Metrics.workerStopped(this.chainId);
 
-    await this.contractsWatcher?.unregisterDirectory(this.directoryAddress);
+    await this.contractsRegistry?.unregisterDirectory(this.directoryAddress);
 
     this.blockchain?.destroy();
     this.blockchain = undefined;

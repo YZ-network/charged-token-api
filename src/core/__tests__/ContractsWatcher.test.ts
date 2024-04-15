@@ -1,6 +1,6 @@
 import { EMPTY_ADDRESS } from "../../vendor";
 import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
-import { ContractsWatcher } from "../ContractsWatcher";
+import { ContractsRegistry } from "../ContractsRegistry";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { ChargedToken } from "../handlers/ChargedToken";
 import { DelegableToLT } from "../handlers/DelegableToLT";
@@ -9,16 +9,16 @@ import { InterfaceProjectToken } from "../handlers/InterfaceProjectToken";
 
 jest.mock("../../config");
 
-describe("ContractsWatcher", () => {
+describe("ContractsRegistry", () => {
   const CHAIN_ID = 1337;
   const ADDRESS = "0xADDRESS";
 
   let blockchain: jest.Mocked<AbstractBlockchainRepository>;
-  let watcher: ContractsWatcher;
+  let watcher: ContractsRegistry;
 
   beforeEach(() => {
     blockchain = new MockBlockchainRepository() as jest.Mocked<AbstractBlockchainRepository>;
-    watcher = new ContractsWatcher(CHAIN_ID, blockchain);
+    watcher = new ContractsRegistry(CHAIN_ID, blockchain);
   });
 
   // registrations

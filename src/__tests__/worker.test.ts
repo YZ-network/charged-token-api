@@ -10,7 +10,7 @@ import { ChainWorker } from "../worker";
 jest.mock("../config");
 jest.mock("../blockchain/topics");
 jest.mock("../blockchain/AutoWebSocketProvider");
-jest.mock("../core/ContractsWatcher");
+jest.mock("../core/ContractsRegistry");
 jest.mock("../subscriptions/subscribeToUserBalances");
 
 describe("ChainWorker", () => {
@@ -160,8 +160,8 @@ describe("ChainWorker", () => {
 
     expect(worker.blockchain).toBeDefined();
     expect(worker.db).toBeDefined();
-    expect(worker.contractsWatcher).toBeDefined();
-    expect(worker.contractsWatcher?.registerDirectory).toBeCalledWith(DIRECTORY);
+    expect(worker.contractsRegistry).toBeDefined();
+    expect(worker.contractsRegistry?.registerDirectory).toBeCalledWith(DIRECTORY);
     expect((worker.provider as any).handlers.block).toBeDefined();
     expect(subscribeToUserBalancesLoading).toBeCalledWith(CHAIN_ID, db, worker.blockchain, broker);
 

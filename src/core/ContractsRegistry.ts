@@ -4,7 +4,7 @@ import { EMPTY_ADDRESS } from "../vendor";
 import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { handlerFactory } from "./handlers/factory";
 
-export class ContractsWatcher {
+export class ContractsRegistry {
   readonly chainId: number;
   private readonly blockchain: AbstractBlockchainRepository;
   private readonly log: pino.Logger;
@@ -15,7 +15,7 @@ export class ContractsWatcher {
 
     this.log = rootLogger.child({
       chainId,
-      name: "ContractsWatcher",
+      name: "ContractsRegistry",
     });
   }
 
