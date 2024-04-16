@@ -11,7 +11,7 @@ describe("AutoWebSocketProvider", () => {
 
     Object.defineProperty(provider._websocket, "readyState", { value: 0 });
 
-    expect(provider.providerIndex).toBe(1);
+    expect(provider.index).toBe(1);
     expect(provider.websocket.onerror).toBeDefined();
     expect(provider.websocket.onclose).toBeDefined();
     expect(provider.websocket.onopen).toBeDefined();

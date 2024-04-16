@@ -1,29 +1,27 @@
 import { GraphQLError } from "graphql";
+import { Logger } from "pino";
 import { Config } from "../../config";
 import { AbstractDbRepository } from "../../core/AbstractDbRepository";
-import { rootLogger } from "../../rootLogger";
 import { toGraphQL } from "./functions";
 
 export type DirectoryQueryResolver = (_: any, { chainId }: { chainId: number }) => Promise<any>;
 
-const log = rootLogger.child({ name: "DirectoryQueryResolver" });
-
 export const DirectoryQueryResolverFactory =
-  (db: AbstractDbRepository) =>
+  (db: AbstractDbRepository, log: Logger) =>
   async (_: any, { chainId }: { chainId: number }) => {
     const network = Config.networks.find((network) => network.chainId === chainId);
 
     if (network === undefined) {
       log.warn({
-        chainId,
         msg: "Network not found in configuration",
+        chainId,
         configuredIds: Config.networks.map((network) => network.chainId),
       });
       throw new GraphQLError("UNKNOWN_NETWORK");
     } else if (!network.enabled) {
       log.warn({
-        chainId,
         msg: "Network is disabled",
+        chainId,
         configuredIds: Config.networks.map((network) => network.chainId),
       });
       throw new GraphQLError("DISABLED_NETWORK");
@@ -33,7 +31,7 @@ export const DirectoryQueryResolverFactory =
 
     if (directory === null) {
       const err = new GraphQLError("DIRECTORY_NOT_FOUND");
-      log.error({ chainId, msg: err.message, err });
+      log.error({ msg: err.message, chainId, err });
       throw err;
     }
 

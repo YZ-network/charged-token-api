@@ -1,4 +1,5 @@
 import { EventFilter, ethers } from "ethers";
+import { Logger } from "pino";
 import { AbstractBlockchainRepository } from "../core/AbstractBlockchainRepository";
 import { AbstractBroker } from "../core/AbstractBroker";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
@@ -6,23 +7,27 @@ import { AbstractHandler } from "../core/AbstractHandler";
 import { rootLogger } from "../rootLogger";
 import { ClientSession, EMPTY_ADDRESS } from "../vendor";
 import { EventListener } from "./EventListener";
+import { ReorgDetector } from "./ReorgDetector";
 import { contracts } from "./contracts";
 import { detectNegativeAmount } from "./functions";
 import { loadContract } from "./loaders";
 import topicsMap from "./topics";
 
 export class BlockchainRepository extends AbstractBlockchainRepository {
+  private readonly log: Logger;
+
   private directory: string | undefined;
   private readonly chainId: number;
   private readonly provider: ethers.providers.JsonRpcProvider;
   private readonly db: AbstractDbRepository;
   private readonly broker: AbstractBroker;
   readonly eventListener: EventListener;
-  private readonly log = rootLogger.child({ name: "BlockchainRepository" });
 
   readonly instances: Record<string, ethers.Contract> = {};
   private readonly interfaces: Record<string, ethers.utils.Interface> = {};
   readonly handlers: Record<string, AbstractHandler<any>> = {};
+
+  readonly reorgDetector: ReorgDetector;
 
   constructor(
     chainId: number,
@@ -32,11 +37,18 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     startEventLoop = true,
   ) {
     super();
+    this.log = rootLogger.child({ chainId, name: "Blockchain" });
+
     this.chainId = chainId;
     this.provider = provider;
     this.db = db;
     this.broker = broker;
+    this.reorgDetector = new ReorgDetector(chainId, provider);
     this.eventListener = new EventListener(db, provider, startEventLoop);
+  }
+
+  get blockNumberBeforeDisconnect(): number {
+    return this.reorgDetector.blockNumberBeforeDisconnect;
   }
 
   getInstance(dataType: DataType, address: string): ethers.Contract {
@@ -121,7 +133,6 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     ptAddress?: string,
   ): Promise<IUserBalance> {
     this.log.info({
-      chainId: this.chainId,
       msg: "Loading user balances",
       user,
       ctAddress,
@@ -170,11 +181,10 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
         break;
       } catch (err) {
         this.log.warn({
-          chainId: this.chainId,
+          msg: "Could not retrieve events from startBlock",
           address,
           contract: dataType,
           startBlock,
-          msg: "Could not retrieve events from startBlock",
           err,
         });
         eventsFetchRetryCount++;
@@ -184,11 +194,10 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
     if (eventsFetchRetryCount >= 3) {
       this.log.error({
-        chainId: this.chainId,
+        msg: "Error retrieving events from startBlock after 3 tries",
         address,
         contract: dataType,
         startBlock,
-        msg: "Error retrieving events from startBlock after 3 tries",
       });
       return;
     }
@@ -200,18 +209,16 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
       if (name === undefined) {
         this.log.warn({
-          chainId: this.chainId,
+          msg: "found unnamed event :",
           address,
           contract: dataType,
-          msg: "found unnamed event :",
           event,
         });
       } else {
         this.log.info({
-          chainId: this.chainId,
+          msg: "delegating event processing",
           address,
           contract: dataType,
-          msg: "delegating event processing",
         });
 
         await this.eventListener.queueLog(name, event, loader, this.getInterface(dataType));
@@ -225,30 +232,27 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     fromBlock: number,
   ): Promise<ethers.Event[]> {
     this.log.info({
-      chainId: this.chainId,
+      msg: "Querying missed events",
       address,
       contract: dataType,
       fromBlock,
-      msg: "Querying missed events",
     });
 
     const missedEvents = await this.loadEvents(dataType, address, fromBlock);
 
     if (missedEvents.length === 0) {
       this.log.info({
-        chainId: this.chainId,
+        msg: "No events missed",
         address,
         contract: dataType,
-        msg: "No events missed",
       });
       return [];
     }
 
     this.log.info({
-      chainId: this.chainId,
+      msg: "Found potentially missed events",
       address,
       contract: dataType,
-      msg: "Found potentially missed events",
       missedEventsCount: missedEvents.length,
     });
 
@@ -256,20 +260,18 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
     if (missedEvents.length > filteredEvents.length) {
       this.log.info({
-        chainId: this.chainId,
+        msg: "Skipped events already played",
         address,
         contract: dataType,
-        msg: "Skipped events already played",
         skippedEventsCount: missedEvents.length - filteredEvents.length,
       });
     }
 
     if (filteredEvents.length > 0) {
       this.log.info({
-        chainId: this.chainId,
+        msg: "Found really missed events",
         address,
         contract: dataType,
-        msg: "Found really missed events",
         missedEventsCount: filteredEvents.length,
         missedEvents,
       });
@@ -319,11 +321,10 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
       this.eventListener.queueLog(eventName, log, loader, this.getInterface(dataType)).catch((err) => {
         this.log.error({
-          chainId: this.chainId,
+          msg: "error queuing event",
           address,
           contract: this.constructor.name,
           eventName,
-          msg: "error queuing event",
           err,
           log,
         });
@@ -362,10 +363,9 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
     if (lastState != null) {
       this.log.info({
-        chainId: this.chainId,
+        msg: "Found existing data for contract",
         address,
         contract: dataType,
-        msg: "Found existing data for contract",
         lastUpdateBlock: lastState.lastUpdateBlock,
       });
 
@@ -376,10 +376,9 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
       if (eventsStartBlock > lastState.lastUpdateBlock) {
         this.log.warn({
-          chainId: this.chainId,
+          msg: "Skipped blocks for events syncing",
           address,
           contract: dataType,
-          msg: "Skipped blocks for events syncing",
           lastUpdateBlock: lastState.lastUpdateBlock,
           eventsStartBlock,
         });
@@ -388,10 +387,9 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
       await this.loadAndSyncEvents(dataType, address, eventsStartBlock, this.handlers[address]);
     } else {
       this.log.info({
-        chainId: this.chainId,
+        msg: "First time loading",
         address,
         contract: dataType,
-        msg: "First time loading",
       });
 
       const data = await loadContract<T>(
@@ -464,7 +462,6 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     }
 
     this.log.info({
-      chainId: this.chainId,
       msg: "Loading user balances",
       user,
       address,
@@ -505,9 +502,8 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     for (const entry of results) {
       if (await this.db.existsBalance(this.chainId, entry.address, user)) {
         this.log.info({
-          chainId: this.chainId,
-          address: entry.address,
           msg: "updating CT balance",
+          address: entry.address,
           user,
           balance: entry,
         });
@@ -521,27 +517,24 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
     if (saved !== null) {
       this.log.info({
-        chainId: this.chainId,
-        address,
         msg: "Publishing updated user balances",
+        address,
         user,
       });
 
       this.broker.notifyUpdate("UserBalance", this.chainId, user, saved);
     } else {
       this.log.warn({
-        chainId: this.chainId,
-        address,
         msg: "Error while reloading balances after save",
+        address,
         user,
       });
     }
     const stopDate = new Date().getTime();
 
     this.log.debug({
-      chainId: this.chainId,
-      address,
       msg: "User balances loaded",
+      address,
       loadDurationSeconds: (stopDate - startDate) / 1000,
     });
 
@@ -622,17 +615,15 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     session?: ClientSession,
   ): Promise<void> {
     this.log.info({
-      chainId: this.chainId,
+      msg: "will update PT address on balances for all users one by one",
       address,
       ptAddress,
-      msg: "will update PT address on balances for all users one by one",
     });
 
     const balancesToUpdate = await this.db.getBalancesByContract(this.chainId, address, session);
     this.log.info({
-      chainId: this.chainId,
-      address,
       msg: "user balances to update !",
+      address,
       count: balancesToUpdate.length,
       users: balancesToUpdate.map((balance) => balance.user),
     });
@@ -643,9 +634,8 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
       if (userPTBalances[balance.user] === undefined) {
         userPTBalances[balance.user] = await this.getUserBalancePT(ptAddress, balance.user);
         this.log.info({
-          chainId: this.chainId,
-          ptAddress,
           msg: "loaded user PT balance",
+          ptAddress,
           user: balance.user,
           balance: balance.balancePT,
         });
@@ -678,9 +668,8 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     this.checkUpdateAmounts("UserBalance", balanceUpdates);
 
     this.log.info({
-      chainId: this.chainId,
-      address,
       msg: "applying update to balance",
+      address,
       user,
       balanceUpdates,
       eventName,
@@ -699,9 +688,8 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
     if (balanceUpdates.balancePT !== undefined && ptAddress !== undefined) {
       this.log.info({
-        chainId: this.chainId,
-        ptAddress,
         msg: "propagating project token balance",
+        ptAddress,
         user,
         eventName,
       });
@@ -723,9 +711,8 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
       const newBalance = await this.db.getBalance(this.chainId, address, user, session);
 
       this.log.trace({
-        chainId: this.chainId,
-        address,
         msg: "sending balance update :",
+        address,
         user,
         data: newBalance,
       });
@@ -747,9 +734,8 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     this.checkUpdateAmounts("UserBalance", balanceUpdates);
 
     this.log.info({
-      chainId: this.chainId,
-      ptAddress,
       msg: "applying update to PT balances",
+      ptAddress,
       user,
       balanceUpdates,
       eventName,
@@ -773,9 +759,8 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     const updatedBalances = await this.db.getBalancesByProjectToken(this.chainId, ptAddress, user, session);
 
     this.log.trace({
-      chainId: this.chainId,
-      ptAddress,
       msg: "sending multiple balance updates :",
+      ptAddress,
       data: updatedBalances,
     });
 
@@ -793,9 +778,8 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     session?: ClientSession,
   ): Promise<void> {
     this.log.info({
-      chainId: this.chainId,
-      address,
       contract: dataType,
+      address,
       msg: "applying update to contract",
       eventName,
       data,
@@ -806,9 +790,8 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     const lastState = await this.getLastState(dataType, address, session);
 
     this.log.debug({
-      chainId: this.chainId,
-      address,
       contract: dataType,
+      address,
       msg: "sending update to channel",
       data: lastState,
     });
@@ -820,5 +803,6 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     Object.values(this.instances).forEach((instance) => instance.removeAllListeners);
 
     this.eventListener.destroy();
+    this.reorgDetector.destroy();
   }
 }

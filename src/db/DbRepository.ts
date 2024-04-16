@@ -10,7 +10,7 @@ import { InterfaceProjectTokenModel } from "./models/InterfaceProjectToken";
 import { UserBalanceModel } from "./models/UserBalances";
 
 export class DbRepository extends AbstractDbRepository {
-  private readonly log = rootLogger.child({ name: "DbRepository" });
+  private readonly log = rootLogger.child({ name: "Db" });
 
   async startSession(): Promise<ClientSession> {
     return await mongoose.startSession();
@@ -132,7 +132,7 @@ export class DbRepository extends AbstractDbRepository {
     }).session(session);
 
     if (result === null) {
-      this.log.warn({ chainId, user, msg: "No balances found by user" });
+      this.log.warn({ msg: "No balances found by user", user });
       return [];
     }
 
@@ -150,7 +150,7 @@ export class DbRepository extends AbstractDbRepository {
     }).session(session);
 
     if (result === null) {
-      this.log.warn({ chainId, address, msg: "No balances found by contract" });
+      this.log.warn({ msg: "No balances found by contract", address });
       return [];
     }
 
@@ -170,7 +170,7 @@ export class DbRepository extends AbstractDbRepository {
     }).session(session);
 
     if (result === null) {
-      this.log.warn({ chainId, address, user, msg: "No balance found by user and contract" });
+      this.log.warn({ msg: "No balance found by user and contract", address, user });
       return null;
     }
 
@@ -190,7 +190,7 @@ export class DbRepository extends AbstractDbRepository {
     }).session(session);
 
     if (result === null) {
-      this.log.warn({ chainId, ptAddress, user, msg: "No balance found by user and project token" });
+      this.log.warn({ msg: "No balance found by user and project token", ptAddress, user });
       return [];
     }
 
@@ -210,7 +210,7 @@ export class DbRepository extends AbstractDbRepository {
     }).session(session);
 
     if (result === null) {
-      this.log.warn({ chainId, ptAddress, user, msg: "Not one balance found by user and project token" });
+      this.log.warn({ msg: "Not one balance found by user and project token", ptAddress, user });
       return null;
     }
 
@@ -344,14 +344,12 @@ export class DbRepository extends AbstractDbRepository {
     });
     if (pendingEvents.length > 0) {
       this.log.warn({
-        chainId,
         msg: "Found pending events ! will remove them",
         pendingEventsCount: pendingEvents.length,
       });
     }
     if (failedEvents.length > 0) {
       this.log.warn({
-        chainId,
         msg: "Found failed events ! will remove them",
         failedEventsCount: failedEvents.length,
         events: failedEvents.map((event: any) => event.toJSON()),

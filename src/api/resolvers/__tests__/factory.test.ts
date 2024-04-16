@@ -1,4 +1,6 @@
 import { Repeater } from "graphql-yoga";
+import { Logger } from "pino";
+import { MockLogger } from "../../../__mocks__/MockLogger";
 import { AbstractBroker } from "../../../core/AbstractBroker";
 import { AbstractDbRepository } from "../../../core/AbstractDbRepository";
 import { MockBroker } from "../../../core/__mocks__/MockBroker";
@@ -8,10 +10,12 @@ import { ResolverFactory } from "../factory";
 describe("Generic query resolver factory", () => {
   let db: jest.Mocked<AbstractDbRepository>;
   let broker: jest.Mocked<AbstractBroker>;
+  let log: jest.Mocked<Logger>;
 
   beforeEach(() => {
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
     broker = new MockBroker() as jest.Mocked<AbstractBroker>;
+    log = new MockLogger() as jest.Mocked<Logger>;
   });
 
   it("should query for all items by chain id and convert results to graphQL format", async () => {
@@ -59,7 +63,12 @@ describe("Generic query resolver factory", () => {
 
   it("should susbscribe to channel by model name", async () => {
     const chainId = 129;
-    const { subscribe: subscribeByNameResolver, resolve } = ResolverFactory.subscribeByName(db, broker, "ChargedToken");
+    const { subscribe: subscribeByNameResolver, resolve } = ResolverFactory.subscribeByName(
+      db,
+      broker,
+      log,
+      "ChargedToken",
+    );
 
     expect(resolve("test")).toBe("test");
 
@@ -95,6 +104,7 @@ describe("Generic query resolver factory", () => {
     const { subscribe: subscribeByNameAndAddrResolver, resolve } = ResolverFactory.subscribeByNameAndAddress(
       db,
       broker,
+      log,
       "ChargedToken",
     );
 

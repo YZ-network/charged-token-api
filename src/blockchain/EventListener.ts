@@ -48,6 +48,8 @@ export class EventListener {
   }
 
   constructor(db: AbstractDbRepository, provider: ethers.providers.JsonRpcProvider, startLoop = true) {
+    this.log = rootLogger.child({ name: "Events" });
+
     this.db = db;
     this.provider = provider;
 
@@ -77,8 +79,8 @@ export class EventListener {
     const args = [...decodedLog.args.values()].map((arg) => arg.toString());
 
     this.log.debug({
-      address: loader.address,
       chainId: loader.chainId,
+      address: loader.address,
       contract: loader.constructor.name,
       eventName,
       args,

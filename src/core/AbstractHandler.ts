@@ -17,9 +17,7 @@ export abstract class AbstractHandler<T extends IContract> {
   readonly chainId: number;
   readonly address: string;
   protected readonly dataType: DataType;
-  readonly log: Logger<{
-    name: string;
-  }>;
+  protected readonly log: Logger;
 
   protected readonly blockchain: AbstractBlockchainRepository;
   protected readonly loaderFactory: (
@@ -57,8 +55,8 @@ export abstract class AbstractHandler<T extends IContract> {
 
     this.log = rootLogger.child({
       chainId,
+      name: this.constructor.name,
       address,
-      contract: this.constructor.name,
     });
   }
 
@@ -103,9 +101,6 @@ export abstract class AbstractHandler<T extends IContract> {
       this.log.info({
         msg: `Running event handler for ${name}`,
         args: args.map((arg) => (arg instanceof BigNumber ? arg.toString() : arg)),
-        contract: this.constructor.name,
-        address: this.address,
-        chainId: this.chainId,
         blockNumber,
         txIndex: log.transactionIndex,
         logIndex: log.logIndex,
@@ -117,9 +112,6 @@ export abstract class AbstractHandler<T extends IContract> {
       this.log.info({
         msg: `Event handler for ${name} executed`,
         args: args.map((arg) => (arg instanceof BigNumber ? arg.toString() : arg)),
-        contract: this.constructor.name,
-        address: this.address,
-        chainId: this.chainId,
         blockNumber,
         txIndex: log.transactionIndex,
         logIndex: log.logIndex,
@@ -130,9 +122,6 @@ export abstract class AbstractHandler<T extends IContract> {
       this.log.error({
         msg,
         err,
-        contract: this.constructor.name,
-        address: this.address,
-        chainId: this.chainId,
         blockNumber,
         txIndex: log.transactionIndex,
         logIndex: log.logIndex,

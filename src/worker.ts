@@ -1,20 +1,19 @@
-import { ethers } from "ethers";
+import { Logger } from "pino";
 import { WebSocket } from "ws";
 import { AutoWebSocketProvider } from "./blockchain/AutoWebSocketProvider";
 import { BlockchainRepository } from "./blockchain/BlockchainRepository";
 import { Config } from "./config";
 import { AbstractBroker } from "./core/AbstractBroker";
 import { AbstractDbRepository } from "./core/AbstractDbRepository";
-import { ContractsWatcher } from "./core/ContractsWatcher";
+import { ContractsRegistry } from "./core/ContractsRegistry";
 import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";
 import { subscribeToUserBalancesLoading } from "./subscriptions/subscribeToUserBalances";
 
-const log = rootLogger.child({ name: "worker" });
-
 const WsStatus = ["CONNECTING", "OPEN", "CLOSING", "CLOSED"];
 
 export class ChainWorker {
+  private readonly log: Logger;
   readonly index: number;
   readonly rpc: string;
   readonly directoryAddress: string;
@@ -22,11 +21,10 @@ export class ChainWorker {
   readonly db: AbstractDbRepository;
   readonly broker: AbstractBroker;
 
-  contractsWatcher: ContractsWatcher | undefined;
+  contractsRegistry: ContractsRegistry | undefined;
   blockchain: BlockchainRepository | undefined;
   name: string | undefined;
   restartCount: number = 0;
-  blockNumberBeforeDisconnect: number = 0;
 
   providerIndex: number = 0;
   provider: AutoWebSocketProvider | undefined;
@@ -36,8 +34,6 @@ export class ChainWorker {
   wsStatus: string = "STARTING";
   wsWatch: NodeJS.Timeout | undefined;
   workerStatus: WorkerStatus = "WAITING";
-
-  blocksMap: Record<number, ethers.providers.Block> = {};
 
   disconnectedTimestamp: number = new Date().getTime();
   cumulatedNodeDowntime: number = 0;
@@ -50,6 +46,8 @@ export class ChainWorker {
     dbRepository: AbstractDbRepository,
     broker: AbstractBroker,
   ) {
+    this.log = rootLogger.child({ chainId, name: "Worker" });
+
     this.index = index;
     this.rpc = rpc;
     this.directoryAddress = directoryAddress;
@@ -58,16 +56,19 @@ export class ChainWorker {
     this.broker = broker;
   }
 
+  get blockNumberBeforeDisconnect(): number {
+    return this.blockchain!.blockNumberBeforeDisconnect;
+  }
+
   async start() {
     try {
       this.createProvider();
       this.createWorker();
     } catch (err) {
-      log.error({
-        chainId: this.chainId,
+      this.log.error({
         msg: "Error connecting to network !",
-        err,
         providerIndex: this.providerIndex,
+        err,
       });
       await this.stop();
     }
@@ -103,8 +104,7 @@ export class ChainWorker {
       this.disconnectedTimestamp = now;
 
       if (firstAlert) {
-        log.error({
-          chainId: this.chainId,
+        this.log.error({
           msg: "Blockchain provider is down !",
           providerIndex: this.providerIndex,
         });
@@ -121,18 +121,16 @@ export class ChainWorker {
     this.cumulatedNodeDowntime += deltaMs;
 
     if (this.cumulatedNodeDowntime >= 60000) {
-      log.warn({
-        chainId: this.chainId,
+      this.log.warn({
         msg: "Blockchain provider was down for more than a minute !",
-        downtimeSeconds: Math.round(this.cumulatedNodeDowntime / 1000),
         providerIndex: this.providerIndex,
+        downtimeSeconds: Math.round(this.cumulatedNodeDowntime / 1000),
       });
     } else {
-      log.info({
-        chainId: this.chainId,
+      this.log.debug({
         msg: "Blockchain provider was down !",
-        downtimeSeconds: Math.round(this.cumulatedNodeDowntime / 1000),
         providerIndex: this.providerIndex,
+        downtimeSeconds: Math.round(this.cumulatedNodeDowntime / 1000),
       });
     }
 
@@ -143,7 +141,7 @@ export class ChainWorker {
   private createProvider() {
     this.providerIndex++;
 
-    log.info({ chainId: this.chainId, msg: "Creating provider", providerIndex: this.providerIndex });
+    this.log.info({ msg: "Creating provider", providerIndex: this.providerIndex });
 
     this.provider = new AutoWebSocketProvider(this.rpc, {
       chainId: this.chainId,
@@ -162,8 +160,7 @@ export class ChainWorker {
         if (this.wsStatus === WsStatus[0]) {
           Metrics.connectionFailed(this.chainId);
         }
-        log.warn({
-          chainId: this.chainId,
+        this.log.warn({
           msg: "Websocket connection lost",
           rpc: this.rpc,
           args,
@@ -173,8 +170,7 @@ export class ChainWorker {
 
         this.logDisconnectedStateIfNeeded();
       } else if (typeof args[0] === "string") {
-        log.error({
-          chainId: this.chainId,
+        this.log.error({
           msg: "Websocket unknown error",
           rpc: this.rpc,
           args,
@@ -183,15 +179,14 @@ export class ChainWorker {
       }
     });
     this.provider.on("debug", (...args) => {
-      log.debug({ chainId: this.chainId, args, providerIndex: this.providerIndex });
+      this.log.debug({ ...args, providerIndex: this.providerIndex });
     });
 
     this.provider.ready
       .then((network) => {
         this.logDowntimeAfterReconnection();
 
-        log.info({
-          chainId: this.chainId,
+        this.log.info({
           msg: "Connected to network",
           network,
           providerIndex: this.providerIndex,
@@ -207,8 +202,7 @@ export class ChainWorker {
         return network;
       })
       .catch((err) => {
-        log.error({
-          chainId: this.chainId,
+        this.log.error({
           msg: "Error connecting to network",
           rpc: this.rpc,
           err,
@@ -221,10 +215,8 @@ export class ChainWorker {
         this.logDisconnectedStateIfNeeded();
       });
 
-    log.info({
-      chainId: this.chainId,
+    this.log.info({
       msg: "Starting websocket watch",
-      wsWatch: this.wsWatch,
       providerIndex: this.providerIndex,
     });
 
@@ -242,8 +234,7 @@ export class ChainWorker {
         prevWsStatus = this.wsStatus;
 
         if (["CLOSING", "CLOSED"].includes(this.wsStatus)) {
-          log.warn({
-            chainId: this.chainId,
+          this.log.warn({
             msg: "Websocket crashed",
             network: this.name,
             wsStatus: this.wsStatus,
@@ -253,8 +244,7 @@ export class ChainWorker {
           });
           this.logStopResult(this.stop());
         } else if (this.providerStatus !== "CONNECTING" && this.wsStatus === "CONNECTING") {
-          log.info({
-            chainId: this.chainId,
+          this.log.info({
             msg: "Websocket connecting",
             network: this.name,
             wsStatus: this.wsStatus,
@@ -263,8 +253,7 @@ export class ChainWorker {
             providerIndex: this.providerIndex,
           });
         } else if (this.providerStatus !== "CONNECTED" && this.wsStatus === "OPEN") {
-          log.info({
-            chainId: this.chainId,
+          this.log.info({
             msg: "Websocket connected",
             network: this.name,
             wsStatus: this.wsStatus,
@@ -273,8 +262,7 @@ export class ChainWorker {
             providerIndex: this.providerIndex,
           });
         } else {
-          log.warn({
-            chainId: this.chainId,
+          this.log.warn({
             msg: "Unknown websocket state !",
             network: this.name,
             providerStatus: this.providerStatus,
@@ -291,8 +279,7 @@ export class ChainWorker {
   private logStopResult(promise: Promise<void>) {
     promise
       .then(() => {
-        log.info({
-          chainId: this.chainId,
+        this.log.info({
           msg: "Worker stopped after websocket crashed",
           network: this.name,
           stack: new Error().stack,
@@ -300,119 +287,13 @@ export class ChainWorker {
         });
       })
       .catch((err) => {
-        log.info({
-          chainId: this.chainId,
+        this.log.info({
           msg: "Error stopping worker after websocket crashed",
           network: this.name,
           err,
           providerIndex: this.providerIndex,
         });
       });
-  }
-
-  private subscribeToNewBlocks() {
-    if (this.provider === undefined) {
-      throw new Error("No provider to subscribe for new blocks !");
-    }
-
-    this.provider.on("block", (blockNumber: number) => this.onNewBlock(blockNumber));
-  }
-
-  private async onNewBlock(blockNumber: number) {
-    log.debug({
-      chainId: this.chainId,
-      blockNumber,
-      msg: "New block header",
-      blockNumberBeforeDisconnect: this.blockNumberBeforeDisconnect,
-    });
-    if (this.blockNumberBeforeDisconnect < blockNumber) {
-      this.blockNumberBeforeDisconnect = blockNumber;
-    }
-
-    try {
-      const lastBlock = await this.provider?.getBlock(blockNumber);
-
-      if (lastBlock === undefined) {
-        log.warn({
-          chainId: this.chainId,
-          blockNumber,
-          msg: "Failed reading new block",
-          lastBlock,
-        });
-        return;
-      }
-
-      this.checkBlockNumber(blockNumber, lastBlock);
-      this.addBlockAndDetectReorg(blockNumber, lastBlock);
-    } catch (err) {
-      log.warn({ chainId: this.chainId, blockNumber, msg: "Failed reading new block data" });
-    }
-  }
-
-  private checkBlockNumber(blockNumber: number, lastBlock: ethers.providers.Block) {
-    if (lastBlock.number !== blockNumber) {
-      log.warn({
-        chainId: this.chainId,
-        blockNumber,
-        msg: "Fetched block number doesn't match header !",
-        lastBlock,
-      });
-    } else {
-      log.debug({
-        chainId: this.chainId,
-        blockNumber,
-        msg: "Fetched new block",
-        lastBlock,
-      });
-    }
-  }
-
-  private addBlockAndDetectReorg(blockNumber: number, lastBlock: ethers.providers.Block) {
-    const previousBlockNumber = Object.keys(this.blocksMap)
-      .map(Number)
-      .reduce((prev, cur) => {
-        return Number(prev) > cur ? Number(prev) : cur;
-      }, 0);
-
-    const knownBlock = this.blocksMap[blockNumber];
-    if (knownBlock === undefined) {
-      this.blocksMap[blockNumber] = lastBlock;
-    } else if (knownBlock.number === lastBlock.number) {
-      if (knownBlock.hash === lastBlock.hash) {
-        log.debug({
-          chainId: this.chainId,
-          blockNumber,
-          msg: "Duplicate block notification",
-          lastBlock,
-          knownBlock,
-        });
-      } else {
-        log.warn({
-          chainId: this.chainId,
-          blockNumber,
-          msg: "Chain reorg detected !",
-          lastBlock,
-          knownBlock,
-        });
-      }
-    } else if (blockNumber !== previousBlockNumber + 1) {
-      log.warn({
-        chainId: this.chainId,
-        blockNumber,
-        previousBlockNumber,
-        msg: "New block is not continuous !",
-        lastBlock,
-        knownBlock,
-      });
-    } else {
-      log.warn({
-        chainId: this.chainId,
-        blockNumber,
-        msg: "Unexpected block !",
-        lastBlock,
-        knownBlock,
-      });
-    }
   }
 
   private createWorker() {
@@ -424,8 +305,7 @@ export class ChainWorker {
       .then(async () => {
         await this.run()
           .then(() => {
-            log.info({
-              chainId: this.chainId,
+            this.log.info({
               msg: "Worker stopped itself",
               network: this.name,
               providerIndex: this.providerIndex,
@@ -433,8 +313,7 @@ export class ChainWorker {
             this.logStopResult(this.stop());
           })
           .catch((err: any) => {
-            log.error({
-              chainId: this.chainId,
+            this.log.error({
               msg: "Worker crashed",
               rpc: this.rpc,
               network: this.name,
@@ -452,8 +331,7 @@ export class ChainWorker {
       throw new Error("No provider to run worker !");
     }
 
-    log.info({
-      chainId: this.chainId,
+    this.log.info({
       msg: "Starting worker",
       network: this.name,
       providerIndex: this.providerIndex,
@@ -461,27 +339,23 @@ export class ChainWorker {
 
     try {
       this.blockchain = new BlockchainRepository(this.chainId, this.provider, this.db, this.broker);
-      this.contractsWatcher = new ContractsWatcher(this.chainId, this.blockchain);
+      this.contractsRegistry = new ContractsRegistry(this.chainId, this.blockchain);
 
-      await this.contractsWatcher.registerDirectory(this.directoryAddress);
-
-      this.subscribeToNewBlocks();
+      await this.contractsRegistry.registerDirectory(this.directoryAddress);
 
       this.workerStatus = "STARTED";
       Metrics.workerStarted(this.chainId);
 
       await subscribeToUserBalancesLoading(this.chainId, this.db, this.blockchain, this.broker);
     } catch (err) {
-      log.error({
-        chainId: this.chainId,
+      this.log.error({
         msg: "Error happened running worker",
         network: this.name,
         err,
         providerIndex: this.providerIndex,
       });
     }
-    log.info({
-      chainId: this.chainId,
+    this.log.info({
       msg: "Worker stopped",
       network: this.name,
       providerIndex: this.providerIndex,
@@ -491,8 +365,7 @@ export class ChainWorker {
   private async stop() {
     if (this.providerStatus === "DISCONNECTED" && this.workerStatus === "DEAD") return;
 
-    log.debug({
-      chainId: this.chainId,
+    this.log.debug({
       msg: "Stopping worker",
       network: this.name,
       stack: new Error().stack,
@@ -504,21 +377,20 @@ export class ChainWorker {
 
     Metrics.workerStopped(this.chainId);
 
-    await this.contractsWatcher?.unregisterDirectory(this.directoryAddress);
+    await this.contractsRegistry?.unregisterDirectory(this.directoryAddress);
 
     this.blockchain?.destroy();
     this.blockchain = undefined;
 
     this.provider?.removeAllListeners();
-    this.blocksMap = {};
     this.worker = undefined;
 
-    log.info({ chainId: this.chainId, msg: "Destroying provider", providerIndex: this.providerIndex });
+    this.log.info({ msg: "Destroying provider", providerIndex: this.providerIndex });
     await this.provider?.destroy();
     this.provider = undefined;
 
     if (this.wsWatch !== undefined) {
-      log.info({ chainId: this.chainId, msg: "Stopping websocket watch", providerIndex: this.providerIndex });
+      this.log.info({ msg: "Stopping websocket watch", providerIndex: this.providerIndex });
 
       clearInterval(this.wsWatch);
       this.wsWatch = undefined;

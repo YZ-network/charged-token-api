@@ -1,4 +1,6 @@
 import { Repeater } from "graphql-yoga";
+import { Logger } from "pino";
+import { MockLogger } from "../../../__mocks__/MockLogger";
 import { AbstractBroker } from "../../../core/AbstractBroker";
 import { AbstractDbRepository } from "../../../core/AbstractDbRepository";
 import { MockBroker } from "../../../core/__mocks__/MockBroker";
@@ -18,12 +20,14 @@ describe("User balance query resolver", () => {
 
   let db: jest.Mocked<AbstractDbRepository>;
   let broker: jest.Mocked<AbstractBroker>;
+  let log: jest.Mocked<Logger>;
   let resolver: UserBalanceQueryResolver;
 
   beforeEach(() => {
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
     broker = new MockBroker() as jest.Mocked<AbstractBroker>;
-    resolver = UserBalanceQueryResolverFactory(db, broker);
+    log = new MockLogger() as jest.Mocked<Logger>;
+    resolver = UserBalanceQueryResolverFactory(db, broker, log);
   });
 
   it("should return cached balances by chain id and user", async () => {
@@ -90,7 +94,11 @@ describe("User balance query resolver", () => {
   });
 
   it("should subscribe to user balances updatess", async () => {
-    const { subscribe: subscribeByUserAndAddrResolver, resolve } = UserBalanceSubscriptionResolverFactory(db, broker);
+    const { subscribe: subscribeByUserAndAddrResolver, resolve } = UserBalanceSubscriptionResolverFactory(
+      db,
+      broker,
+      log,
+    );
 
     expect(resolve("test")).toBe("test");
 

@@ -1,4 +1,4 @@
-export const ContractsWatcher = jest.fn().mockImplementation(() => ({
+export const ContractsRegistry = jest.fn().mockImplementation(() => ({
   registerDirectory: jest.fn(),
   unregisterDirectory: jest.fn(),
   registerChargedToken: jest.fn(),

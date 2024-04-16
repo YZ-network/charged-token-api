@@ -4,27 +4,23 @@ import { AbstractDbRepository } from "../core/AbstractDbRepository";
 import { rootLogger } from "../rootLogger";
 import { EMPTY_ADDRESS } from "../vendor";
 
-const log = rootLogger.child({ name: "subscribeToUserBalancesLoading" });
-
 export async function subscribeToUserBalancesLoading(
   chainId: number,
   db: AbstractDbRepository,
   blockchain: AbstractBlockchainRepository,
   broker: AbstractBroker,
 ): Promise<void> {
+  const log = rootLogger.child({ chainId, name: "BalanceRequests" });
+
   const sub = broker.subscribeBalanceLoadingRequests(chainId);
-  log.info({
-    chainId,
-    msg: "listening to balance update requests",
-  });
+  log.info("listening to balance update requests");
 
   for await (const info of sub) {
     const { user, address } = info;
     log.info({
-      chainId,
+      msg: "Got user balances reload message",
       user,
       address,
-      msg: "Got user balances reload message",
     });
 
     const blockNumber = await blockchain.getBlockNumber();

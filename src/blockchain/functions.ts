@@ -1,7 +1,7 @@
 import ethers from "ethers";
 import { rootLogger } from "../rootLogger";
 
-const log = rootLogger.child({ name: "blockchain.functions" });
+const log = rootLogger.child({ name: "Utils" });
 
 function getBlockDateWrapper(): (blockNumber: number, provider: ethers.providers.JsonRpcProvider) => Promise<string> {
   const blockDates: Record<number, string> = {};
@@ -36,9 +36,9 @@ export function detectNegativeAmount(
 
   if (Object.keys(faultyFields).length > 0) {
     log.error({
+      msg: `Invalid update detected : negative amounts in ${dataType}`,
       chainId,
       dataType,
-      msg: `Invalid update detected : negative amounts in ${dataType}`,
       ...logData,
       faultyFields,
     });

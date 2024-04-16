@@ -25,12 +25,7 @@ export class DelegableToLT extends AbstractHandler<IDelegableToLT> {
   ): Promise<void> {
     if (BigNumber.from(value).isZero()) {
       // empty transfers
-      this.log.warn({
-        chainId: this.chainId,
-        contract: this.dataType,
-        address: this.address,
-        msg: "Skipping transfer event processing since value is zero",
-      });
+      this.log.warn("Skipping transfer event processing since value is zero");
       return;
     }
 
@@ -53,9 +48,6 @@ export class DelegableToLT extends AbstractHandler<IDelegableToLT> {
         );
       } else {
         this.log.warn({
-          chainId: this.chainId,
-          contract: this.dataType,
-          address: this.address,
           msg: "PT Balance not found in database for update !",
           user: from,
           eventName,
@@ -81,9 +73,6 @@ export class DelegableToLT extends AbstractHandler<IDelegableToLT> {
         );
       } else {
         this.log.warn({
-          chainId: this.chainId,
-          contract: this.dataType,
-          address: this.address,
           msg: "PT Balance not found in database for update !",
           user: to,
           eventName,

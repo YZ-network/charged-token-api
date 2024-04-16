@@ -1,9 +1,7 @@
 import { Repeater } from "graphql-yoga";
+import { Logger } from "pino";
 import { AbstractBroker } from "../../core/AbstractBroker";
 import { AbstractDbRepository } from "../../core/AbstractDbRepository";
-import { rootLogger } from "../../rootLogger";
-
-const log = rootLogger.child({ name: "userBalance" });
 
 export type UserBalanceQueryResolver = (
   _: any,
@@ -11,12 +9,12 @@ export type UserBalanceQueryResolver = (
 ) => Promise<IUserBalance | IUserBalance[]>;
 
 export const UserBalanceQueryResolverFactory =
-  (db: AbstractDbRepository, broker: AbstractBroker) =>
+  (db: AbstractDbRepository, broker: AbstractBroker, log: Logger) =>
   async (_: any, { chainId, user, address }: { chainId: number; user: string; address?: string }) => {
-    log.info({ chainId, user, address, msg: "checking existing balances" });
+    log.info({ msg: "checking existing balances", chainId, user, address });
 
     if (await db.isUserBalancesLoaded(chainId, user)) {
-      log.info({ chainId, user, address, msg: "returning cached balances" });
+      log.info({ msg: "returning cached balances", chainId, user, address });
 
       if (address !== undefined) {
         const balance = await db.getBalance(chainId, address, user);
@@ -27,17 +25,21 @@ export const UserBalanceQueryResolverFactory =
     }
 
     log.info({
+      msg: "Notifying worker to load balances",
       chainId,
       user,
       address,
-      msg: "Notifying worker to load balances",
     });
     broker.notifyBalanceLoadingRequired(chainId, { user, address });
 
     return [];
   };
 
-export const UserBalanceSubscriptionResolverFactory = (db: AbstractDbRepository, broker: AbstractBroker) => ({
+export const UserBalanceSubscriptionResolverFactory = (
+  db: AbstractDbRepository,
+  broker: AbstractBroker,
+  log: Logger,
+) => ({
   subscribe: (_: any, { chainId, user }: { chainId: number; user: string }) => {
     const sub = broker.subscribeUpdatesByAddress("UserBalance", chainId, user);
 
@@ -45,9 +47,9 @@ export const UserBalanceSubscriptionResolverFactory = (db: AbstractDbRepository,
       stop.then((err) => {
         sub.return();
         log.info({
+          msg: "client user balances subscription stopped by",
           chainId,
           user,
-          msg: "client user balances subscription stopped by",
           err,
         });
       });
@@ -60,23 +62,23 @@ export const UserBalanceSubscriptionResolverFactory = (db: AbstractDbRepository,
 
         for await (const value of sub) {
           log.info({
+            msg: "sending balances to subscription",
             chainId,
             user,
-            msg: "sending balances to subscription",
             data: value,
           });
           await push(value);
         }
         log.info({
+          msg: "client user balances subscription ended",
           chainId,
           user,
-          msg: "client user balances subscription ended",
         });
       } catch (err) {
         log.error({
+          msg: "client user balances subscription stopped with error",
           chainId,
           user,
-          msg: "client user balances subscription stopped with error",
           err,
         });
         stop(err);
