@@ -21,6 +21,8 @@ export class ChainWorker {
   readonly db: AbstractDbRepository;
   readonly broker: AbstractBroker;
 
+  private stopping: boolean = false;
+
   contractsRegistry: ContractsRegistry | undefined;
   blockchain: BlockchainRepository | undefined;
   name: string | undefined;
@@ -363,13 +365,25 @@ export class ChainWorker {
   }
 
   private async stop() {
-    if (this.providerStatus === "DISCONNECTED" && this.workerStatus === "DEAD") return;
+    if (this.stopping) {
+      this.log.warn({
+        msg: "Worker stop duplicate call !",
+        network: this.name,
+        providerIndex: this.providerIndex,
+      });
+      return;
+    }
 
-    this.log.debug({
+    this.stopping = true;
+
+    this.log.info({
       msg: "Stopping worker",
       network: this.name,
       stack: new Error().stack,
       providerIndex: this.providerIndex,
+      workerStatus: this.workerStatus,
+      providerStatus: this.providerStatus,
+      wsStatus: this.wsStatus,
     });
 
     this.providerStatus = "DISCONNECTED";
@@ -399,5 +413,7 @@ export class ChainWorker {
     await this.db.deletePendingAndFailedEvents(this.chainId);
 
     this.restartCount++;
+
+    this.stopping = false;
   }
 }
