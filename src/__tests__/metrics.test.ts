@@ -17,6 +17,7 @@ describe("Metrics", () => {
     expect(Metrics.requestErrorCounterPerNetId[chainId]).toBeUndefined();
     expect(Metrics.eventCounterPerNetId[chainId]).toBeUndefined();
     expect(Metrics.subscriptionGaugePerNetId[chainId]).toBeUndefined();
+    expect(Metrics.gqlSubscriptionGaugePerNetId[chainId]).toBeUndefined();
 
     Metrics.chainInit(chainId);
 
@@ -29,6 +30,7 @@ describe("Metrics", () => {
     expect(Metrics.requestErrorCounterPerNetId[chainId]).toBe(0);
     expect(Metrics.eventCounterPerNetId[chainId]).toBe(0);
     expect(Metrics.subscriptionGaugePerNetId[chainId]).toBe(0);
+    expect(Metrics.gqlSubscriptionGaugePerNetId[chainId]).toBe(0);
 
     Metrics.reset();
 
@@ -41,6 +43,7 @@ describe("Metrics", () => {
     expect(Metrics.requestErrorCounterPerNetId[chainId]).toBeUndefined();
     expect(Metrics.eventCounterPerNetId[chainId]).toBeUndefined();
     expect(Metrics.subscriptionGaugePerNetId[chainId]).toBeUndefined();
+    expect(Metrics.gqlSubscriptionGaugePerNetId[chainId]).toBeUndefined();
   });
 
   it("should update metrics after connected", () => {
@@ -186,7 +189,7 @@ describe("Metrics", () => {
     Metrics.setSubscriptionCount(chainId, 5);
 
     expect(Metrics.dumpMetrics()).toBe(
-      '# TYPE connectionState gauge\nconnectionState {chainId="1337"} 0\n# TYPE connectionLoss counter\nconnectionLoss {chainId="1337"} 1\n# TYPE connectionFailed counter\nconnectionFailed {chainId="1337"} 2\n# TYPE workerState gauge\nworkerState {chainId="1337"} 0\n# TYPE requestSent counter\nrequestSent {chainId="1337"} 2\n# TYPE requestReplied counter\nrequestReplied {chainId="1337"} 3\n# TYPE requestFailed counter\nrequestFailed {chainId="1337"} 1\n# TYPE eventsReceived counter\neventsReceived {chainId="1337"} 4\n# TYPE subscriptions gauge\nsubscriptions {chainId="1337"} 5\n',
+      '# TYPE connectionState gauge\nconnectionState {chainId="1337"} 0\n# TYPE connectionLoss counter\nconnectionLoss {chainId="1337"} 1\n# TYPE connectionFailed counter\nconnectionFailed {chainId="1337"} 2\n# TYPE workerState gauge\nworkerState {chainId="1337"} 0\n# TYPE requestSent counter\nrequestSent {chainId="1337"} 2\n# TYPE requestReplied counter\nrequestReplied {chainId="1337"} 3\n# TYPE requestFailed counter\nrequestFailed {chainId="1337"} 1\n# TYPE eventsReceived counter\neventsReceived {chainId="1337"} 4\n# TYPE subscriptions gauge\nsubscriptions {chainId="1337"} 5\n# TYPE gqlSubscriptions gauge\ngqlSubscriptions {chainId="0"} 0\ngqlSubscriptions {chainId="1337"} 0\n',
     );
   });
 });

@@ -54,13 +54,13 @@ export async function subscribeToUserBalancesLoading(
   db: AbstractDbRepository,
   blockchain: AbstractBlockchainRepository,
   broker: AbstractBroker,
-): Promise<{ sub: Repeater<any, any, unknown>; promise: Promise<void> }> {
+): Promise<void> {
   const log = rootLogger.child({ chainId, name: "BalanceRequests" });
 
   const sub = broker.subscribeBalanceLoadingRequests(chainId);
   log.info("listening to balance update requests");
 
-  return { sub, promise: listenToBalanceLoadingRequests(sub, db, log, blockchain) };
+  await listenToBalanceLoadingRequests(sub, db, log, blockchain);
 }
 
 export default subscribeToUserBalancesLoading;

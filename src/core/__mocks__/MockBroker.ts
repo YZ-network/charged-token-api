@@ -10,5 +10,7 @@ export const MockBroker: jest.Mock<AbstractBroker> = jest.fn().mockImplementatio
     subscribeUpdates: jest.fn(),
     subscribeUpdatesByAddress: jest.fn(),
     subscribeBalanceLoadingRequests: jest.fn(),
+
+    destroy: jest.fn(),
   };
 });

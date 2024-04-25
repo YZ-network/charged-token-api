@@ -1,4 +1,3 @@
-import { Repeater } from "graphql-yoga";
 import { Logger } from "pino";
 import { WebSocket } from "ws";
 import { AutoWebSocketProvider } from "./blockchain/AutoWebSocketProvider";
@@ -32,7 +31,6 @@ export class ChainWorker {
   providerIndex: number = 0;
   provider: AutoWebSocketProvider | undefined;
   worker: Promise<void> | undefined;
-  balancesSubscription: Repeater<any, any, unknown> | undefined;
 
   providerStatus: ProviderStatus = "STARTING";
   wsStatus: string = "STARTING";
@@ -350,16 +348,7 @@ export class ChainWorker {
       this.workerStatus = "STARTED";
       Metrics.workerStarted(this.chainId);
 
-      const { sub, promise } = await subscribeToUserBalancesLoading(
-        this.chainId,
-        this.db,
-        this.blockchain,
-        this.broker,
-      );
-
-      this.balancesSubscription = sub;
-
-      await promise;
+      await subscribeToUserBalancesLoading(this.chainId, this.db, this.blockchain, this.broker);
 
       this.log.info({ msg: "balance loading subscription ended" });
     } catch (err) {
@@ -404,13 +393,6 @@ export class ChainWorker {
 
     Metrics.workerStopped(this.chainId);
 
-    if (this.balancesSubscription !== undefined) {
-      this.log.info({ msg: "Ending balances subscription" });
-
-      await this.balancesSubscription?.return();
-      this.balancesSubscription = undefined;
-    }
-
     await this.contractsRegistry?.unregisterDirectory(this.directoryAddress);
 
     this.blockchain?.destroy();
@@ -429,6 +411,8 @@ export class ChainWorker {
       clearInterval(this.wsWatch);
       this.wsWatch = undefined;
     }
+
+    await this.broker.destroy(this.chainId);
 
     await this.db.deletePendingAndFailedEvents(this.chainId);
 
