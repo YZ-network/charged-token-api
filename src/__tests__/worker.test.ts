@@ -215,6 +215,7 @@ describe("ChainWorker", () => {
 
     expect(provider?.removeAllListeners).toBeCalledTimes(1);
     expect(provider?.destroy).toBeCalledTimes(1);
+    expect(broker.destroy).toBeCalledWith(CHAIN_ID);
     expect(worker.provider).toBeUndefined();
     expect(worker.blockchain).toBeUndefined();
     expect(worker.worker).toBeUndefined();
@@ -253,6 +254,7 @@ describe("ChainWorker", () => {
 
     expect(provider?.removeAllListeners).toBeCalledTimes(1);
     expect(provider?.destroy).toBeCalledTimes(1);
+    expect(broker.destroy).toBeCalledWith(CHAIN_ID);
     expect(worker.provider).toBeUndefined();
     expect(worker.blockchain).toBeUndefined();
     expect(worker.worker).toBeUndefined();

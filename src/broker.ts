@@ -1,10 +1,15 @@
 import { Repeater, createPubSub } from "graphql-yoga";
 import { AbstractBroker } from "./core/AbstractBroker";
+import { Metrics } from "./metrics";
+import { rootLogger } from "./rootLogger";
 
 const HEALTH_CHANNEL = "Health";
 
 export class Broker extends AbstractBroker {
   readonly pubSub = createPubSub();
+  readonly log = rootLogger.child({ name: "Broker" });
+
+  private subscriptions: Record<number, Repeater<any, any, unknown>[]> = {};
 
   private getChannel(dataType: DataType, chainId: number, address?: string): string {
     return address !== undefined ? `${dataType}.${chainId}.${address}` : `${dataType}.${chainId}`;
@@ -28,18 +33,49 @@ export class Broker extends AbstractBroker {
   }
 
   subscribeHealth(): Repeater<any> {
-    return this.pubSub.subscribe(HEALTH_CHANNEL);
+    return this.subscribe(HEALTH_CHANNEL);
   }
 
   subscribeUpdates(dataType: DataType, chainId: number): Repeater<any> {
-    return this.pubSub.subscribe(this.getChannel(dataType, chainId));
+    return this.subscribe(this.getChannel(dataType, chainId), chainId);
   }
 
   subscribeUpdatesByAddress(dataType: DataType, chainId: number, address: string): Repeater<any> {
-    return this.pubSub.subscribe(this.getChannel(dataType, chainId, address));
+    return this.subscribe(this.getChannel(dataType, chainId, address), chainId);
   }
 
   subscribeBalanceLoadingRequests(chainId: number): Repeater<any> {
-    return this.pubSub.subscribe(this.getBalanceLoadingChannel(chainId));
+    return this.subscribe(this.getBalanceLoadingChannel(chainId), chainId);
+  }
+
+  private subscribe(channel: string, chainId: number = 0): Repeater<any, any, unknown> {
+    this.log.info({ chainId, msg: "subscribing to broker channel", channel });
+    const sub = this.pubSub.subscribe(channel);
+    if (this.subscriptions[chainId] === undefined) {
+      this.subscriptions[chainId] = [];
+    }
+    this.subscriptions[chainId].push(sub);
+    this.updateSubscriptionsCount(chainId);
+    return sub;
+  }
+
+  private updateSubscriptionsCount(chainId: number) {
+    if (this.subscriptions[chainId] !== undefined) {
+      Metrics.setGqlSubscriptionCount(chainId, this.subscriptions[chainId].length);
+    }
+  }
+
+  async destroy(chainId: number = 0) {
+    if (chainId !== 0) {
+      this.log.info({ chainId, msg: "closing subscriptions", count: this.subscriptions[chainId].length });
+      await Promise.all(this.subscriptions[chainId].map((sub) => sub.return()));
+      this.subscriptions[chainId] = [];
+    } else {
+      const subs = Object.values(this.subscriptions).flatMap((sub) => sub);
+      this.log.info({ chainId, msg: "closing subscriptions", count: subs.length });
+      await Promise.all(subs.map((sub) => sub.return()));
+      this.subscriptions = {};
+    }
+    this.updateSubscriptionsCount(chainId);
   }
 }

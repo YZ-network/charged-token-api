@@ -40,7 +40,7 @@ export class MainClass {
         ),
       );
 
-      this.keepAlive = setInterval(() => {
+      this.keepAlive = setInterval(async () => {
         for (const worker of this.workers) {
           if (worker.workerStatus === "DEAD") {
             this.log.info({
@@ -49,25 +49,25 @@ export class MainClass {
               worker: worker.name,
               rpc: worker.rpc,
             });
-            worker
-              .start()
-              .then(() =>
-                this.log.info({
-                  chainId: worker.chainId,
-                  msg: "Worker restarted",
-                  worker: worker.name,
-                  rpc: worker.rpc,
-                }),
-              )
-              .catch((err) =>
-                this.log.error({
-                  chainId: worker.chainId,
-                  msg: "Worker start failed !",
-                  worker: worker.name,
-                  rpc: worker.rpc,
-                  err,
-                }),
-              );
+
+            try {
+              await worker.start();
+
+              this.log.info({
+                chainId: worker.chainId,
+                msg: "Worker restarted",
+                worker: worker.name,
+                rpc: worker.rpc,
+              });
+            } catch (err) {
+              this.log.error({
+                chainId: worker.chainId,
+                msg: "Worker start failed !",
+                worker: worker.name,
+                rpc: worker.rpc,
+                err,
+              });
+            }
           }
         }
       }, Config.delays.workerRestartDelayMs);
@@ -82,6 +82,7 @@ export class MainClass {
       });
     } catch (err) {
       this.log.error({ msg: "Error during application startup !", err });
+
       if (this.keepAlive !== undefined) {
         clearInterval(this.keepAlive);
         this.keepAlive = undefined;
@@ -90,6 +91,8 @@ export class MainClass {
         clearInterval(this.healthTimer);
         this.healthTimer = undefined;
       }
+
+      await this.broker.destroy();
     }
   }
 
