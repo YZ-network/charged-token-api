@@ -1,20 +1,16 @@
+import { Repeater } from "graphql-yoga";
 import { AbstractBlockchainRepository } from "../core/AbstractBlockchainRepository";
 import { AbstractBroker } from "../core/AbstractBroker";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
 import { rootLogger } from "../rootLogger";
-import { EMPTY_ADDRESS } from "../vendor";
+import { EMPTY_ADDRESS, Logger } from "../vendor";
 
-export async function subscribeToUserBalancesLoading(
-  chainId: number,
+async function listenToBalanceLoadingRequests(
+  sub: Repeater<any, any, unknown>,
   db: AbstractDbRepository,
+  log: Logger,
   blockchain: AbstractBlockchainRepository,
-  broker: AbstractBroker,
-): Promise<void> {
-  const log = rootLogger.child({ chainId, name: "BalanceRequests" });
-
-  const sub = broker.subscribeBalanceLoadingRequests(chainId);
-  log.info("listening to balance update requests");
-
+) {
   for await (const info of sub) {
     const { user, address } = info;
     log.info({
@@ -51,6 +47,20 @@ export async function subscribeToUserBalancesLoading(
       await db.saveBalance(balance);
     }
   }
+}
+
+export async function subscribeToUserBalancesLoading(
+  chainId: number,
+  db: AbstractDbRepository,
+  blockchain: AbstractBlockchainRepository,
+  broker: AbstractBroker,
+): Promise<{ sub: Repeater<any, any, unknown>; promise: Promise<void> }> {
+  const log = rootLogger.child({ chainId, name: "BalanceRequests" });
+
+  const sub = broker.subscribeBalanceLoadingRequests(chainId);
+  log.info("listening to balance update requests");
+
+  return { sub, promise: listenToBalanceLoadingRequests(sub, db, log, blockchain) };
 }
 
 export default subscribeToUserBalancesLoading;
