@@ -31,8 +31,8 @@ describe("Health check query resolver", () => {
 
     expect(result).toStrictEqual("pouet");
     expect(broker.subscribeHealth).toBeCalled();
+    expect(broker.unsubscribe).toBeCalled();
     expect(nextMock).toBeCalled();
-    expect(returnMock).toBeCalled();
   });
 
   it("should return periodic health status until stopped", async () => {

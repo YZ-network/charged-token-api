@@ -65,6 +65,17 @@ export class Broker extends AbstractBroker {
     }
   }
 
+  async unsubscribe(sub: Repeater<any>, chainId: number = 0): Promise<void> {
+    const index = this.subscriptions[chainId].indexOf(sub);
+    if (index >= 0) {
+      this.subscriptions[chainId].splice(index, 1);
+      await sub.return();
+      this.log.info({ chainId, msg: "subscription closed." });
+    } else {
+      this.log.warn({ chainId, msg: "tried to remove missing subscription !" });
+    }
+  }
+
   async destroy(chainId: number = 0) {
     if (chainId !== 0) {
       this.log.info({ chainId, msg: "closing subscriptions", count: this.subscriptions[chainId].length });

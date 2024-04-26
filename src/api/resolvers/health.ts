@@ -4,9 +4,7 @@ import { AbstractBroker } from "../../core/AbstractBroker";
 export const HealthQueryResolverFactory = (broker: AbstractBroker) => async () => {
   const subscription = broker.subscribeHealth();
   const result = await subscription.next();
-  if (result.done === false) {
-    await subscription.return();
-  }
+  await broker.unsubscribe(subscription);
   return result.value;
 };
 

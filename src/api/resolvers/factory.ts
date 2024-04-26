@@ -51,8 +51,8 @@ export const ResolverFactory = {
         const sub = broker.subscribeUpdates(dataType, chainId);
 
         return new Repeater(async (push, stop) => {
-          stop.then((err) => {
-            sub.return();
+          stop.then(async (err) => {
+            await broker.unsubscribe(sub);
             log.debug({
               msg: "client subscription stopped by error",
               chainId,
@@ -96,8 +96,8 @@ export const ResolverFactory = {
         const sub = broker.subscribeUpdatesByAddress(dataType, chainId, address);
 
         return new Repeater(async (push, stop) => {
-          stop.then((err) => {
-            sub.return();
+          stop.then(async (err) => {
+            await broker.unsubscribe(sub);
             log.debug({
               msg: "client subscription stopped with error",
               chainId,
