@@ -12,7 +12,14 @@ export const HealthSubscriptionResolverFactory = (broker: AbstractBroker, log: L
   subscribe: (_: any) => {
     log.debug("client subscribing to health checks");
 
-    return broker.subscribeHealth();
+    const sub = broker.subscribeHealth();
+    Object.defineProperty(sub, "return", {
+      value: async (...args: any[]) => {
+        await broker.unsubscribe(sub);
+        return { value: undefined, done: true };
+      },
+    });
+    return sub;
   },
   resolve: (payload: any) => payload,
 });

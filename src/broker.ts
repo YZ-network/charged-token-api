@@ -8,6 +8,7 @@ const HEALTH_CHANNEL = "Health";
 export class Broker extends AbstractBroker {
   readonly pubSub = createPubSub();
   readonly log = rootLogger.child({ name: "Broker" });
+  private subId = 0;
 
   private subscriptions: Record<number, Repeater<any, any, unknown>[]> = {};
 
@@ -51,10 +52,12 @@ export class Broker extends AbstractBroker {
   private subscribe(channel: string, chainId: number = 0): Repeater<any, any, unknown> {
     this.log.info({ chainId, msg: "subscribing to broker channel", channel });
     const sub = this.pubSub.subscribe(channel);
+    (sub as any).id = ++this.subId;
     if (this.subscriptions[chainId] === undefined) {
       this.subscriptions[chainId] = [];
     }
     this.subscriptions[chainId].push(sub);
+    this.log.info({ chainId, msg: "subscribed to broker channel", channel, sub, subs: this.subscriptions });
     this.updateSubscriptionsCount(chainId);
     return sub;
   }
@@ -65,14 +68,14 @@ export class Broker extends AbstractBroker {
     }
   }
 
-  async unsubscribe(sub: Repeater<any>, chainId: number = 0): Promise<void> {
-    const index = this.subscriptions[chainId].indexOf(sub);
+  async unsubscribe(sub: Repeater<any, any, unknown>, chainId: number = 0): Promise<void> {
+    const index = this.subscriptions[chainId].findIndex((s) => (s as any).id === (sub as any).id);
     if (index >= 0) {
       this.subscriptions[chainId].splice(index, 1);
       await sub.return();
       this.log.info({ chainId, msg: "subscription closed." });
     } else {
-      this.log.warn({ chainId, msg: "tried to remove missing subscription !" });
+      this.log.warn({ chainId, msg: "tried to remove missing subscription !", sub, subs: this.subscriptions });
     }
   }
 
