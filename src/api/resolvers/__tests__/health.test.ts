@@ -61,6 +61,6 @@ describe("Health check query resolver", () => {
     expect(await result.return()).toStrictEqual({ value: undefined, done: true });
 
     expect(nextMock).toBeCalledTimes(healthCount);
-    expect(returnMock).toBeCalledTimes(1);
+    expect(broker.unsubscribe).toBeCalled();
   });
 });
