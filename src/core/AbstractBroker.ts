@@ -10,5 +10,6 @@ export abstract class AbstractBroker {
   abstract subscribeUpdatesByAddress(dataType: DataType, chainId: number, address: string): Repeater<any>;
   abstract subscribeBalanceLoadingRequests(chainId: number): Repeater<any>;
 
+  abstract unsubscribe(sub: Repeater<any>, chainId?: number): Promise<void>;
   abstract destroy(chainId: number): Promise<void>;
 }

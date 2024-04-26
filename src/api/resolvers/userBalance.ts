@@ -44,8 +44,8 @@ export const UserBalanceSubscriptionResolverFactory = (
     const sub = broker.subscribeUpdatesByAddress("UserBalance", chainId, user);
 
     return new Repeater(async (push, stop) => {
-      stop.then((err) => {
-        sub.return();
+      stop.then(async (err) => {
+        await broker.unsubscribe(sub, chainId);
         log.info({
           msg: "client user balances subscription stopped by",
           chainId,
