@@ -58,7 +58,7 @@ export class ChainWorker {
     this.broker = broker;
   }
 
-  async start() {
+  async start(): Promise<void> {
     try {
       this.createProvider();
       this.createWorker();
@@ -86,7 +86,7 @@ export class ChainWorker {
     };
   }
 
-  private logDisconnectedStateIfNeeded() {
+  private logDisconnectedStateIfNeeded(): void {
     const now = new Date().getTime();
 
     if (this.disconnectedTimestamp < 0) {
@@ -110,7 +110,7 @@ export class ChainWorker {
     }
   }
 
-  private logDowntimeAfterReconnection() {
+  private logDowntimeAfterReconnection(): void {
     if (this.disconnectedTimestamp < 0 && this.cumulatedNodeDowntime === 0) {
       return;
     }
@@ -136,7 +136,7 @@ export class ChainWorker {
     this.cumulatedNodeDowntime = 0;
   }
 
-  private createProvider() {
+  private createProvider(): void {
     this.providerIndex++;
 
     this.log.info({ msg: "Creating provider", providerIndex: this.providerIndex });
@@ -274,7 +274,7 @@ export class ChainWorker {
     }, 50);
   }
 
-  private logStopResult(promise: Promise<void>) {
+  private logStopResult(promise: Promise<void>): void {
     promise
       .then(() => {
         this.log.info({
@@ -294,7 +294,7 @@ export class ChainWorker {
       });
   }
 
-  private createWorker() {
+  private createWorker(): void {
     if (this.provider === undefined) {
       throw new Error("No provider to create worker !");
     }
@@ -324,7 +324,7 @@ export class ChainWorker {
       .catch(() => {});
   }
 
-  private async run() {
+  private async run(): Promise<void> {
     if (this.provider === undefined) {
       throw new Error("No provider to run worker !");
     }
@@ -365,7 +365,7 @@ export class ChainWorker {
     });
   }
 
-  private async stop() {
+  private async stop(): Promise<void> {
     if (this.stopping) {
       this.log.warn({
         msg: "Worker stop duplicate call !",
