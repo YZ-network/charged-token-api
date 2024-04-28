@@ -1,4 +1,5 @@
 import { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import { validateChainId } from "./validateChainId";
 
 export type EventsQueryResolver = (
   _: any,
@@ -8,6 +9,8 @@ export type EventsQueryResolver = (
 export const EventsQueryResolverFactory =
   (db: AbstractDbRepository) =>
   async (_: any, { chainId, offset, count }: { chainId: number; offset?: number; count?: number }) => {
+    validateChainId(chainId);
+
     if (offset === undefined) offset = 0;
     if (count === undefined) count = 20;
 
@@ -21,5 +24,6 @@ export type EventsCountQueryResolver = (_: any, { chainId }: { chainId: number }
 export const EventsCountQueryResolverFactory =
   (db: AbstractDbRepository) =>
   async (_: any, { chainId }: { chainId: number }) => {
+    validateChainId(chainId);
     return await db.countEvents(chainId);
   };

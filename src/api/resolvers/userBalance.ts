@@ -2,6 +2,7 @@ import { Repeater } from "graphql-yoga";
 import { Logger } from "pino";
 import { AbstractBroker } from "../../core/AbstractBroker";
 import { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import { validateChainId } from "./validateChainId";
 
 export type UserBalanceQueryResolver = (
   _: any,
@@ -11,6 +12,8 @@ export type UserBalanceQueryResolver = (
 export const UserBalanceQueryResolverFactory =
   (db: AbstractDbRepository, broker: AbstractBroker, log: Logger) =>
   async (_: any, { chainId, user, address }: { chainId: number; user: string; address?: string }) => {
+    validateChainId(chainId);
+
     log.info({ msg: "checking existing balances", chainId, user, address });
 
     if (await db.isUserBalancesLoaded(chainId, user)) {
@@ -41,6 +44,8 @@ export const UserBalanceSubscriptionResolverFactory = (
   log: Logger,
 ) => ({
   subscribe: (_: any, { chainId, user }: { chainId: number; user: string }) => {
+    validateChainId(chainId);
+
     const sub = broker.subscribeUpdatesByAddress("UserBalance", chainId, user);
 
     return new Repeater(async (push, stop) => {

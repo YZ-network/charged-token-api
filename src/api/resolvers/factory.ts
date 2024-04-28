@@ -3,6 +3,7 @@ import { Logger } from "pino";
 import { AbstractBroker } from "../../core/AbstractBroker";
 import { AbstractDbRepository } from "../../core/AbstractDbRepository";
 import { toGraphQL } from "./functions";
+import { validateChainId } from "./validateChainId";
 
 export interface ResolverFactory {
   findAll: (
@@ -31,6 +32,7 @@ export interface ResolverFactory {
 export const ResolverFactory = {
   findAll: (db: AbstractDbRepository, dataType: DataType) => {
     return async (_: any, { chainId }: { chainId: number }) => {
+      validateChainId(chainId);
       const results = await db.getAllMatching(dataType, { chainId });
       return results;
     };
@@ -38,6 +40,7 @@ export const ResolverFactory = {
 
   findByAddress: (db: AbstractDbRepository, dataType: DataType) => {
     return async (_: any, { chainId, address }: { chainId: number; address: string }) => {
+      validateChainId(chainId);
       const result = await db.get(dataType, chainId, address);
       if (result !== null) {
         return result;
@@ -48,6 +51,7 @@ export const ResolverFactory = {
   subscribeByName: <T>(db: AbstractDbRepository, broker: AbstractBroker, log: Logger, dataType: DataType) => {
     return {
       subscribe: (_: any, { chainId }: { chainId: number }) => {
+        validateChainId(chainId);
         const sub = broker.subscribeUpdates(dataType, chainId);
 
         return new Repeater(async (push, stop) => {
@@ -93,6 +97,7 @@ export const ResolverFactory = {
   subscribeByNameAndAddress: <T>(db: AbstractDbRepository, broker: AbstractBroker, log: Logger, dataType: DataType) => {
     return {
       subscribe: (_: any, { chainId, address }: { chainId: number; address: string }) => {
+        validateChainId(chainId);
         const sub = broker.subscribeUpdatesByAddress(dataType, chainId, address);
 
         return new Repeater(async (push, stop) => {
