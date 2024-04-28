@@ -546,8 +546,6 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
             maxWaitMs: this.options.pongMaxWaitMs,
           });
 
-          Metrics.disconnected(this.chainId);
-
           this.destroy();
         }, this.options.pongMaxWaitMs);
       } else {

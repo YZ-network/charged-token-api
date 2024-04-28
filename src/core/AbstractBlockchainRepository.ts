@@ -24,7 +24,8 @@ export abstract class AbstractBlockchainRepository {
   ): Promise<IUserBalance>;
   abstract loadAllUserBalances(user: string, blockNumber: number, address?: string): Promise<IUserBalance[]>;
 
-  abstract subscribeToEvents(dataType: DataType, address: string, loader: AbstractHandler<any>): void;
+  abstract watchForUpdates(fromBlock: number): Promise<void>;
+
   abstract registerContract<T extends IContract>(
     dataType: DataType,
     address: string,
@@ -41,7 +42,6 @@ export abstract class AbstractBlockchainRepository {
   abstract isContractRegistered(address: string): boolean;
   abstract getLastState<T>(dataType: DataType, address: string, session?: ClientSession): Promise<T | null>;
   abstract isDelegableStillReferenced(address: string): Promise<boolean>;
-  abstract unsubscribeEvents(address: string): void;
   abstract applyUpdateAndNotify<T>(
     dataType: DataType,
     address: string,

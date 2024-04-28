@@ -12,6 +12,8 @@ describe("Generic query resolver factory", () => {
   let broker: jest.Mocked<AbstractBroker>;
   let log: jest.Mocked<Logger>;
 
+  const chainId = 1337;
+
   beforeEach(() => {
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
     broker = new MockBroker() as jest.Mocked<AbstractBroker>;
@@ -19,7 +21,6 @@ describe("Generic query resolver factory", () => {
   });
 
   it("should query for all items by chain id and convert results to graphQL format", async () => {
-    const chainId = 129;
     const findAllResolver = ResolverFactory.findAll(db, "ChargedToken");
 
     const loadedModels = [
@@ -35,7 +36,6 @@ describe("Generic query resolver factory", () => {
   });
 
   it("should query one item by chain id and address", async () => {
-    const chainId = 129;
     const findByAddressResolver = ResolverFactory.findByAddress(db, "InterfaceProjectToken");
 
     const address = "0xIFACE1";
@@ -49,7 +49,6 @@ describe("Generic query resolver factory", () => {
   });
 
   it("should return nothing if item is not found", async () => {
-    const chainId = 129;
     const findByAddressResolver = ResolverFactory.findByAddress(db, "DelegableToLT");
 
     const address = "0xIFACE1";
@@ -62,7 +61,6 @@ describe("Generic query resolver factory", () => {
   });
 
   it("should susbscribe to channel by model name", async () => {
-    const chainId = 129;
     const { subscribe: subscribeByNameResolver, resolve } = ResolverFactory.subscribeByName(
       db,
       broker,
@@ -99,7 +97,6 @@ describe("Generic query resolver factory", () => {
   });
 
   it("should susbscribe to channel by model name and contract address", async () => {
-    const chainId = 129;
     const address = "0xCT";
     const { subscribe: subscribeByNameAndAddrResolver, resolve } = ResolverFactory.subscribeByNameAndAddress(
       db,

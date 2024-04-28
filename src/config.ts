@@ -27,6 +27,10 @@ const configDefaults: JsonConfig = {
     rpcRetryDelayMs: 1000,
     nodeDownAlertDelayMs: 10000,
   },
+  blocks: {
+    lag: 3,
+    buffer: 2,
+  },
 };
 
 export const ApiVersion = process.env.API_VERSION !== undefined ? process.env.API_VERSION : "dev";

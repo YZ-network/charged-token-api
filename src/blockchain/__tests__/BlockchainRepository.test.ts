@@ -478,29 +478,7 @@ describe("BlockchainRepository", () => {
     ]);
   });
 
-  it("should subscribe to contract events", () => {
-    const instance = new ethers.Contract("", []);
-    const iface = new ethers.utils.Interface([]);
-
-    const getInstance = jest.spyOn(blockchain, "getInstance");
-    getInstance.mockReturnValueOnce(instance);
-
-    const getInterface = jest.spyOn(blockchain, "getInterface");
-    getInterface.mockReturnValueOnce(iface);
-
-    let callback: ((event: ethers.providers.Log) => void) | undefined;
-    (instance.on as jest.Mock).mockImplementationOnce((eventFilter, givenCallback) => {
-      callback = givenCallback;
-    });
-
-    const mockHandler = jest.fn() as unknown as AbstractHandler<IChargedToken>;
-
-    blockchain.subscribeToEvents("ChargedToken", "0xCT", mockHandler);
-
-    expect(getInstance).toBeCalled();
-    expect(instance.on).toBeCalledWith({ address: "0xCT" }, expect.any(Function));
-    expect(mockHandler).not.toBeCalled();
-
+  it("should subscribe to new blocks", async () => {
     const log = {
       blockNumber: 15,
       address: "0xCT",
@@ -509,22 +487,40 @@ describe("BlockchainRepository", () => {
       topics: ["0x34d5714013380d0dd2de54669941a1e6ffeb94f624def9a559f03abd0e8e4a5c"],
       data: "0xDATA",
     } as Log;
+
+    const iface = new ethers.utils.Interface([]);
+
+    const getInterface = jest.spyOn(blockchain, "getInterface");
+    getInterface.mockReturnValueOnce(iface);
+
+    let callback: ((block: number) => Promise<void>) | undefined;
+    provider.getLogs.mockResolvedValueOnce([log]);
+    (provider.on as jest.Mock).mockImplementationOnce((eventFilter, givenCallback) => {
+      callback = givenCallback;
+    });
+
+    const mockHandler = jest.fn() as unknown as AbstractHandler<IChargedToken>;
+
+    blockchain.eventsLoader.watchContract("ChargedToken", "0xCT", mockHandler, iface);
+    await blockchain.eventsLoader.start(0);
+
+    expect(provider.on).toBeCalledWith("block", expect.any(Function));
+    expect(mockHandler).not.toBeCalled();
+
     (blockchain.eventListener as unknown as jest.Mocked<EventListener>).queueLog.mockResolvedValueOnce(undefined);
 
     if (callback === undefined) throw new Error("Callback not yet initialized !");
 
-    callback(log);
+    await callback(20);
 
     expect(mockHandler).not.toBeCalled();
     expect(blockchain.eventListener.queueLog).toBeCalledWith("UserFunctionsAreDisabled", log, mockHandler, iface);
+
+    blockchain.eventsLoader.destroy();
   });
 
-  it("should log event handling errors", () => {
-    const instance = new ethers.Contract("", []);
+  it("should log event handling errors", async () => {
     const iface = new ethers.utils.Interface([]);
-
-    const getInstance = jest.spyOn(blockchain, "getInstance");
-    getInstance.mockReturnValueOnce(instance);
 
     const getInterface = jest.spyOn(blockchain, "getInterface");
     getInterface.mockReturnValueOnce(iface);
@@ -543,15 +539,18 @@ describe("BlockchainRepository", () => {
     });
 
     let callback: ((event: ethers.providers.Log) => void) | undefined;
-    (instance.on as jest.Mock).mockImplementationOnce((eventFilter, givenCallback) => (callback = givenCallback));
+    (provider.on as jest.Mock).mockImplementationOnce((eventName, givenCallback) => (callback = givenCallback));
 
     const mockHandler = jest.fn() as unknown as AbstractHandler<IChargedToken>;
 
-    blockchain.subscribeToEvents("ChargedToken", "0xCT", mockHandler);
+    blockchain.eventsLoader.watchContract("ChargedToken", "0xCT", mockHandler, iface);
+    await blockchain.eventsLoader.start(0);
 
     if (callback === undefined) throw new Error("Callback not yet initialized !");
 
     callback(log);
+
+    blockchain.eventsLoader.destroy();
   });
 
   it("should load contract from blockchain and save to db then prepare event handler", async () => {
@@ -561,7 +560,7 @@ describe("BlockchainRepository", () => {
     const getInstance = jest.spyOn(blockchain, "getInstance");
     getInstance.mockReturnValueOnce(instance);
 
-    const subscribe = jest.spyOn(blockchain, "subscribeToEvents");
+    const subscribe = jest.spyOn(blockchain.eventsLoader, "watchContract");
 
     db.get.mockResolvedValueOnce(null);
 
@@ -583,7 +582,12 @@ describe("BlockchainRepository", () => {
     expect(loadContract).toBeCalledWith(CHAIN_ID, "ChargedToken", instance, "0xCT", 15);
     expect(db.save).toBeCalledWith("ChargedToken", data, session);
     expect(broker.notifyUpdate).toBeCalledWith("ChargedToken", CHAIN_ID, "0xCT", savedData);
-    expect(subscribe).toBeCalledWith("ChargedToken", "0xCT", loaderMock);
+    expect(subscribe).toBeCalledWith(
+      "ChargedToken",
+      "0xCT",
+      loaderMock,
+      expect.objectContaining({ encodeFilterTopics: expect.anything(), parseLog: expect.anything() }),
+    );
   });
 
   it("should save first registed directory", async () => {
@@ -619,11 +623,10 @@ describe("BlockchainRepository", () => {
     expect(registered).toBeCalledWith("0xCT");
   });
 
-  it("should load contract from db and apply all missed events", async () => {
+  it("should load contract from db and watch new events", async () => {
     const loaderMock = jest.fn() as unknown as AbstractHandler<IChargedToken>;
-    const loadAndSyncEvents = jest.spyOn(blockchain, "loadAndSyncEvents");
 
-    const subscribe = jest.spyOn(blockchain, "subscribeToEvents");
+    const subscribe = jest.spyOn(blockchain.eventsLoader, "watchContract");
     const data = {
       lastUpdateBlock: 15,
       address: "0xCT",
@@ -637,102 +640,12 @@ describe("BlockchainRepository", () => {
     expect(result).toBe(data);
 
     expect(db.get).toBeCalledWith("ChargedToken", CHAIN_ID, "0xCT", session);
-    expect(loadAndSyncEvents).toBeCalledWith("ChargedToken", "0xCT", 15, expect.anything());
-    expect(subscribe).toBeCalledWith("ChargedToken", "0xCT", loaderMock);
-  });
-
-  it("should load contract from db and apply missed events from last 100 blocks", async () => {
-    const loaderMock = jest.fn() as unknown as AbstractHandler<IChargedToken>;
-    const loadAndSyncEvents = jest.spyOn(blockchain, "loadAndSyncEvents");
-
-    const data = {
-      lastUpdateBlock: 15,
-      address: "0xCT",
-      chainId: CHAIN_ID,
-    };
-
-    db.get.mockResolvedValueOnce(data);
-
-    await blockchain.registerContract("ChargedToken", "0xCT", 300, loaderMock, session);
-
-    expect(loadAndSyncEvents).toBeCalledWith("ChargedToken", "0xCT", 200, expect.anything());
-  });
-
-  it("should queue missed events for execution", async () => {
-    const loaderMock = jest.fn() as unknown as AbstractHandler<IChargedToken>;
-    const getInstance = jest.spyOn(blockchain, "getInstance");
-    const getInterface = jest.spyOn(blockchain, "getInterface");
-    const instanceMock = new ethers.Contract("0xCT", []);
-    const interfaceMock = new ethers.utils.Interface("");
-    const queueLog = jest.spyOn(blockchain.eventListener, "queueLog");
-
-    const subscribe = jest.spyOn(blockchain, "subscribeToEvents");
-    const data = {
-      lastUpdateBlock: 15,
-      address: "0xCT",
-      chainId: CHAIN_ID,
-    };
-
-    const events = [
-      { address: "0xCT", blockNumber: 1, transactionIndex: 1, logIndex: 1, event: "Transfer" },
-      {
-        address: "0xCT",
-        blockNumber: 1,
-        transactionIndex: 1,
-        logIndex: 2,
-        event: "UserFunctionsDisabled",
-      },
-      {
-        address: "0xCT",
-        blockNumber: 1,
-        transactionIndex: 1,
-        logIndex: 3,
-        event: "OwnershipTransferred",
-      },
-    ] as ethers.Event[];
-
-    db.get.mockResolvedValueOnce(data);
-    getInstance.mockReturnValue(instanceMock);
-    getInterface.mockReturnValue(interfaceMock);
-    (instanceMock.queryFilter as jest.Mock).mockResolvedValueOnce(events);
-    db.existsEvent.mockResolvedValueOnce(false).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
-
-    const result = await blockchain.registerContract("ChargedToken", "0xCT", 30, loaderMock, session);
-
-    expect(result).toBe(data);
-
-    expect(db.get).toBeCalledWith("ChargedToken", CHAIN_ID, "0xCT", session);
-    expect(getInstance).toBeCalledWith("ChargedToken", "0xCT");
-    expect(instanceMock.queryFilter).toBeCalledWith({ address: "0xCT" }, 15);
-    expect(getInterface).toBeCalledWith("ChargedToken");
-    expect(db.existsEvent).toHaveBeenNthCalledWith(
-      1,
-      CHAIN_ID,
-      events[0].address,
-      events[0].blockNumber,
-      events[0].transactionIndex,
-      events[0].logIndex,
+    expect(subscribe).toBeCalledWith(
+      "ChargedToken",
+      "0xCT",
+      loaderMock,
+      expect.objectContaining({ encodeFilterTopics: expect.anything(), parseLog: expect.anything() }),
     );
-    expect(db.existsEvent).toHaveBeenNthCalledWith(
-      2,
-      CHAIN_ID,
-      events[1].address,
-      events[1].blockNumber,
-      events[1].transactionIndex,
-      events[1].logIndex,
-    );
-    expect(db.existsEvent).toHaveBeenNthCalledWith(
-      3,
-      CHAIN_ID,
-      events[2].address,
-      events[2].blockNumber,
-      events[2].transactionIndex,
-      events[2].logIndex,
-    );
-    expect(queueLog).toBeCalledTimes(2);
-    expect(queueLog).toHaveBeenNthCalledWith(1, events[0].event, events[0], loaderMock, interfaceMock);
-    expect(queueLog).toHaveBeenNthCalledWith(2, events[1].event, events[1], loaderMock, interfaceMock);
-    expect(subscribe).toBeCalledWith("ChargedToken", "0xCT", loaderMock);
   });
 
   it("should unregister contract and remove it from db", async () => {

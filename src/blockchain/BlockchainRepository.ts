@@ -1,4 +1,4 @@
-import { EventFilter, ethers } from "ethers";
+import { ethers } from "ethers";
 import { Logger } from "pino";
 import { AbstractBlockchainRepository } from "../core/AbstractBlockchainRepository";
 import { AbstractBroker } from "../core/AbstractBroker";
@@ -7,11 +7,10 @@ import { AbstractHandler } from "../core/AbstractHandler";
 import { rootLogger } from "../rootLogger";
 import { ClientSession, EMPTY_ADDRESS } from "../vendor";
 import { EventListener } from "./EventListener";
-import { ReorgDetector } from "./ReorgDetector";
+import { EventsLoader } from "./EventsLoader";
 import { contracts } from "./contracts";
 import { detectNegativeAmount } from "./functions";
 import { loadContract } from "./loaders";
-import topicsMap from "./topics";
 
 export class BlockchainRepository extends AbstractBlockchainRepository {
   private readonly log: Logger;
@@ -22,12 +21,11 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   private readonly db: AbstractDbRepository;
   private readonly broker: AbstractBroker;
   readonly eventListener: EventListener;
+  readonly eventsLoader: EventsLoader;
 
   readonly instances: Record<string, ethers.Contract> = {};
   private readonly interfaces: Record<string, ethers.utils.Interface> = {};
   readonly handlers: Record<string, AbstractHandler<any>> = {};
-
-  readonly reorgDetector: ReorgDetector;
 
   constructor(
     chainId: number,
@@ -43,12 +41,16 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     this.provider = provider;
     this.db = db;
     this.broker = broker;
-    this.reorgDetector = new ReorgDetector(chainId, provider);
     this.eventListener = new EventListener(db, provider, startEventLoop);
+    this.eventsLoader = new EventsLoader(chainId, provider, this.eventListener, this.db);
   }
 
-  get blockNumberBeforeDisconnect(): number {
-    return this.reorgDetector.blockNumberBeforeDisconnect;
+  get shutdownBlockNumber(): number {
+    return this.eventsLoader.lastLoadedBlock;
+  }
+
+  async watchForUpdates(fromBlock: number): Promise<void> {
+    await this.eventsLoader.start(fromBlock);
   }
 
   getInstance(dataType: DataType, address: string): ethers.Contract {
@@ -166,179 +168,6 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     };
   }
 
-  async loadAndSyncEvents(
-    dataType: DataType,
-    address: string,
-    startBlock: number,
-    loader: AbstractHandler<any>,
-  ): Promise<void> {
-    let missedEvents: ethers.Event[] = [];
-
-    let eventsFetchRetryCount = 0;
-    while (eventsFetchRetryCount < 3) {
-      try {
-        missedEvents = await this.getFilteredMissedEvents(dataType, address, startBlock);
-        break;
-      } catch (err) {
-        this.log.warn({
-          msg: "Could not retrieve events from startBlock",
-          address,
-          contract: dataType,
-          startBlock,
-          err,
-        });
-        eventsFetchRetryCount++;
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
-    }
-
-    if (eventsFetchRetryCount >= 3) {
-      this.log.error({
-        msg: "Error retrieving events from startBlock after 3 tries",
-        address,
-        contract: dataType,
-        startBlock,
-      });
-      return;
-    }
-
-    if (missedEvents.length === 0) return;
-
-    for (const event of missedEvents) {
-      const name = event.event;
-
-      if (name === undefined) {
-        this.log.warn({
-          msg: "found unnamed event :",
-          address,
-          contract: dataType,
-          event,
-        });
-      } else {
-        this.log.info({
-          msg: "delegating event processing",
-          address,
-          contract: dataType,
-        });
-
-        await this.eventListener.queueLog(name, event, loader, this.getInterface(dataType));
-      }
-    }
-  }
-
-  private async getFilteredMissedEvents(
-    dataType: DataType,
-    address: string,
-    fromBlock: number,
-  ): Promise<ethers.Event[]> {
-    this.log.info({
-      msg: "Querying missed events",
-      address,
-      contract: dataType,
-      fromBlock,
-    });
-
-    const missedEvents = await this.loadEvents(dataType, address, fromBlock);
-
-    if (missedEvents.length === 0) {
-      this.log.info({
-        msg: "No events missed",
-        address,
-        contract: dataType,
-      });
-      return [];
-    }
-
-    this.log.info({
-      msg: "Found potentially missed events",
-      address,
-      contract: dataType,
-      missedEventsCount: missedEvents.length,
-    });
-
-    const filteredEvents: ethers.Event[] = await this.removeKnownEvents(missedEvents);
-
-    if (missedEvents.length > filteredEvents.length) {
-      this.log.info({
-        msg: "Skipped events already played",
-        address,
-        contract: dataType,
-        skippedEventsCount: missedEvents.length - filteredEvents.length,
-      });
-    }
-
-    if (filteredEvents.length > 0) {
-      this.log.info({
-        msg: "Found really missed events",
-        address,
-        contract: dataType,
-        missedEventsCount: filteredEvents.length,
-        missedEvents,
-      });
-    }
-
-    return filteredEvents;
-  }
-
-  private async loadEvents(dataType: DataType, address: string, startBlock: number): Promise<ethers.Event[]> {
-    const eventFilter: EventFilter = {
-      address,
-    };
-
-    const instance = this.getInstance(dataType, address);
-
-    return await instance.queryFilter(eventFilter, startBlock);
-  }
-
-  private async removeKnownEvents(events: ethers.Event[]): Promise<ethers.Event[]> {
-    const filteredEvents: ethers.Event[] = [];
-    for (const event of events) {
-      if (
-        !(await this.db.existsEvent(
-          this.chainId,
-          event.address,
-          event.blockNumber,
-          event.transactionIndex,
-          event.logIndex,
-        ))
-      ) {
-        filteredEvents.push(event);
-      }
-    }
-
-    return filteredEvents;
-  }
-
-  subscribeToEvents(dataType: DataType, address: string, loader: AbstractHandler<any>): void {
-    const eventFilter: EventFilter = {
-      address,
-    };
-
-    const instance = this.getInstance(dataType, address);
-
-    instance.on(eventFilter, (log: ethers.providers.Log) => {
-      const eventName = topicsMap[dataType][log.topics[0]];
-
-      this.eventListener.queueLog(eventName, log, loader, this.getInterface(dataType)).catch((err) => {
-        this.log.error({
-          msg: "error queuing event",
-          address,
-          contract: this.constructor.name,
-          eventName,
-          err,
-          log,
-        });
-      });
-    });
-  }
-
-  unsubscribeEvents(address: string): void {
-    if (this.instances[address] !== undefined) {
-      this.instances[address].removeAllListeners();
-      delete this.instances[address];
-    }
-  }
-
   async registerContract<T extends IContract>(
     dataType: DataType,
     address: string,
@@ -368,23 +197,6 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
         contract: dataType,
         lastUpdateBlock: lastState.lastUpdateBlock,
       });
-
-      const eventsStartBlock = Math.max(
-        lastState.lastUpdateBlock, // last update block should be included in case of partial events handling
-        blockNumber - 100, // otherwise, limit the number of past blocks to query
-      );
-
-      if (eventsStartBlock > lastState.lastUpdateBlock) {
-        this.log.warn({
-          msg: "Skipped blocks for events syncing",
-          address,
-          contract: dataType,
-          lastUpdateBlock: lastState.lastUpdateBlock,
-          eventsStartBlock,
-        });
-      }
-
-      await this.loadAndSyncEvents(dataType, address, eventsStartBlock, this.handlers[address]);
     } else {
       this.log.info({
         msg: "First time loading",
@@ -404,7 +216,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
       this.broker.notifyUpdate(dataType, this.chainId, address, lastState);
     }
 
-    this.subscribeToEvents(dataType, address, loader);
+    this.eventsLoader.watchContract(dataType, address, loader, this.getInterface(dataType));
 
     return lastState;
   }
@@ -417,8 +229,12 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   ): Promise<void> {
     const lastState = await this.getLastState(dataType, address, session);
 
-    this.unsubscribeEvents(address);
+    this.eventsLoader.forgetContract(address);
     delete this.handlers[address];
+    if (this.instances[address] !== undefined) {
+      this.instances[address].removeAllListeners();
+      delete this.instances[address];
+    }
     if (remove) {
       await this.db.delete(dataType, this.chainId, address, session);
     }
@@ -803,6 +619,6 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     Object.values(this.instances).forEach((instance) => instance.removeAllListeners);
 
     this.eventListener.destroy();
-    this.reorgDetector.destroy();
+    this.eventsLoader.destroy();
   }
 }

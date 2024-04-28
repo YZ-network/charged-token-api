@@ -19,7 +19,7 @@ describe("Events query resolver", () => {
   });
 
   it("should query for events count by chain id", async () => {
-    const chainId = 129;
+    const chainId = 1337;
 
     db.countEvents.mockResolvedValueOnce(50);
 
@@ -30,7 +30,7 @@ describe("Events query resolver", () => {
   });
 
   it("should query for events by chain id and return results", async () => {
-    const chainId = 129;
+    const chainId = 1337;
 
     const events = [{ eventName: "A" }, { eventName: "B" }] as unknown[] as IEvent[];
     db.getEventsPaginated.mockResolvedValueOnce(events);
@@ -42,7 +42,7 @@ describe("Events query resolver", () => {
   });
 
   it("should use query parameters for pagination", async () => {
-    const chainId = 129;
+    const chainId = 1337;
 
     const events = [{ eventName: "A" }, { eventName: "B" }] as unknown[] as IEvent[];
     db.getEventsPaginated.mockResolvedValueOnce(events);

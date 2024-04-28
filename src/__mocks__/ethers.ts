@@ -84,6 +84,7 @@ const JsonRpcProvider = jest.fn().mockImplementation(() => {
     off: jest.fn(),
     getBlock: jest.fn(),
     getBlockNumber: jest.fn(),
+    getLogs: jest.fn(),
   };
 });
 

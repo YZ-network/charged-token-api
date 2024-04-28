@@ -50,7 +50,7 @@ export const onSubscribeFactory =
     return args;
   };
 
-const apiLogger = rootLogger.child({ name: "Api", msgPrefix: "[GQL] " });
+const apiLogger = rootLogger.child({ name: "Api" }, { msgPrefix: "[GQL] " });
 
 export function configureApiServer(db: AbstractDbRepository, broker: AbstractBroker): Server {
   const yoga = createYoga({
