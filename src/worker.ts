@@ -58,10 +58,6 @@ export class ChainWorker {
     this.broker = broker;
   }
 
-  get blockNumberBeforeDisconnect(): number {
-    return this.blockchain!.blockNumberBeforeDisconnect;
-  }
-
   async start() {
     try {
       this.createProvider();
@@ -339,11 +335,14 @@ export class ChainWorker {
       providerIndex: this.providerIndex,
     });
 
-    try {
-      this.blockchain = new BlockchainRepository(this.chainId, this.provider, this.db, this.broker);
-      this.contractsRegistry = new ContractsRegistry(this.chainId, this.blockchain);
+    this.blockchain = new BlockchainRepository(this.chainId, this.provider, this.db, this.broker);
+    this.contractsRegistry = new ContractsRegistry(this.chainId, this.blockchain);
 
+    try {
+      const lastUpdateBlock = await this.db.getLastUpdateBlock(this.chainId);
+      const blockNumber = lastUpdateBlock === 0 ? await this.blockchain.getBlockNumber() : lastUpdateBlock;
       await this.contractsRegistry.registerDirectory(this.directoryAddress);
+      await this.contractsRegistry.watchForUpdates(blockNumber);
 
       this.workerStatus = "STARTED";
       Metrics.workerStarted(this.chainId);

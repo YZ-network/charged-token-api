@@ -171,7 +171,6 @@ describe("ChainWorker", () => {
     // checking block number tracking
     const BLOCK_NUMBER = 15;
     (worker.provider as any).handlers.block(BLOCK_NUMBER);
-    expect(worker.blockNumberBeforeDisconnect).toBe(BLOCK_NUMBER);
 
     (worker.provider as any).handlers.error("WebSocket closed");
     await waitForWorkerToStop(worker);

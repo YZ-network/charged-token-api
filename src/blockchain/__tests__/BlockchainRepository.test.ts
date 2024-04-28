@@ -495,7 +495,7 @@ describe("BlockchainRepository", () => {
 
     const mockHandler = jest.fn() as unknown as AbstractHandler<IChargedToken>;
 
-    blockchain.subscribeToEvents("ChargedToken", "0xCT", mockHandler);
+    blockchain.eventsLoader.watchContract("ChargedToken", "0xCT", mockHandler, iface);
 
     expect(getInstance).toBeCalled();
     expect(instance.on).toBeCalledWith({ address: "0xCT" }, expect.any(Function));
@@ -547,7 +547,7 @@ describe("BlockchainRepository", () => {
 
     const mockHandler = jest.fn() as unknown as AbstractHandler<IChargedToken>;
 
-    blockchain.subscribeToEvents("ChargedToken", "0xCT", mockHandler);
+    blockchain.eventsLoader.watchContract("ChargedToken", "0xCT", mockHandler, iface);
 
     if (callback === undefined) throw new Error("Callback not yet initialized !");
 
@@ -561,7 +561,7 @@ describe("BlockchainRepository", () => {
     const getInstance = jest.spyOn(blockchain, "getInstance");
     getInstance.mockReturnValueOnce(instance);
 
-    const subscribe = jest.spyOn(blockchain, "subscribeToEvents");
+    const subscribe = jest.spyOn(blockchain.eventsLoader, "watchContract");
 
     db.get.mockResolvedValueOnce(null);
 
@@ -619,11 +619,10 @@ describe("BlockchainRepository", () => {
     expect(registered).toBeCalledWith("0xCT");
   });
 
-  it("should load contract from db and apply all missed events", async () => {
+  it("should load contract from db and watch new events", async () => {
     const loaderMock = jest.fn() as unknown as AbstractHandler<IChargedToken>;
-    const loadAndSyncEvents = jest.spyOn(blockchain, "loadAndSyncEvents");
 
-    const subscribe = jest.spyOn(blockchain, "subscribeToEvents");
+    const subscribe = jest.spyOn(blockchain.eventsLoader, "watchContract");
     const data = {
       lastUpdateBlock: 15,
       address: "0xCT",
@@ -637,25 +636,7 @@ describe("BlockchainRepository", () => {
     expect(result).toBe(data);
 
     expect(db.get).toBeCalledWith("ChargedToken", CHAIN_ID, "0xCT", session);
-    expect(loadAndSyncEvents).toBeCalledWith("ChargedToken", "0xCT", 15, expect.anything());
     expect(subscribe).toBeCalledWith("ChargedToken", "0xCT", loaderMock);
-  });
-
-  it("should load contract from db and apply missed events from last 100 blocks", async () => {
-    const loaderMock = jest.fn() as unknown as AbstractHandler<IChargedToken>;
-    const loadAndSyncEvents = jest.spyOn(blockchain, "loadAndSyncEvents");
-
-    const data = {
-      lastUpdateBlock: 15,
-      address: "0xCT",
-      chainId: CHAIN_ID,
-    };
-
-    db.get.mockResolvedValueOnce(data);
-
-    await blockchain.registerContract("ChargedToken", "0xCT", 300, loaderMock, session);
-
-    expect(loadAndSyncEvents).toBeCalledWith("ChargedToken", "0xCT", 200, expect.anything());
   });
 
   it("should queue missed events for execution", async () => {
@@ -666,7 +647,7 @@ describe("BlockchainRepository", () => {
     const interfaceMock = new ethers.utils.Interface("");
     const queueLog = jest.spyOn(blockchain.eventListener, "queueLog");
 
-    const subscribe = jest.spyOn(blockchain, "subscribeToEvents");
+    const subscribe = jest.spyOn(blockchain.eventsLoader, "watchContract");
     const data = {
       lastUpdateBlock: 15,
       address: "0xCT",

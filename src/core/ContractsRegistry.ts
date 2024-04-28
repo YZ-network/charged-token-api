@@ -136,4 +136,8 @@ export class ContractsRegistry {
       await this.blockchain.unregisterContract("DelegableToLT", address);
     }
   }
+
+  async watchForUpdates(fromBlock: number): Promise<void> {
+    await this.blockchain.watchForUpdates(fromBlock);
+  }
 }
