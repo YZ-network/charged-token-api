@@ -35,4 +35,8 @@ export const Config: JsonConfig = {
     rpcRetryDelayMs: 10,
     nodeDownAlertDelayMs: 100,
   },
+  blocks: {
+    lag: 3,
+    buffer: 2,
+  },
 };

@@ -6,7 +6,7 @@ const configDefaults: JsonConfig = {
     bindAddress: "127.0.0.1",
     bindPort: 4000,
     corsOrigins: "http://localhost:3000",
-    logLevel: "info",
+    logLevel: "debug",
     enableGraphiql: true,
   },
   networks: [
@@ -26,6 +26,10 @@ const configDefaults: JsonConfig = {
     rpcPongMaxWaitMs: 6000,
     rpcRetryDelayMs: 1000,
     nodeDownAlertDelayMs: 10000,
+  },
+  blocks: {
+    lag: 3,
+    buffer: 2,
   },
 };
 
