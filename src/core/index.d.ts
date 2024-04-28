@@ -6,6 +6,11 @@ type ProviderStatus = "STARTING" | "CONNECTING" | "CONNECTED" | "DISCONNECTED";
 
 type WorkerStatus = "WAITING" | "STARTED" | "DEAD";
 
+interface IParsedBlock {
+  chainId: number;
+  lastUpdateBlock: number;
+}
+
 interface IContract {
   chainId: number;
   address: string;
@@ -168,11 +173,17 @@ interface JsonDelaysConfig {
   nodeDownAlertDelayMs: number;
 }
 
+interface JsonBlocksConfig {
+  lag: number;
+  buffer: number;
+}
+
 interface JsonConfig {
   db: JsonDbConfig;
   api: JsonApiConfig;
   networks: JsonNetworkConfig[];
   delays: JsonDelaysConfig;
+  blocks: JsonBlocksConfig;
 }
 
 interface Log {

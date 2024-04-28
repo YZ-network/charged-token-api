@@ -3,6 +3,9 @@ import { ClientSession } from "../vendor";
 export abstract class AbstractDbRepository {
   abstract startSession(): Promise<ClientSession>;
 
+  abstract getLastUpdateBlock(chainId: number): Promise<number>;
+  abstract setLastUpdateBlock(chainId: number, blockNumber: number): Promise<void>;
+
   abstract exists(dataType: DataType, chainId: number, address: string, session?: ClientSession): Promise<boolean>;
   abstract existsBalance(chainId: number, address: string, user: string): Promise<boolean>;
   abstract existsEvent(

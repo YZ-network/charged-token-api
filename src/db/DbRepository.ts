@@ -7,6 +7,7 @@ import { DelegableToLTModel } from "./models/DelegableToLT";
 import { DirectoryModel } from "./models/Directory";
 import { EventModel } from "./models/Event";
 import { InterfaceProjectTokenModel } from "./models/InterfaceProjectToken";
+import { ParsedBlockModel } from "./models/ParsedBlock";
 import { UserBalanceModel } from "./models/UserBalances";
 
 export class DbRepository extends AbstractDbRepository {
@@ -14,6 +15,15 @@ export class DbRepository extends AbstractDbRepository {
 
   async startSession(): Promise<ClientSession> {
     return await mongoose.startSession();
+  }
+
+  async getLastUpdateBlock(chainId: number): Promise<number> {
+    const parsedBlock = await ParsedBlockModel.findOne({ chainId });
+    return parsedBlock !== null ? parsedBlock.lastUpdateBlock : 0;
+  }
+
+  async setLastUpdateBlock(chainId: number, blockNumber: number): Promise<void> {
+    await ParsedBlockModel.updateOne({ chainId }, { chainId, lastUpdateBlock: blockNumber }, { upsert: true });
   }
 
   async exists(
