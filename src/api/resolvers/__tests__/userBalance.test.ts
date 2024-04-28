@@ -14,7 +14,7 @@ import {
 jest.mock("../../../config");
 
 describe("User balance query resolver", () => {
-  const chainId = 129;
+  const chainId = 1337;
   const user = "0xUSER";
   const address = "0xADDRESS";
 

@@ -6,7 +6,7 @@ const configDefaults: JsonConfig = {
     bindAddress: "127.0.0.1",
     bindPort: 4000,
     corsOrigins: "http://localhost:3000",
-    logLevel: "debug",
+    logLevel: "error",
     enableGraphiql: true,
   },
   networks: [

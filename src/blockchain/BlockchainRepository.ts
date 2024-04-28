@@ -231,6 +231,10 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
 
     this.eventsLoader.forgetContract(address);
     delete this.handlers[address];
+    if (this.instances[address] !== undefined) {
+      this.instances[address].removeAllListeners();
+      delete this.instances[address];
+    }
     if (remove) {
       await this.db.delete(dataType, this.chainId, address, session);
     }
