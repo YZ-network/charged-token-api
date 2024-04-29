@@ -1,66 +1,25 @@
-import { Repeater } from "graphql-yoga";
 import { Logger } from "pino";
 import { MockLogger } from "../../../__mocks__/MockLogger";
-import { AbstractBroker } from "../../../core/AbstractBroker";
-import { MockBroker } from "../../../core/__mocks__/MockBroker";
-import { HealthQueryResolverFactory, HealthSubscriptionResolverFactory } from "../health";
-
-jest.mock("../../../main");
+import { AbstractWorkerManager } from "../../../core/AbstractWorkerManager";
+import { MockWorkerManager } from "../../../core/__mocks__/MockWorkerManager";
+import { HealthQueryResolverFactory } from "../health";
 
 describe("Health check query resolver", () => {
-  let broker: jest.Mocked<AbstractBroker>;
+  let manager: jest.Mocked<AbstractWorkerManager>;
   let log: jest.Mocked<Logger>;
 
   beforeEach(() => {
-    broker = new MockBroker() as jest.Mocked<AbstractBroker>;
+    manager = new MockWorkerManager() as jest.Mocked<AbstractWorkerManager>;
     log = new MockLogger() as jest.Mocked<Logger>;
   });
 
-  it("should return health from matching channel", async () => {
-    const nextMock = jest.fn();
-    nextMock.mockResolvedValueOnce({ value: "pouet", done: false });
+  it("should return health from manager", async () => {
+    const resolver = HealthQueryResolverFactory(manager);
 
-    const returnMock = jest.fn();
-    returnMock.mockResolvedValueOnce({ done: true });
-
-    const resolver = HealthQueryResolverFactory(broker);
-
-    broker.subscribeHealth.mockReturnValueOnce({ next: nextMock, return: returnMock } as unknown as Repeater<any>);
+    manager.getStatus.mockReturnValueOnce(["pouet"] as unknown as ChainHealth[]);
 
     const result = await resolver();
 
-    expect(result).toStrictEqual("pouet");
-    expect(broker.subscribeHealth).toBeCalled();
-    expect(broker.unsubscribe).toBeCalled();
-    expect(nextMock).toBeCalled();
-  });
-
-  it("should return periodic health status until stopped", async () => {
-    let healthCount = 0;
-    const nextMock = jest.fn();
-    nextMock.mockImplementation(async () => {
-      return { value: ++healthCount, done: false };
-    });
-
-    const returnMock = jest.fn();
-    returnMock.mockImplementation(async () => {
-      return { value: undefined, done: true };
-    });
-
-    const resolver = HealthSubscriptionResolverFactory(broker, log);
-
-    broker.subscribeHealth.mockReturnValueOnce({ next: nextMock, return: returnMock } as unknown as Repeater<any>);
-
-    expect(resolver.resolve("pouet")).toBe("pouet");
-
-    const result = resolver.subscribe(undefined);
-
-    expect(await result.next()).toStrictEqual({ value: 1, done: false });
-    expect(await result.next()).toStrictEqual({ value: 2, done: false });
-    expect(await result.next()).toStrictEqual({ value: 3, done: false });
-    expect(await result.return()).toStrictEqual({ value: undefined, done: true });
-
-    expect(nextMock).toBeCalledTimes(healthCount);
-    expect(broker.unsubscribe).toBeCalled();
+    expect(result).toStrictEqual(["pouet"]);
   });
 });

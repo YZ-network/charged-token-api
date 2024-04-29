@@ -8,7 +8,7 @@ export const Config: JsonConfig = {
     bindAddress: "127.0.0.1",
     bindPort: 4000,
     corsOrigins: "http://localhost:3000",
-    logLevel: "silent",
+    logLevel: "info",
     enableGraphiql: true,
   },
   networks: [
@@ -26,7 +26,6 @@ export const Config: JsonConfig = {
     },
   ],
   delays: {
-    healthPublishDelayMs: 1000,
     workerRestartDelayMs: 30,
     rpcMaxParallelRequests: 4,
     rpcMaxRetryCount: 3,

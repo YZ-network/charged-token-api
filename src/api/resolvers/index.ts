@@ -1,16 +1,22 @@
 import { Logger } from "pino";
 import { AbstractBroker } from "../../core/AbstractBroker";
 import { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import { AbstractWorkerManager } from "../../core/AbstractWorkerManager";
 import { DirectoryQueryResolverFactory } from "./directory";
-import { EventsCountQueryResolverFactory, EventsQueryResolverFactory } from "./events";
 import { ResolverFactory } from "./factory";
-import { HealthQueryResolverFactory, HealthSubscriptionResolverFactory } from "./health";
+import { HealthQueryResolverFactory } from "./health";
 import { UserBalanceQueryResolverFactory, UserBalanceSubscriptionResolverFactory } from "./userBalance";
 import { VersionQueryResolver } from "./version";
 
-const resolversFactory = (db: AbstractDbRepository, broker: AbstractBroker, log: Logger) => ({
+const resolversFactory = (
+  db: AbstractDbRepository,
+  broker: AbstractBroker,
+  workerManager: AbstractWorkerManager,
+  log: Logger,
+) => ({
   Query: {
     version: VersionQueryResolver,
+    health: HealthQueryResolverFactory(workerManager),
     Directory: DirectoryQueryResolverFactory(db, log.child({ query: "Directory" })),
     allChargedTokens: ResolverFactory.findAll(db, "ChargedToken"),
     ChargedToken: ResolverFactory.findByAddress(db, "ChargedToken"),
@@ -20,9 +26,6 @@ const resolversFactory = (db: AbstractDbRepository, broker: AbstractBroker, log:
     DelegableToLT: ResolverFactory.findByAddress(db, "DelegableToLT"),
     UserBalance: UserBalanceQueryResolverFactory(db, broker, log.child({ query: "UserBalance" })),
     userBalances: UserBalanceQueryResolverFactory(db, broker, log.child({ query: "userBalances" })),
-    events: EventsQueryResolverFactory(db),
-    countEvents: EventsCountQueryResolverFactory(db),
-    health: HealthQueryResolverFactory(broker),
   },
   Subscription: {
     Directory: ResolverFactory.subscribeByName(db, broker, log.child({ subscription: "Directory" }), "Directory"),
@@ -45,7 +48,6 @@ const resolversFactory = (db: AbstractDbRepository, broker: AbstractBroker, log:
       "DelegableToLT",
     ),
     userBalances: UserBalanceSubscriptionResolverFactory(db, broker, log.child({ subscription: "userBalances" })),
-    health: HealthSubscriptionResolverFactory(broker, log.child({ subscription: "health" })),
   },
 });
 

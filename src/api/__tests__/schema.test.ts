@@ -3,6 +3,7 @@ import { GraphQLSchema } from "graphql";
 import { MockLogger } from "../../__mocks__/MockLogger";
 import { MockBroker } from "../../core/__mocks__/MockBroker";
 import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
+import { MockWorkerManager } from "../../core/__mocks__/MockWorkerManager";
 import schemaFactory from "../schema";
 
 jest.unmock("graphql-yoga");
@@ -11,7 +12,7 @@ jest.mock("../resolvers");
 
 describe("GraphQL Schema", () => {
   it("should create schema with all needed queries and subscriptions", () => {
-    const schema = schemaFactory(new MockDbRepository(), new MockBroker(), new MockLogger());
+    const schema = schemaFactory(new MockDbRepository(), new MockBroker(), new MockWorkerManager(), new MockLogger());
 
     expect(schema).toBeInstanceOf(GraphQLSchema);
 
@@ -25,7 +26,6 @@ describe("GraphQL Schema", () => {
     expect(typeMap["IDelegableToLT"]).toBeDefined();
     expect(typeMap["IUserBalancesEntry"]).toBeDefined();
     expect(typeMap["IWorkerHealth"]).toBeDefined();
-    expect(typeMap["IEvent"]).toBeDefined();
 
     const queries = schema.getQueryType()!.getFields();
 
@@ -39,8 +39,7 @@ describe("GraphQL Schema", () => {
     expect(queries["DelegableToLT"]).toBeDefined();
     expect(queries["UserBalance"]).toBeDefined();
     expect(queries["userBalances"]).toBeDefined();
-    expect(queries["events"]).toBeDefined();
-    expect(queries["countEvents"]).toBeDefined();
+    expect(queries["version"]).toBeDefined();
     expect(queries["health"]).toBeDefined();
 
     const subscriptions = schema.getSubscriptionType()!.getFields();
@@ -51,6 +50,5 @@ describe("GraphQL Schema", () => {
     expect(subscriptions["InterfaceProjectToken"]).toBeDefined();
     expect(subscriptions["DelegableToLT"]).toBeDefined();
     expect(subscriptions["userBalances"]).toBeDefined();
-    expect(subscriptions["health"]).toBeDefined();
   });
 });

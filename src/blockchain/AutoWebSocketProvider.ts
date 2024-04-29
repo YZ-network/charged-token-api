@@ -10,11 +10,7 @@ import { type Network, type Networkish } from "@ethersproject/networks";
 import { BigNumber } from "ethers";
 
 import { type Event } from "@ethersproject/providers/lib/base-provider";
-import {
-  type InflightRequest,
-  type Subscription,
-  type WebSocketLike,
-} from "@ethersproject/providers/lib/websocket-provider";
+import { type InflightRequest, type Subscription } from "@ethersproject/providers/lib/websocket-provider";
 import { ethers } from "ethers";
 import { Logger } from "pino";
 import { ErrorEvent, MessageEvent, WebSocket } from "ws";
@@ -138,23 +134,15 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
   private onpongListener: ((this: WebSocket, ...args: any[]) => void) | undefined;
 
   constructor(
-    url: string | WebSocketLike,
+    url: string,
     options: Partial<AutoWebSocketProviderOptions> & { chainId: number; providerIndex: number },
     network?: Networkish,
   ) {
-    // This will be added in the future; please open an issue to expedite
-    if (network === "any") {
-      throw new Error("AutoWebSocketProvider does not support 'any' network yet");
-    }
-
-    if (typeof url === "string") {
-      super(url, network);
-    } else {
-      super("_websocket", network);
-    }
+    super(url, network);
 
     this.chainId = options.chainId;
     this.index = options.providerIndex;
+    this._retryCount = 0;
 
     this.log = rootLogger.child({ chainId: this.chainId, name: "Provider", index: this.index });
 
@@ -167,18 +155,11 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
 
     this._wsReady = false;
 
-    if (typeof url === "string") {
-      this._websocket = new WebSocket(this.connection.url);
-    } else if (url instanceof WebSocket) {
-      this._websocket = url;
-    } else {
-      throw Error("This provider only accepts websocket URL or a real WebSocket as parameter");
-    }
+    this._websocket = new WebSocket(this.connection.url);
 
     this._requests = [];
     this._subs = {};
     this._subIds = {};
-    this._retryCount = 0;
 
     this._detectNetwork = super.detectNetwork().catch((err) => {
       this.log.error({ msg: "Fatal error !", err });

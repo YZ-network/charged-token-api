@@ -1,29 +1,32 @@
 import { YogaServerInstance } from "graphql-yoga";
 import { AbstractBroker } from "../../core/AbstractBroker";
 import { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import { AbstractWorkerManager } from "../../core/AbstractWorkerManager";
 import { MockBroker } from "../../core/__mocks__/MockBroker";
 import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
+import { MockWorkerManager } from "../../core/__mocks__/MockWorkerManager";
 import { buildCorsHeaders, configureApiServer, onSubscribeFactory } from "../server";
 
 jest.unmock("ws");
 jest.unmock("graphql-yoga");
 
 jest.mock("../../config");
-jest.mock("../exporter");
 jest.mock("../prometheus");
 jest.mock("../schema");
 
 describe("GraphQL API server", () => {
   let db: jest.Mocked<AbstractDbRepository>;
   let broker: jest.Mocked<AbstractBroker>;
+  let workerManager: jest.Mocked<AbstractWorkerManager>;
 
   beforeEach(() => {
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
     broker = new MockBroker() as jest.Mocked<AbstractBroker>;
+    workerManager = new MockWorkerManager() as jest.Mocked<AbstractWorkerManager>;
   });
 
   it("should connect ws server to graphql api", () => {
-    configureApiServer(db, broker);
+    configureApiServer(db, broker, workerManager);
   });
 
   it("should build cors headers", () => {

@@ -1,25 +1,5 @@
-import { Logger } from "pino";
-import { AbstractBroker } from "../../core/AbstractBroker";
+import { AbstractWorkerManager } from "../../core/AbstractWorkerManager";
 
-export const HealthQueryResolverFactory = (broker: AbstractBroker) => async () => {
-  const subscription = broker.subscribeHealth();
-  const result = await subscription.next();
-  await broker.unsubscribe(subscription);
-  return result.value;
+export const HealthQueryResolverFactory = (workerManager: AbstractWorkerManager) => async () => {
+  return workerManager.getStatus();
 };
-
-export const HealthSubscriptionResolverFactory = (broker: AbstractBroker, log: Logger) => ({
-  subscribe: (_: any) => {
-    log.debug("client subscribing to health checks");
-
-    const sub = broker.subscribeHealth();
-    Object.defineProperty(sub, "return", {
-      value: async (...args: any[]) => {
-        await broker.unsubscribe(sub);
-        return { value: undefined, done: true };
-      },
-    });
-    return sub;
-  },
-  resolve: (payload: any) => payload,
-});

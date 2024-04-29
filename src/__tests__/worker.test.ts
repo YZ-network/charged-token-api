@@ -95,7 +95,11 @@ describe("ChainWorker", () => {
 
       timeout = setTimeout(() => {
         clearInterval(interval);
-        reject(new Error("Timeout reached ! killed it"));
+        reject(
+          new Error(
+            `Timeout reached ! killed it, providerStatus=${worker.providerStatus} workerStatus=${worker.workerStatus} wsStatus=${worker.wsStatus}`,
+          ),
+        );
       }, 1000);
     });
 
@@ -142,7 +146,7 @@ describe("ChainWorker", () => {
     clearInterval(worker.wsWatch);
   });
 
-  test.skip("should initialize directory upon connection", async () => {
+  test("should initialize directory upon connection", async () => {
     (AutoWebSocketProvider as any).mockReturnValueOnce(mockProviderBase());
 
     const worker = new ChainWorker(0, RPC, DIRECTORY, CHAIN_ID, db, broker);
@@ -166,12 +170,7 @@ describe("ChainWorker", () => {
     expect(worker.db).toBeDefined();
     expect(worker.contractsRegistry).toBeDefined();
     expect(worker.contractsRegistry?.registerDirectory).toBeCalledWith(DIRECTORY);
-    expect((worker.provider as any).handlers.block).toBeDefined();
     expect(subscribeToUserBalancesLoading).toBeCalledWith(CHAIN_ID, db, worker.blockchain, broker);
-
-    // checking block number tracking
-    const BLOCK_NUMBER = 15;
-    (worker.provider as any).handlers.block(BLOCK_NUMBER);
 
     (worker.provider as any).handlers.error("WebSocket closed");
     await waitForWorkerToStop(worker);
@@ -215,7 +214,7 @@ describe("ChainWorker", () => {
 
     expect(provider?.removeAllListeners).toBeCalledTimes(1);
     expect(provider?.destroy).toBeCalledTimes(1);
-    expect(broker.destroy).toBeCalledWith(CHAIN_ID);
+    expect(broker.removeSubscriptions).toBeCalledWith(CHAIN_ID);
     expect(worker.provider).toBeUndefined();
     expect(worker.blockchain).toBeUndefined();
     expect(worker.worker).toBeUndefined();
@@ -254,7 +253,7 @@ describe("ChainWorker", () => {
 
     expect(provider?.removeAllListeners).toBeCalledTimes(1);
     expect(provider?.destroy).toBeCalledTimes(1);
-    expect(broker.destroy).toBeCalledWith(CHAIN_ID);
+    expect(broker.removeSubscriptions).toBeCalledWith(CHAIN_ID);
     expect(worker.provider).toBeUndefined();
     expect(worker.blockchain).toBeUndefined();
     expect(worker.worker).toBeUndefined();

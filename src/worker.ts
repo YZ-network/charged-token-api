@@ -365,7 +365,7 @@ export class ChainWorker {
     });
   }
 
-  private async stop(): Promise<void> {
+  async stop(): Promise<void> {
     if (this.stopping) {
       this.log.warn({
         msg: "Worker stop duplicate call !",
@@ -377,6 +377,8 @@ export class ChainWorker {
 
     this.stopping = true;
 
+    this.restartCount++;
+
     this.log.info({
       msg: "Stopping worker",
       network: this.name,
@@ -387,9 +389,6 @@ export class ChainWorker {
       wsStatus: this.wsStatus,
     });
 
-    this.providerStatus = "DISCONNECTED";
-    this.workerStatus = "DEAD";
-
     Metrics.workerStopped(this.chainId);
 
     await this.contractsRegistry?.unregisterDirectory(this.directoryAddress);
@@ -397,12 +396,13 @@ export class ChainWorker {
     this.blockchain?.destroy();
     this.blockchain = undefined;
 
-    this.provider?.removeAllListeners();
-    this.worker = undefined;
-
     this.log.info({ msg: "Destroying provider", providerIndex: this.providerIndex });
+    this.provider?.removeAllListeners();
     await this.provider?.destroy();
     this.provider = undefined;
+    this.worker = undefined;
+
+    this.providerStatus = "DISCONNECTED";
 
     if (this.wsWatch !== undefined) {
       this.log.info({ msg: "Stopping websocket watch", providerIndex: this.providerIndex });
@@ -411,11 +411,11 @@ export class ChainWorker {
       this.wsWatch = undefined;
     }
 
-    await this.broker.destroy(this.chainId);
+    await this.broker.removeSubscriptions(this.chainId);
 
     await this.db.deletePendingAndFailedEvents(this.chainId);
 
-    this.restartCount++;
+    this.workerStatus = "DEAD";
 
     this.stopping = false;
   }

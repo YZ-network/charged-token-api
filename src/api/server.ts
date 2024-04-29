@@ -7,12 +7,12 @@ import { WebSocketServer } from "ws";
 import { Config } from "../config";
 import { AbstractBroker } from "../core/AbstractBroker";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
+import { AbstractWorkerManager } from "../core/AbstractWorkerManager";
 import { rootLogger } from "../rootLogger";
-import { eventsExporterFactory } from "./exporter";
 import { usePrometheus } from "./prometheus";
 import schemaFactory from "./schema";
 
-export function buildCorsHeaders(request: Request) {
+export function buildCorsHeaders(request: Request): { origin: string; methods: string[] } {
   const requestOrigin = request.headers.get("origin") as string;
   return {
     origin: requestOrigin,
@@ -21,7 +21,7 @@ export function buildCorsHeaders(request: Request) {
 }
 
 export const onSubscribeFactory =
-  (yoga: YogaServerInstance<{}, {}>) =>
+  (yoga: YogaServerInstance<object, object>) =>
   async (
     ctx: Context<Record<string, unknown> | undefined, Extra & Partial<Record<PropertyKey, any>>>,
     msg: SubscribeMessage,
@@ -52,16 +52,20 @@ export const onSubscribeFactory =
 
 const apiLogger = rootLogger.child({ name: "Api" }, { msgPrefix: "[GQL] " });
 
-export function configureApiServer(db: AbstractDbRepository, broker: AbstractBroker): Server {
+export function configureApiServer(
+  db: AbstractDbRepository,
+  broker: AbstractBroker,
+  workerManager: AbstractWorkerManager,
+): Server {
   const yoga = createYoga({
-    schema: schemaFactory(db, broker, apiLogger),
+    schema: schemaFactory(db, broker, workerManager, apiLogger),
     graphiql: Config.api.enableGraphiql
       ? {
           subscriptionsProtocol: "WS",
         }
       : false,
     cors: buildCorsHeaders,
-    plugins: [usePrometheus(), eventsExporterFactory(db)()],
+    plugins: [usePrometheus()],
     maskedErrors: {
       maskError(error: unknown, message: string, isDev: boolean | undefined) {
         apiLogger.error({ msg: message, error, isDev });

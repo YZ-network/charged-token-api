@@ -3,9 +3,15 @@ import { createSchema } from "graphql-yoga";
 import { Logger } from "pino";
 import { AbstractBroker } from "../core/AbstractBroker";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
+import { AbstractWorkerManager } from "../core/AbstractWorkerManager";
 import resolversFactory from "./resolvers";
 
-const schemaFactory = (db: AbstractDbRepository, broker: AbstractBroker, pino: Logger) =>
+const schemaFactory = (
+  db: AbstractDbRepository,
+  broker: AbstractBroker,
+  workerManager: AbstractWorkerManager,
+  pino: Logger,
+) =>
   createSchema({
     typeDefs: `
   type IEntry {
@@ -136,23 +142,9 @@ const schemaFactory = (db: AbstractDbRepository, broker: AbstractBroker, pino: L
     restartCount: Int!
   }
 
-  type IEvent {
-    status: String!
-    chainId: Int!
-    address: String!
-    blockNumber: Int!
-    blockDate: String!
-    txHash: String!
-    txIndex: Int!
-    logIndex: Int!
-    name: String!
-    contract: String!
-    topics: [String!]!
-    args: [String!]!
-  }
-
   type Query {
     version: String!
+    health: [IWorkerHealth!]!
     Directory(chainId: Int!): IDirectory
     allChargedTokens(chainId: Int!): [IChargedToken!]!
     ChargedToken(chainId: Int!, address: String!): IChargedToken!
@@ -162,9 +154,6 @@ const schemaFactory = (db: AbstractDbRepository, broker: AbstractBroker, pino: L
     DelegableToLT(chainId: Int!, address: String!): IDelegableToLT!
     UserBalance(chainId: Int!, user: String!, address: String!): IUserBalancesEntry
     userBalances(chainId: Int!, user: String!): [IUserBalancesEntry!]!
-    events(chainId: Int!, offset: Int, count: Int): [IEvent!]!
-    countEvents(chainId: Int!): Int!
-    health: [IWorkerHealth!]!
   }
 
   type Subscription {
@@ -173,10 +162,9 @@ const schemaFactory = (db: AbstractDbRepository, broker: AbstractBroker, pino: L
     InterfaceProjectToken(chainId: Int!, address: String!): IInterfaceProjectToken!
     DelegableToLT(chainId: Int!, address: String!): IDelegableToLT!
     userBalances(chainId: Int!, user: String!): [IUserBalancesEntry!]!
-    health: [IWorkerHealth!]!
   }
 `,
-    resolvers: resolversFactory(db, broker, pino),
+    resolvers: resolversFactory(db, broker, workerManager, pino),
   });
 
 export default schemaFactory;

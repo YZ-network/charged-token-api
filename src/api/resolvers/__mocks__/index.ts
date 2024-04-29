@@ -1,5 +1,7 @@
 const resolvers = {
   Query: {
+    version: jest.fn(),
+    health: jest.fn(),
     Directory: jest.fn(),
     allChargedTokens: jest.fn(),
     ChargedToken: jest.fn(),
@@ -9,9 +11,6 @@ const resolvers = {
     DelegableToLT: jest.fn(),
     UserBalance: jest.fn(),
     userBalances: jest.fn(),
-    events: jest.fn(),
-    countEvents: jest.fn(),
-    health: jest.fn(),
   },
   Subscription: {
     Directory: {
@@ -31,10 +30,6 @@ const resolvers = {
       resolve: jest.fn(),
     },
     userBalances: {
-      subscribe: jest.fn(),
-      resolve: jest.fn(),
-    },
-    health: {
       subscribe: jest.fn(),
       resolve: jest.fn(),
     },

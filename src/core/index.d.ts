@@ -163,7 +163,6 @@ interface JsonNetworkConfig {
 }
 
 interface JsonDelaysConfig {
-  healthPublishDelayMs: number;
   workerRestartDelayMs: number;
   rpcMaxParallelRequests: number;
   rpcMaxRetryCount: number;
