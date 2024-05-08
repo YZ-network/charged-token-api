@@ -271,7 +271,7 @@ export class ChainWorker {
           });
         }
       }
-    }, 50);
+    }, 100);
   }
 
   private logStopResult(promise: Promise<void>): void {
@@ -367,7 +367,7 @@ export class ChainWorker {
 
   async stop(): Promise<void> {
     if (this.stopping) {
-      this.log.warn({
+      this.log.debug({
         msg: "Worker stop duplicate call !",
         network: this.name,
         providerIndex: this.providerIndex,

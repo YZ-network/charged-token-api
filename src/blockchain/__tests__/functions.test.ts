@@ -1,6 +1,8 @@
 import ethers from "ethers";
 import { detectNegativeAmount, getBlockDate } from "../functions";
 
+jest.mock("../../config");
+
 describe("Blockchain functions", () => {
   test("should memoize fetched blocks from the provider to reduce requests", async () => {
     const provider = new ethers.providers.JsonRpcProvider();

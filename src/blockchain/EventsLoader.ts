@@ -78,7 +78,24 @@ export class EventsLoader {
       try {
         await this.loadBlockEvents(fromBlock, toBlock);
       } catch (err) {
-        this.log.error({ msg: "Error loading events", fromBlock, toBlock, blockNumber, err });
+        const errorMessage = (err as Error).message;
+        if (errorMessage.includes("not processed yet")) {
+          this.log.debug({
+            msg: "Could not load new block events",
+            fromBlock,
+            toBlock,
+            blockNumber,
+            err: errorMessage,
+          });
+        } else {
+          this.log.error({
+            msg: "Unexpected error loading events !",
+            fromBlock,
+            toBlock,
+            blockNumber,
+            err: errorMessage,
+          });
+        }
       }
     }
   }

@@ -47,8 +47,8 @@ export class DelegableToLT extends AbstractHandler<IDelegableToLT> {
           session,
         );
       } else {
-        this.log.warn({
-          msg: "PT Balance not found in database for update !",
+        this.log.info({
+          msg: "Skipping PT balance update for unknown user",
           user: from,
           eventName,
         });
@@ -72,8 +72,8 @@ export class DelegableToLT extends AbstractHandler<IDelegableToLT> {
           session,
         );
       } else {
-        this.log.warn({
-          msg: "PT Balance not found in database for update !",
+        this.log.info({
+          msg: "Skipping PT balance update for unknown user",
           user: to,
           eventName,
         });

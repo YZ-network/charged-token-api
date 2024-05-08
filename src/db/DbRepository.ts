@@ -220,7 +220,7 @@ export class DbRepository extends AbstractDbRepository {
     }).session(session);
 
     if (result === null) {
-      this.log.warn({ msg: "Not one balance found by user and project token", ptAddress, user });
+      this.log.debug({ msg: "No PT balance found for user", ptAddress, user });
       return null;
     }
 

@@ -1,6 +1,8 @@
 import { createPubSub } from "graphql-yoga";
 import { Broker } from "../broker";
 
+jest.mock("../config");
+
 describe("Broker", () => {
   const CHAIN_ID = 1337;
 

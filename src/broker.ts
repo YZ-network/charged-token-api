@@ -53,6 +53,8 @@ export class Broker extends AbstractBroker {
     const subId = ++this.subId;
     const sub = this.pubSub.subscribe(channel);
     (sub as any).id = subId;
+    (sub as any).chainId = chainId;
+    (sub as any).channel = channel;
 
     this.log.info({ chainId, msg: "subscribed to broker channel", channel, subId });
 
@@ -73,14 +75,21 @@ export class Broker extends AbstractBroker {
 
   async unsubscribe(sub: Repeater<any, any, unknown>, chainId: number): Promise<void> {
     const subId = (sub as any).id;
+    const subChannel = (sub as any).channel;
     const index = this.subscriptions[chainId].findIndex((s) => (s as any).id === subId);
 
     if (index >= 0) {
       this.subscriptions[chainId].splice(index, 1);
       await sub.return();
-      this.log.info({ chainId, msg: "subscription closed.", subId });
+      this.log.info({ chainId, msg: "subscription closed.", subId, subChannel });
     } else {
-      this.log.warn({ chainId, msg: "tried to remove missing subscription !", subId, subs: this.subscriptions });
+      this.log.warn({
+        chainId,
+        msg: "tried to remove missing subscription !",
+        subId,
+        subChannel,
+        subs: this.subscriptions,
+      });
     }
   }
 
