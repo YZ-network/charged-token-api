@@ -80,8 +80,8 @@ export class EventsLoader {
       } catch (err) {
         const errorMessage = (err as Error).message;
         if (errorMessage.includes("not processed yet")) {
-          this.log.debug({
-            msg: "Could not load new block events",
+          this.log.warn({
+            msg: "Could not load new block events, consider increasing blocks lag",
             fromBlock,
             toBlock,
             blockNumber,

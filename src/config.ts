@@ -27,7 +27,7 @@ const configDefaults: JsonConfig = {
     nodeDownAlertDelayMs: 10000,
   },
   blocks: {
-    lag: 3,
+    lag: 4,
     buffer: 2,
   },
 };
