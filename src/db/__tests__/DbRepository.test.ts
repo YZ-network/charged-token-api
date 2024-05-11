@@ -84,32 +84,6 @@ describe("DbRepository", () => {
     expect(UserBalanceModel.exists).toBeCalledWith({ chainId: CHAIN_ID, address: ADDRESS, user: "0xUSER" });
   });
 
-  it("should check event in db", async () => {
-    const session = await db.startSession();
-
-    const sessionSetterReturnsNull = { session: jest.fn() };
-    sessionSetterReturnsNull.session.mockResolvedValue(null);
-
-    const sessionSetterReturnsValue = { session: jest.fn() };
-    sessionSetterReturnsValue.session.mockResolvedValue({});
-
-    (EventModel.exists as jest.Mock)
-      .mockReturnValueOnce(sessionSetterReturnsNull)
-      .mockReturnValueOnce(sessionSetterReturnsValue);
-
-    expect(await db.existsEvent(CHAIN_ID, ADDRESS, 15, 1, 2, session)).toBe(false);
-    expect(await db.existsEvent(CHAIN_ID, ADDRESS, 15, 1, 2, session)).toBe(true);
-
-    expect(EventModel.exists).toBeCalledTimes(2);
-    expect(EventModel.exists).toBeCalledWith({
-      chainId: CHAIN_ID,
-      address: ADDRESS,
-      blockNumber: 15,
-      txIndex: 1,
-      logIndex: 2,
-    });
-  });
-
   it("should check user balances in db and return true if he has balances for every charged token", async () => {
     (ChargedTokenModel.count as jest.Mock).mockResolvedValueOnce(10);
     (UserBalanceModel.count as jest.Mock).mockResolvedValueOnce(9);
@@ -528,18 +502,5 @@ describe("DbRepository", () => {
       { chainId: CHAIN_ID, address: { $in: addresses } },
       { session },
     );
-  });
-
-  it("should delete pending and failed events", async () => {
-    const event = { name: "Transfer", toJSON: jest.fn() };
-
-    (EventModel.find as jest.Mock).mockResolvedValueOnce([event]).mockResolvedValueOnce([event]);
-
-    await db.deletePendingAndFailedEvents(CHAIN_ID);
-
-    expect(EventModel.find).toHaveBeenNthCalledWith(1, { chainId: CHAIN_ID, status: "QUEUED" });
-    expect(EventModel.find).toHaveBeenNthCalledWith(2, { chainId: CHAIN_ID, status: "FAILURE" });
-    expect(EventModel.deleteMany).toBeCalledWith({ chainId: CHAIN_ID, status: { $in: ["QUEUED", "FAILURE"] } });
-    expect(event.toJSON).toBeCalledTimes(1);
   });
 });

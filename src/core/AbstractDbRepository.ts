@@ -8,14 +8,6 @@ export abstract class AbstractDbRepository {
 
   abstract exists(dataType: DataType, chainId: number, address: string, session?: ClientSession): Promise<boolean>;
   abstract existsBalance(chainId: number, address: string, user: string): Promise<boolean>;
-  abstract existsEvent(
-    chainId: number,
-    address: string,
-    blockNumber: number,
-    txIndex: number,
-    logIndex: number,
-    session?: ClientSession,
-  ): Promise<boolean>;
 
   abstract isUserBalancesLoaded(chainId: number, user: string): Promise<boolean>;
 
@@ -55,7 +47,7 @@ export abstract class AbstractDbRepository {
 
   abstract save<T extends IContract>(dataType: DataType, data: T, session?: ClientSession): Promise<T>;
   abstract saveBalance(data: IUserBalance): Promise<void>;
-  abstract saveEvent(data: IEvent): Promise<void>;
+  abstract saveEvent(data: IEvent, session?: ClientSession): Promise<void>;
 
   abstract update<T extends IContract>(
     dataType: DataType,
@@ -87,5 +79,4 @@ export abstract class AbstractDbRepository {
     address: string | string[],
     session?: ClientSession,
   ): Promise<void>;
-  abstract deletePendingAndFailedEvents(chainId: number): Promise<void>;
 }

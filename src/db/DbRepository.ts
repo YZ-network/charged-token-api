@@ -59,25 +59,6 @@ export class DbRepository extends AbstractDbRepository {
     );
   }
 
-  async existsEvent(
-    chainId: number,
-    address: string,
-    blockNumber: number,
-    txIndex: number,
-    logIndex: number,
-    session: ClientSession | null = null,
-  ): Promise<boolean> {
-    return (
-      (await EventModel.exists({
-        chainId,
-        address,
-        blockNumber,
-        txIndex,
-        logIndex,
-      }).session(session)) !== null
-    );
-  }
-
   async isUserBalancesLoaded(chainId: number, user: string): Promise<boolean> {
     const contractsCount = await ChargedTokenModel.count({ chainId });
     const balancesCount = await UserBalanceModel.count({ chainId, user });
@@ -266,8 +247,8 @@ export class DbRepository extends AbstractDbRepository {
     await new UserBalanceModel(data).save();
   }
 
-  async saveEvent(data: IEvent): Promise<void> {
-    await new EventModel(data).save();
+  async saveEvent(data: IEvent, session?: ClientSession): Promise<void> {
+    await new EventModel(data).save({ session });
   }
 
   async update<T extends IContract>(
@@ -341,34 +322,6 @@ export class DbRepository extends AbstractDbRepository {
     } else {
       await model.deleteMany({ chainId, address: { $in: address } }, { session });
     }
-  }
-
-  async deletePendingAndFailedEvents(chainId: number): Promise<void> {
-    const pendingEvents = await EventModel.find({
-      chainId,
-      status: "QUEUED",
-    });
-    const failedEvents = await EventModel.find({
-      chainId,
-      status: "FAILURE",
-    });
-    if (pendingEvents.length > 0) {
-      this.log.warn({
-        msg: "Found pending events ! will remove them",
-        pendingEventsCount: pendingEvents.length,
-      });
-    }
-    if (failedEvents.length > 0) {
-      this.log.warn({
-        msg: "Found failed events ! will remove them",
-        failedEventsCount: failedEvents.length,
-        events: failedEvents.map((event: any) => event.toJSON()),
-      });
-    }
-    await EventModel.deleteMany({
-      chainId,
-      status: { $in: ["QUEUED", "FAILURE"] },
-    });
   }
 
   private getModelByDataType(dataType: DataType): Model<any> {

@@ -219,8 +219,6 @@ describe("ChainWorker", () => {
     expect(worker.blockchain).toBeUndefined();
     expect(worker.worker).toBeUndefined();
     expect(worker.wsWatch).toBeUndefined();
-
-    expect(db.deletePendingAndFailedEvents).toBeCalledTimes(1);
   });
 
   test("should manage provider error event creating directory", async () => {
@@ -258,8 +256,6 @@ describe("ChainWorker", () => {
     expect(worker.blockchain).toBeUndefined();
     expect(worker.worker).toBeUndefined();
     expect(worker.wsWatch).toBeUndefined();
-
-    expect(db.deletePendingAndFailedEvents).toBeCalledTimes(1);
   });
 
   /* TODO rewrite this test

@@ -118,28 +118,28 @@ export class EventsLoader {
 
     this.log.debug({ msg: "On watched contracts", count: knownContractsEvents.length });
 
-    const knownEvents = knownContractsEvents.filter((event) => knownTopics.includes(event.topics[0]));
+    const knownEvents = knownContractsEvents
+      .filter((event) => knownTopics.includes(event.topics[0]))
+      .sort((a, b) => {
+        if (a.blockNumber < b.blockNumber) return -1;
+        if (a.blockNumber > b.blockNumber) return 1;
+        if (a.logIndex < b.logIndex) return -1;
+        if (a.logIndex > b.logIndex) return 1;
+        throw new Error(`Found duplicate event while sorting : ${JSON.stringify(a)} ${JSON.stringify(b)}`);
+      })
+      .map((log) => {
+        const contract = this.contracts[log.address];
+        const eventName = topicsMap[contract.dataType][log.topics[0]];
+        return {
+          log,
+          eventName,
+          ...contract,
+        };
+      });
 
     this.log.debug({ msg: "On watched topics", count: knownEvents.length });
 
-    for (const log of knownEvents) {
-      const { dataType, loader, iface } = this.contracts[log.address];
-
-      const eventName = topicsMap[dataType][log.topics[0]];
-
-      try {
-        await this.eventListener.queueLog(eventName, log, loader, iface);
-      } catch (err) {
-        this.log.error({
-          msg: "error queuing event",
-          address: log.address,
-          dataType,
-          eventName,
-          err,
-          log,
-        });
-      }
-    }
+    await this.eventListener.handleEvents(knownEvents);
 
     this.lastLoadedBlock = toBlock;
 

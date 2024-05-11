@@ -413,8 +413,6 @@ export class ChainWorker {
 
     await this.broker.removeSubscriptions(this.chainId);
 
-    await this.db.deletePendingAndFailedEvents(this.chainId);
-
     this.workerStatus = "DEAD";
 
     this.stopping = false;

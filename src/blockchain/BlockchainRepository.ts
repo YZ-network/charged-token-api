@@ -32,7 +32,6 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     provider: ethers.providers.JsonRpcProvider,
     db: AbstractDbRepository,
     broker: AbstractBroker,
-    startEventLoop = true,
   ) {
     super();
     this.log = rootLogger.child({ chainId, name: "Blockchain" });
@@ -41,7 +40,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     this.provider = provider;
     this.db = db;
     this.broker = broker;
-    this.eventListener = new EventListener(db, provider, startEventLoop);
+    this.eventListener = new EventListener(db, provider);
     this.eventsLoader = new EventsLoader(chainId, provider, this.eventListener, this.db);
   }
 
@@ -618,7 +617,6 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   destroy(): void {
     Object.values(this.instances).forEach((instance) => instance.removeAllListeners);
 
-    this.eventListener.destroy();
     this.eventsLoader.destroy();
   }
 }
