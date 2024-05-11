@@ -70,7 +70,7 @@ describe("User balance query resolver", () => {
     expect(db.getBalance).toBeCalledWith(chainId, address, user);
   });
 
-  it("should return empty list when address is provided and the balance haven't been loaded yet", async () => {
+  it("should return null when address is provided and the balance haven't been loaded yet", async () => {
     const loadedBalance = { chainId, user, address: "0xCT1" } as IUserBalance;
 
     db.isUserBalancesLoaded.mockResolvedValueOnce(true);
@@ -78,7 +78,7 @@ describe("User balance query resolver", () => {
 
     const result = await resolver(undefined, { chainId, user, address });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual(null);
     expect(db.isUserBalancesLoaded).toBeCalledWith(chainId, user);
     expect(db.getBalance).toBeCalledWith(chainId, address, user);
   });
@@ -88,7 +88,7 @@ describe("User balance query resolver", () => {
 
     const result = await resolver(undefined, { chainId, user, address });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual(null);
     expect(db.isUserBalancesLoaded).toBeCalledWith(chainId, user);
     expect(broker.notifyBalanceLoadingRequired).toBeCalledWith(chainId, { user, address });
   });
