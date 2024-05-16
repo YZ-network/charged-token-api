@@ -1,5 +1,5 @@
 import { BigNumber, type ClientSession } from "../../vendor";
-import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
+import type { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractHandler } from "../AbstractHandler";
 
 export class InterfaceProjectToken extends AbstractHandler<IInterfaceProjectToken> {

@@ -1,6 +1,6 @@
 import { Config } from "./config";
-import { AbstractBroker } from "./core/AbstractBroker";
-import { AbstractDbRepository } from "./core/AbstractDbRepository";
+import type { AbstractBroker } from "./core/AbstractBroker";
+import type { AbstractDbRepository } from "./core/AbstractDbRepository";
 import { AbstractWorkerManager } from "./core/AbstractWorkerManager";
 import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";

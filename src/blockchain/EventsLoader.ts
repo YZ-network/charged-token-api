@@ -1,10 +1,10 @@
-import { ethers } from "ethers";
-import { Logger } from "pino";
+import type { ethers } from "ethers";
+import type { Logger } from "pino";
 import { Config } from "../config";
-import { AbstractDbRepository } from "../core/AbstractDbRepository";
-import { AbstractHandler } from "../core/AbstractHandler";
+import type { AbstractDbRepository } from "../core/AbstractDbRepository";
+import type { AbstractHandler } from "../core/AbstractHandler";
 import { rootLogger } from "../rootLogger";
-import { EventListener } from "./EventListener";
+import type { EventListener } from "./EventListener";
 import topicsMap from "./topics";
 
 export class EventsLoader {

@@ -1,9 +1,9 @@
 import { type ethers } from "ethers";
 import { type Logger } from "pino";
-import { AbstractDbRepository } from "../core/AbstractDbRepository";
+import type { AbstractDbRepository } from "../core/AbstractDbRepository";
 import { type AbstractHandler } from "../core/AbstractHandler";
 import { rootLogger } from "../rootLogger";
-import { ClientSession } from "../vendor";
+import type { ClientSession } from "../vendor";
 import { getBlockDate } from "./functions";
 
 type EventQueue = Array<{

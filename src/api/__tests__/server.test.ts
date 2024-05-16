@@ -1,7 +1,7 @@
-import { YogaServerInstance } from "graphql-yoga";
-import { AbstractBroker } from "../../core/AbstractBroker";
-import { AbstractDbRepository } from "../../core/AbstractDbRepository";
-import { AbstractWorkerManager } from "../../core/AbstractWorkerManager";
+import type { YogaServerInstance } from "graphql-yoga";
+import type { AbstractBroker } from "../../core/AbstractBroker";
+import type { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import type { AbstractWorkerManager } from "../../core/AbstractWorkerManager";
 import { MockBroker } from "../../core/__mocks__/MockBroker";
 import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 import { MockWorkerManager } from "../../core/__mocks__/MockWorkerManager";
@@ -44,7 +44,9 @@ describe("GraphQL API server", () => {
 
   it("should build onSubscribe handler", async () => {
     const ctxValue = {};
-    const mockYoga = { getEnveloped: jest.fn() } as unknown as jest.Mocked<YogaServerInstance<{}, {}>>;
+    const mockYoga = { getEnveloped: jest.fn() } as unknown as jest.Mocked<
+      YogaServerInstance<Record<string, any>, Record<string, any>>
+    >;
     const mockEnvelope = {
       schema: {},
       execute: jest.fn(),

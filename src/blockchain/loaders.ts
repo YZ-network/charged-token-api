@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+import type { ethers } from "ethers";
 import { EMPTY_ADDRESS } from "../vendor";
 
 async function loadDirectory(

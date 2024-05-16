@@ -1,8 +1,8 @@
 import { ethers } from "ethers";
 import { ClientSession } from "mongodb";
 import { EventListener } from "../../blockchain/EventListener";
-import { AbstractDbRepository } from "../../core/AbstractDbRepository";
-import { AbstractHandler } from "../../core/AbstractHandler";
+import type { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import type { AbstractHandler } from "../../core/AbstractHandler";
 import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 
 jest.mock("../../config");

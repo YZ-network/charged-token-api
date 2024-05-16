@@ -1,8 +1,9 @@
-import { Logger } from "pino";
+import type { Logger } from "pino";
 import { MockLogger } from "../../../__mocks__/MockLogger";
-import { AbstractDbRepository } from "../../../core/AbstractDbRepository";
+import type { AbstractDbRepository } from "../../../core/AbstractDbRepository";
 import { MockDbRepository } from "../../../core/__mocks__/MockDbRepository";
-import { DirectoryQueryResolver, DirectoryQueryResolverFactory } from "../directory";
+import type { DirectoryQueryResolver} from "../directory";
+import { DirectoryQueryResolverFactory } from "../directory";
 
 jest.mock("../../../config");
 

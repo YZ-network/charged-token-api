@@ -1,5 +1,5 @@
 import { BigNumber, EMPTY_ADDRESS, type ClientSession } from "../../vendor";
-import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
+import type { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractHandler } from "../AbstractHandler";
 
 export class DelegableToLT extends AbstractHandler<IDelegableToLT> {

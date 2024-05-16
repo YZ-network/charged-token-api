@@ -1,5 +1,5 @@
-import { ClientSession } from "../vendor";
-import { AbstractHandler } from "./AbstractHandler";
+import type { ClientSession } from "../vendor";
+import type { AbstractHandler } from "./AbstractHandler";
 
 export abstract class AbstractBlockchainRepository {
   abstract getBlockNumber(): Promise<number>;

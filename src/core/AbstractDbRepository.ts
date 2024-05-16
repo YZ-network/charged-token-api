@@ -1,4 +1,4 @@
-import { ClientSession } from "../vendor";
+import type { ClientSession } from "../vendor";
 
 export abstract class AbstractDbRepository {
   abstract startSession(): Promise<ClientSession>;

@@ -1,7 +1,7 @@
-import { Logger } from "pino";
-import { AbstractBroker } from "../../core/AbstractBroker";
-import { AbstractDbRepository } from "../../core/AbstractDbRepository";
-import { AbstractWorkerManager } from "../../core/AbstractWorkerManager";
+import type { Logger } from "pino";
+import type { AbstractBroker } from "../../core/AbstractBroker";
+import type { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import type { AbstractWorkerManager } from "../../core/AbstractWorkerManager";
 import { DirectoryQueryResolverFactory } from "./directory";
 import { ResolverFactory } from "./factory";
 import { HealthQueryResolverFactory } from "./health";

@@ -1,4 +1,4 @@
-import { AbstractBroker } from "../AbstractBroker";
+import type { AbstractBroker } from "../AbstractBroker";
 
 export const MockBroker: jest.Mock<AbstractBroker> = jest.fn().mockImplementation(() => {
   return {

@@ -1,4 +1,4 @@
-import { AbstractWorkerManager } from "../AbstractWorkerManager";
+import type { AbstractWorkerManager } from "../AbstractWorkerManager";
 
 export const MockWorkerManager: jest.Mock<AbstractWorkerManager> = jest.fn().mockImplementation(() => {
   return {

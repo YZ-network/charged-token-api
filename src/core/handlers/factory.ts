@@ -1,5 +1,5 @@
-import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
-import { AbstractHandler } from "../AbstractHandler";
+import type { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
+import type { AbstractHandler } from "../AbstractHandler";
 import { ChargedToken } from "./ChargedToken";
 import { DelegableToLT } from "./DelegableToLT";
 import { Directory } from "./Directory";

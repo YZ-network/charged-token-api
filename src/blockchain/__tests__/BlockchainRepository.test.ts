@@ -1,13 +1,13 @@
 import { BigNumber, ethers } from "ethers";
 import { ClientSession } from "mongodb";
-import { AbstractBroker } from "../../core/AbstractBroker";
-import { AbstractDbRepository } from "../../core/AbstractDbRepository";
-import { AbstractHandler } from "../../core/AbstractHandler";
+import type { AbstractBroker } from "../../core/AbstractBroker";
+import type { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import type { AbstractHandler } from "../../core/AbstractHandler";
 import { MockBroker } from "../../core/__mocks__/MockBroker";
 import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 import { EMPTY_ADDRESS } from "../../vendor";
 import { BlockchainRepository } from "../BlockchainRepository";
-import { EventListener } from "../EventListener";
+import type { EventListener } from "../EventListener";
 import { detectNegativeAmount } from "../functions";
 import { loadContract } from "../loaders";
 

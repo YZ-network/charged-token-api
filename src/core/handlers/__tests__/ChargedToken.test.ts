@@ -1,7 +1,7 @@
 import { ClientSession } from "mongodb";
 import { EMPTY_ADDRESS } from "../../../vendor";
-import { AbstractBlockchainRepository } from "../../AbstractBlockchainRepository";
-import { AbstractBroker } from "../../AbstractBroker";
+import type { AbstractBlockchainRepository } from "../../AbstractBlockchainRepository";
+import type { AbstractBroker } from "../../AbstractBroker";
 import { MockBlockchainRepository } from "../../__mocks__/MockBlockchainRepository";
 import { MockBroker } from "../../__mocks__/MockBroker";
 import { ChargedToken } from "../ChargedToken";

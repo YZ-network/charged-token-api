@@ -1,5 +1,5 @@
 import { EMPTY_ADDRESS } from "../../vendor";
-import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
+import type { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { ContractsRegistry } from "../ContractsRegistry";
 import { MockBlockchainRepository } from "../__mocks__/MockBlockchainRepository";
 import { ChargedToken } from "../handlers/ChargedToken";

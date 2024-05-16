@@ -1,6 +1,6 @@
-import { Logger } from "pino";
+import type { Logger } from "pino";
 import { MockLogger } from "../../../__mocks__/MockLogger";
-import { AbstractWorkerManager } from "../../../core/AbstractWorkerManager";
+import type { AbstractWorkerManager } from "../../../core/AbstractWorkerManager";
 import { MockWorkerManager } from "../../../core/__mocks__/MockWorkerManager";
 import { HealthQueryResolverFactory } from "../health";
 

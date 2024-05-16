@@ -1,5 +1,6 @@
-import { BigNumber, ClientSession, EMPTY_ADDRESS } from "../../vendor";
-import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
+import type { ClientSession} from "../../vendor";
+import { BigNumber, EMPTY_ADDRESS } from "../../vendor";
+import type { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractHandler } from "../AbstractHandler";
 
 export class ChargedToken extends AbstractHandler<IChargedToken> {

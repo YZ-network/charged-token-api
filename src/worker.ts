@@ -1,10 +1,10 @@
-import { Logger } from "pino";
+import type { Logger } from "pino";
 import { WebSocket } from "ws";
 import { AutoWebSocketProvider } from "./blockchain/AutoWebSocketProvider";
 import { BlockchainRepository } from "./blockchain/BlockchainRepository";
 import { Config } from "./config";
-import { AbstractBroker } from "./core/AbstractBroker";
-import { AbstractDbRepository } from "./core/AbstractDbRepository";
+import type { AbstractBroker } from "./core/AbstractBroker";
+import type { AbstractDbRepository } from "./core/AbstractDbRepository";
 import { ContractsRegistry } from "./core/ContractsRegistry";
 import { Metrics } from "./metrics";
 import { rootLogger } from "./rootLogger";

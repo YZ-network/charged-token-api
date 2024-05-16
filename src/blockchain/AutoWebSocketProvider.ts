@@ -12,8 +12,9 @@ import { BigNumber } from "ethers";
 import { type Event } from "@ethersproject/providers/lib/base-provider";
 import { type InflightRequest, type Subscription } from "@ethersproject/providers/lib/websocket-provider";
 import { ethers } from "ethers";
-import { Logger } from "pino";
-import { ErrorEvent, MessageEvent, WebSocket } from "ws";
+import type { Logger } from "pino";
+import type { ErrorEvent, MessageEvent} from "ws";
+import { WebSocket } from "ws";
 import { Metrics } from "../metrics";
 import { rootLogger } from "../rootLogger";
 

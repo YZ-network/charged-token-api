@@ -1,7 +1,7 @@
 import { Repeater } from "graphql-yoga";
-import { Logger } from "pino";
-import { AbstractBroker } from "../../core/AbstractBroker";
-import { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import type { Logger } from "pino";
+import type { AbstractBroker } from "../../core/AbstractBroker";
+import type { AbstractDbRepository } from "../../core/AbstractDbRepository";
 import { toGraphQL } from "./functions";
 import { validateChainId } from "./validateChainId";
 

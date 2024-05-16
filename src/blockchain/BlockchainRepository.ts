@@ -1,11 +1,12 @@
 import { ethers } from "ethers";
-import { Logger } from "pino";
+import type { Logger } from "pino";
 import { AbstractBlockchainRepository } from "../core/AbstractBlockchainRepository";
-import { AbstractBroker } from "../core/AbstractBroker";
-import { AbstractDbRepository } from "../core/AbstractDbRepository";
-import { AbstractHandler } from "../core/AbstractHandler";
+import type { AbstractBroker } from "../core/AbstractBroker";
+import type { AbstractDbRepository } from "../core/AbstractDbRepository";
+import type { AbstractHandler } from "../core/AbstractHandler";
 import { rootLogger } from "../rootLogger";
-import { ClientSession, EMPTY_ADDRESS } from "../vendor";
+import type { ClientSession} from "../vendor";
+import { EMPTY_ADDRESS } from "../vendor";
 import { EventListener } from "./EventListener";
 import { EventsLoader } from "./EventsLoader";
 import { contracts } from "./contracts";

@@ -1,7 +1,8 @@
-import mongoose, { Document, Model } from "mongoose";
+import type { Document, Model } from "mongoose";
+import mongoose from "mongoose";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
 import { rootLogger } from "../rootLogger";
-import { ClientSession } from "../vendor";
+import type { ClientSession } from "../vendor";
 import { ChargedTokenModel } from "./models/ChargedToken";
 import { DelegableToLTModel } from "./models/DelegableToLT";
 import { DirectoryModel } from "./models/Directory";
