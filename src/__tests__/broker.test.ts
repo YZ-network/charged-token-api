@@ -1,3 +1,4 @@
+import type { Repeater } from "graphql-yoga";
 import { createPubSub } from "graphql-yoga";
 import { Broker } from "../broker";
 
@@ -47,5 +48,33 @@ describe("Broker", () => {
     await broker.subscribeBalanceLoadingRequests(CHAIN_ID);
 
     expect(broker.pubSub.subscribe).toBeCalledWith("UserBalance.1337/load");
+  });
+
+  it("should unsubscribe from given sub", async () => {
+    const sub = broker.subscribeUpdates("ChargedToken", CHAIN_ID);
+    expect(broker.getSubscriptions()[CHAIN_ID]).toContain(sub);
+
+    await broker.unsubscribe(sub, CHAIN_ID);
+
+    expect(broker.getSubscriptions()[CHAIN_ID]).not.toContain(sub);
+    expect(sub.return).toBeCalled();
+  });
+
+  it("should not fail when unsubscribing from ended sub", async () => {
+    const sub = { id: 0, channel: "anyChannel", return: jest.fn() } as unknown as Repeater<any, any, unknown>;
+
+    await broker.unsubscribe(sub, CHAIN_ID);
+
+    expect(sub.return).not.toBeCalled();
+  });
+
+  it("should remove all remaining subscriptions", async () => {
+    broker.subscribeUpdates("ChargedToken", CHAIN_ID);
+    broker.subscribeUpdates("InterfaceProjectToken", CHAIN_ID);
+    expect(broker.getSubscriptions()[CHAIN_ID].length).toEqual(2);
+
+    await broker.removeSubscriptions(CHAIN_ID);
+
+    expect(broker.getSubscriptions()[CHAIN_ID].length).toEqual(0);
   });
 });

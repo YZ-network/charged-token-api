@@ -1,4 +1,4 @@
-import type { Repeater} from "graphql-yoga";
+import type { Repeater } from "graphql-yoga";
 import { createPubSub } from "graphql-yoga";
 import { AbstractBroker } from "./core/AbstractBroker";
 import { Metrics } from "./metrics";
@@ -19,6 +19,13 @@ export class Broker extends AbstractBroker {
     this.pubSub = createPubSub();
     this.subId = 0;
     this.subscriptions = {};
+  }
+
+  getSubscriptions() {
+    return Object.assign(
+      {},
+      ...Object.entries(this.subscriptions).map(([chainId, subs]) => ({ [chainId]: [...subs] })),
+    );
   }
 
   notifyUpdate(dataType: DataType, chainId: number, address: string, data: any): void {
@@ -77,7 +84,8 @@ export class Broker extends AbstractBroker {
   async unsubscribe(sub: Repeater<any, any, unknown>, chainId: number): Promise<void> {
     const subId = (sub as any).id;
     const subChannel = (sub as any).channel;
-    const index = this.subscriptions[chainId].findIndex((s) => (s as any).id === subId);
+    const index =
+      chainId in this.subscriptions ? this.subscriptions[chainId].findIndex((s) => (s as any).id === subId) : -1;
 
     if (index >= 0) {
       this.subscriptions[chainId].splice(index, 1);
