@@ -1,9 +1,10 @@
-import { Repeater } from "graphql-yoga";
-import { AbstractBlockchainRepository } from "../core/AbstractBlockchainRepository";
-import { AbstractBroker } from "../core/AbstractBroker";
-import { AbstractDbRepository } from "../core/AbstractDbRepository";
+import type { Repeater } from "graphql-yoga";
+import type { AbstractBlockchainRepository } from "../core/AbstractBlockchainRepository";
+import type { AbstractBroker } from "../core/AbstractBroker";
+import type { AbstractDbRepository } from "../core/AbstractDbRepository";
 import { rootLogger } from "../rootLogger";
-import { EMPTY_ADDRESS, Logger } from "../vendor";
+import type { Logger } from "../vendor";
+import { EMPTY_ADDRESS } from "../vendor";
 
 async function listenToBalanceLoadingRequests(
   sub: Repeater<any, any, unknown>,

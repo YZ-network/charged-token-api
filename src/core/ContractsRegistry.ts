@@ -1,7 +1,7 @@
-import pino from "pino";
+import type pino from "pino";
 import { rootLogger } from "../rootLogger";
 import { EMPTY_ADDRESS } from "../vendor";
-import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
+import type { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 import { handlerFactory } from "./handlers/factory";
 
 export class ContractsRegistry {

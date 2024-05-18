@@ -1,4 +1,4 @@
-import { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
+import type { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 
 export const MockBlockchainRepository: jest.Mock<AbstractBlockchainRepository> = jest.fn().mockImplementation(() => {
   return {

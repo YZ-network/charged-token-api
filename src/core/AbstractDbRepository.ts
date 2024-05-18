@@ -1,4 +1,4 @@
-import { ClientSession } from "../vendor";
+import type { ClientSession } from "../vendor";
 
 export abstract class AbstractDbRepository {
   abstract startSession(): Promise<ClientSession>;
@@ -8,14 +8,6 @@ export abstract class AbstractDbRepository {
 
   abstract exists(dataType: DataType, chainId: number, address: string, session?: ClientSession): Promise<boolean>;
   abstract existsBalance(chainId: number, address: string, user: string): Promise<boolean>;
-  abstract existsEvent(
-    chainId: number,
-    address: string,
-    blockNumber: number,
-    txIndex: number,
-    logIndex: number,
-    session?: ClientSession,
-  ): Promise<boolean>;
 
   abstract isUserBalancesLoaded(chainId: number, user: string): Promise<boolean>;
 
@@ -50,12 +42,14 @@ export abstract class AbstractDbRepository {
   ): Promise<IUserBalance[]>;
   abstract getAllEvents(): Promise<IEvent[]>;
   abstract getEventsPaginated(chainId: number, count: number, offset: number): Promise<IEvent[]>;
+  abstract getTransaction(chainId: number, hash: string): Promise<ITransaction | null>;
 
   abstract isDelegableStillReferenced(chainId: number, address: string): Promise<boolean>;
 
   abstract save<T extends IContract>(dataType: DataType, data: T, session?: ClientSession): Promise<T>;
   abstract saveBalance(data: IUserBalance): Promise<void>;
-  abstract saveEvent(data: IEvent): Promise<void>;
+  abstract saveEvent(data: IEvent, session?: ClientSession): Promise<void>;
+  abstract saveTransaction(date: ITransaction, session?: ClientSession): Promise<void>;
 
   abstract update<T extends IContract>(
     dataType: DataType,
@@ -87,5 +81,4 @@ export abstract class AbstractDbRepository {
     address: string | string[],
     session?: ClientSession,
   ): Promise<void>;
-  abstract deletePendingAndFailedEvents(chainId: number): Promise<void>;
 }

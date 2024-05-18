@@ -11,6 +11,11 @@ interface IParsedBlock {
   lastUpdateBlock: number;
 }
 
+interface ITransaction {
+  chainId: number;
+  hash: string;
+}
+
 interface IContract {
   chainId: number;
   address: string;
@@ -163,7 +168,6 @@ interface JsonNetworkConfig {
 }
 
 interface JsonDelaysConfig {
-  healthPublishDelayMs: number;
   workerRestartDelayMs: number;
   rpcMaxParallelRequests: number;
   rpcMaxRetryCount: number;

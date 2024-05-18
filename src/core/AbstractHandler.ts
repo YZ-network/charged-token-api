@@ -1,8 +1,8 @@
 import { BigNumber } from "ethers";
 import { type ClientSession } from "mongoose";
-import { Logger } from "pino";
+import type { Logger } from "pino";
 import { rootLogger } from "../rootLogger";
-import { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
+import type { AbstractBlockchainRepository } from "./AbstractBlockchainRepository";
 
 type IEventHandler = (session: ClientSession, args: any[], blockNumber: number, eventName: string) => Promise<void>;
 
@@ -16,7 +16,7 @@ type IEventHandler = (session: ClientSession, args: any[], blockNumber: number, 
 export abstract class AbstractHandler<T extends IContract> {
   readonly chainId: number;
   readonly address: string;
-  protected readonly dataType: DataType;
+  readonly dataType: DataType;
   protected readonly log: Logger;
 
   protected readonly blockchain: AbstractBlockchainRepository;

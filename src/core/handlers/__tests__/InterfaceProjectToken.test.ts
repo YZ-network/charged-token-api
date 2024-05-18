@@ -1,6 +1,6 @@
 import { BigNumber } from "ethers";
 import { ClientSession } from "mongodb";
-import { AbstractBlockchainRepository } from "../../AbstractBlockchainRepository";
+import type { AbstractBlockchainRepository } from "../../AbstractBlockchainRepository";
 import { MockBlockchainRepository } from "../../__mocks__/MockBlockchainRepository";
 import { InterfaceProjectToken } from "../InterfaceProjectToken";
 

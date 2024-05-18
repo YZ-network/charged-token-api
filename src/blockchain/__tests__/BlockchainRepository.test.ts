@@ -1,13 +1,13 @@
 import { BigNumber, ethers } from "ethers";
 import { ClientSession } from "mongodb";
-import { AbstractBroker } from "../../core/AbstractBroker";
-import { AbstractDbRepository } from "../../core/AbstractDbRepository";
-import { AbstractHandler } from "../../core/AbstractHandler";
+import type { AbstractBroker } from "../../core/AbstractBroker";
+import type { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import type { AbstractHandler } from "../../core/AbstractHandler";
 import { MockBroker } from "../../core/__mocks__/MockBroker";
 import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";
 import { EMPTY_ADDRESS } from "../../vendor";
 import { BlockchainRepository } from "../BlockchainRepository";
-import { EventListener } from "../EventListener";
+import type { EventListener } from "../EventListener";
 import { detectNegativeAmount } from "../functions";
 import { loadContract } from "../loaders";
 
@@ -30,7 +30,7 @@ describe("BlockchainRepository", () => {
     provider = new ethers.providers.JsonRpcProvider() as jest.Mocked<ethers.providers.JsonRpcProvider>;
     db = new MockDbRepository() as jest.Mocked<AbstractDbRepository>;
     broker = new MockBroker() as jest.Mocked<AbstractBroker>;
-    blockchain = new BlockchainRepository(CHAIN_ID, provider, db, broker, false);
+    blockchain = new BlockchainRepository(CHAIN_ID, provider, db, broker);
     session = new ClientSession();
   });
 
@@ -507,14 +507,16 @@ describe("BlockchainRepository", () => {
     expect(provider.on).toBeCalledWith("block", expect.any(Function));
     expect(mockHandler).not.toBeCalled();
 
-    (blockchain.eventListener as unknown as jest.Mocked<EventListener>).queueLog.mockResolvedValueOnce(undefined);
+    (blockchain.eventListener as unknown as jest.Mocked<EventListener>).handleEvents.mockResolvedValueOnce(undefined);
 
     if (callback === undefined) throw new Error("Callback not yet initialized !");
 
     await callback(20);
 
     expect(mockHandler).not.toBeCalled();
-    expect(blockchain.eventListener.queueLog).toBeCalledWith("UserFunctionsAreDisabled", log, mockHandler, iface);
+    expect(blockchain.eventListener.handleEvents).toBeCalledWith([
+      { dataType: "ChargedToken", eventName: "UserFunctionsAreDisabled", log, loader: mockHandler, iface },
+    ]);
 
     blockchain.eventsLoader.destroy();
   });
@@ -534,9 +536,11 @@ describe("BlockchainRepository", () => {
       data: "0xDATA",
     } as Log;
 
-    (blockchain.eventListener as unknown as jest.Mocked<EventListener>).queueLog.mockImplementationOnce(async () => {
-      throw new Error();
-    });
+    (blockchain.eventListener as unknown as jest.Mocked<EventListener>).handleEvents.mockImplementationOnce(
+      async () => {
+        throw new Error();
+      },
+    );
 
     let callback: ((event: ethers.providers.Log) => void) | undefined;
     (provider.on as jest.Mock).mockImplementationOnce((eventName, givenCallback) => (callback = givenCallback));

@@ -1,4 +1,4 @@
-import { AbstractBlockchainRepository } from "../../AbstractBlockchainRepository";
+import type { AbstractBlockchainRepository } from "../../AbstractBlockchainRepository";
 import { MockBlockchainRepository } from "../../__mocks__/MockBlockchainRepository";
 import { ChargedToken } from "../ChargedToken";
 import { DelegableToLT } from "../DelegableToLT";

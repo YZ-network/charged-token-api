@@ -1,13 +1,15 @@
-import mongoose, { Document, Model } from "mongoose";
+import type { Document, Model } from "mongoose";
+import mongoose from "mongoose";
 import { AbstractDbRepository } from "../core/AbstractDbRepository";
 import { rootLogger } from "../rootLogger";
-import { ClientSession } from "../vendor";
+import type { ClientSession } from "../vendor";
 import { ChargedTokenModel } from "./models/ChargedToken";
 import { DelegableToLTModel } from "./models/DelegableToLT";
 import { DirectoryModel } from "./models/Directory";
 import { EventModel } from "./models/Event";
 import { InterfaceProjectTokenModel } from "./models/InterfaceProjectToken";
 import { ParsedBlockModel } from "./models/ParsedBlock";
+import { TransactionModel } from "./models/Transaction";
 import { UserBalanceModel } from "./models/UserBalances";
 
 export class DbRepository extends AbstractDbRepository {
@@ -55,25 +57,6 @@ export class DbRepository extends AbstractDbRepository {
         chainId,
         address,
         user,
-      }).session(session)) !== null
-    );
-  }
-
-  async existsEvent(
-    chainId: number,
-    address: string,
-    blockNumber: number,
-    txIndex: number,
-    logIndex: number,
-    session: ClientSession | null = null,
-  ): Promise<boolean> {
-    return (
-      (await EventModel.exists({
-        chainId,
-        address,
-        blockNumber,
-        txIndex,
-        logIndex,
       }).session(session)) !== null
     );
   }
@@ -220,7 +203,7 @@ export class DbRepository extends AbstractDbRepository {
     }).session(session);
 
     if (result === null) {
-      this.log.warn({ msg: "Not one balance found by user and project token", ptAddress, user });
+      this.log.debug({ msg: "No PT balance found for user", ptAddress, user });
       return null;
     }
 
@@ -240,6 +223,11 @@ export class DbRepository extends AbstractDbRepository {
       .sort({ blockNumber: "asc", txIndex: "asc", logIndex: "asc" });
 
     return result.map((doc: any) => doc.toJSON());
+  }
+
+  async getTransaction(chainId: number, hash: string): Promise<ITransaction | null> {
+    const tx = await TransactionModel.findOne({ chainId, hash });
+    return tx !== null ? tx.toJSON() : null;
   }
 
   async isDelegableStillReferenced(chainId: number, address: string): Promise<boolean> {
@@ -266,8 +254,12 @@ export class DbRepository extends AbstractDbRepository {
     await new UserBalanceModel(data).save();
   }
 
-  async saveEvent(data: IEvent): Promise<void> {
-    await new EventModel(data).save();
+  async saveEvent(data: IEvent, session?: ClientSession): Promise<void> {
+    await new EventModel(data).save({ session });
+  }
+
+  async saveTransaction(data: ITransaction, session?: ClientSession): Promise<void> {
+    await new TransactionModel(data).save({ session });
   }
 
   async update<T extends IContract>(
@@ -341,34 +333,6 @@ export class DbRepository extends AbstractDbRepository {
     } else {
       await model.deleteMany({ chainId, address: { $in: address } }, { session });
     }
-  }
-
-  async deletePendingAndFailedEvents(chainId: number): Promise<void> {
-    const pendingEvents = await EventModel.find({
-      chainId,
-      status: "QUEUED",
-    });
-    const failedEvents = await EventModel.find({
-      chainId,
-      status: "FAILURE",
-    });
-    if (pendingEvents.length > 0) {
-      this.log.warn({
-        msg: "Found pending events ! will remove them",
-        pendingEventsCount: pendingEvents.length,
-      });
-    }
-    if (failedEvents.length > 0) {
-      this.log.warn({
-        msg: "Found failed events ! will remove them",
-        failedEventsCount: failedEvents.length,
-        events: failedEvents.map((event: any) => event.toJSON()),
-      });
-    }
-    await EventModel.deleteMany({
-      chainId,
-      status: { $in: ["QUEUED", "FAILURE"] },
-    });
   }
 
   private getModelByDataType(dataType: DataType): Model<any> {

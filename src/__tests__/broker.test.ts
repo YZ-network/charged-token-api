@@ -1,5 +1,8 @@
+import type { Repeater } from "graphql-yoga";
 import { createPubSub } from "graphql-yoga";
 import { Broker } from "../broker";
+
+jest.mock("../config");
 
 describe("Broker", () => {
   const CHAIN_ID = 1337;
@@ -29,20 +32,6 @@ describe("Broker", () => {
     expect(broker.pubSub.publish).toBeCalledWith("UserBalance.1337/load", data);
   });
 
-  it("should notify health check data", async () => {
-    const data = [{ chainId: CHAIN_ID, workerStatus: "STARTED" }];
-
-    await broker.notifyHealth(data);
-
-    expect(broker.pubSub.publish).toBeCalledWith("Health", data);
-  });
-
-  it("should subscribe to health updates", async () => {
-    await broker.subscribeHealth();
-
-    expect(broker.pubSub.subscribe).toBeCalledWith("Health");
-  });
-
   it("should subscribe to contract updates by address and by contract type", async () => {
     await broker.subscribeUpdatesByAddress("ChargedToken", CHAIN_ID, "0xADDRESS");
 
@@ -59,5 +48,33 @@ describe("Broker", () => {
     await broker.subscribeBalanceLoadingRequests(CHAIN_ID);
 
     expect(broker.pubSub.subscribe).toBeCalledWith("UserBalance.1337/load");
+  });
+
+  it("should unsubscribe from given sub", async () => {
+    const sub = broker.subscribeUpdates("ChargedToken", CHAIN_ID);
+    expect(broker.getSubscriptions()[CHAIN_ID]).toContain(sub);
+
+    await broker.unsubscribe(sub, CHAIN_ID);
+
+    expect(broker.getSubscriptions()[CHAIN_ID]).not.toContain(sub);
+    expect(sub.return).toBeCalled();
+  });
+
+  it("should not fail when unsubscribing from ended sub", async () => {
+    const sub = { id: 0, channel: "anyChannel", return: jest.fn() } as unknown as Repeater<any, any, unknown>;
+
+    await broker.unsubscribe(sub, CHAIN_ID);
+
+    expect(sub.return).not.toBeCalled();
+  });
+
+  it("should remove all remaining subscriptions", async () => {
+    broker.subscribeUpdates("ChargedToken", CHAIN_ID);
+    broker.subscribeUpdates("InterfaceProjectToken", CHAIN_ID);
+    expect(broker.getSubscriptions()[CHAIN_ID].length).toEqual(2);
+
+    await broker.removeSubscriptions(CHAIN_ID);
+
+    expect(broker.getSubscriptions()[CHAIN_ID].length).toEqual(0);
   });
 });

@@ -18,7 +18,6 @@ const configDefaults: JsonConfig = {
     },
   ],
   delays: {
-    healthPublishDelayMs: 3000,
     workerRestartDelayMs: 30000,
     rpcMaxParallelRequests: 4,
     rpcMaxRetryCount: 3,
@@ -28,7 +27,7 @@ const configDefaults: JsonConfig = {
     nodeDownAlertDelayMs: 10000,
   },
   blocks: {
-    lag: 3,
+    lag: 4,
     buffer: 2,
   },
 };

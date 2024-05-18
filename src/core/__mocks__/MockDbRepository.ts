@@ -1,4 +1,4 @@
-import { AbstractDbRepository } from "../AbstractDbRepository";
+import type { AbstractDbRepository } from "../AbstractDbRepository";
 
 export const MockDbRepository: jest.Mock<AbstractDbRepository> = jest.fn().mockImplementation(() => {
   return {

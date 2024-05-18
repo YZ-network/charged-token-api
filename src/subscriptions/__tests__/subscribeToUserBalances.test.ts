@@ -1,7 +1,7 @@
-import { Repeater } from "graphql-yoga";
-import { AbstractBlockchainRepository } from "../../core/AbstractBlockchainRepository";
-import { AbstractBroker } from "../../core/AbstractBroker";
-import { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import type { Repeater } from "graphql-yoga";
+import type { AbstractBlockchainRepository } from "../../core/AbstractBlockchainRepository";
+import type { AbstractBroker } from "../../core/AbstractBroker";
+import type { AbstractDbRepository } from "../../core/AbstractDbRepository";
 import { MockBlockchainRepository } from "../../core/__mocks__/MockBlockchainRepository";
 import { MockBroker } from "../../core/__mocks__/MockBroker";
 import { MockDbRepository } from "../../core/__mocks__/MockDbRepository";

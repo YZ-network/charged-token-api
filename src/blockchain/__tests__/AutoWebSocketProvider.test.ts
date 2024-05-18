@@ -1,6 +1,7 @@
 import { AutoWebSocketProvider } from "../AutoWebSocketProvider";
 
 jest.unmock("ethers");
+jest.mock("../../config");
 
 describe("AutoWebSocketProvider", () => {
   const URL = "ws://localhost";

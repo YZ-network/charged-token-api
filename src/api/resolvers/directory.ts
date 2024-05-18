@@ -1,6 +1,6 @@
 import { GraphQLError } from "graphql";
-import { Logger } from "pino";
-import { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import type { Logger } from "pino";
+import type { AbstractDbRepository } from "../../core/AbstractDbRepository";
 import { toGraphQL } from "./functions";
 import { validateChainId } from "./validateChainId";
 

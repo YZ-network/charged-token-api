@@ -1,4 +1,4 @@
-import ethers from "ethers";
+import type ethers from "ethers";
 import { rootLogger } from "../rootLogger";
 
 const log = rootLogger.child({ name: "Utils" });

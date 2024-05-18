@@ -1,10 +1,11 @@
-import { ethers } from "ethers";
-import { Logger } from "pino";
+import type { ethers } from "ethers";
+import type { Logger } from "pino";
 import { Config } from "../config";
-import { AbstractDbRepository } from "../core/AbstractDbRepository";
-import { AbstractHandler } from "../core/AbstractHandler";
+import type { AbstractBroker } from "../core/AbstractBroker";
+import type { AbstractDbRepository } from "../core/AbstractDbRepository";
+import type { AbstractHandler } from "../core/AbstractHandler";
 import { rootLogger } from "../rootLogger";
-import { EventListener } from "./EventListener";
+import type { EventListener } from "./EventListener";
 import topicsMap from "./topics";
 
 export class EventsLoader {
@@ -12,6 +13,7 @@ export class EventsLoader {
   private readonly provider: ethers.providers.JsonRpcProvider;
   private readonly eventListener: EventListener;
   private readonly db: AbstractDbRepository;
+  private readonly broker: AbstractBroker;
   private readonly log: Logger;
 
   private readonly blocksLag = Config.blocks.lag;
@@ -28,11 +30,13 @@ export class EventsLoader {
     provider: ethers.providers.JsonRpcProvider,
     eventListener: EventListener,
     db: AbstractDbRepository,
+    broker: AbstractBroker,
   ) {
     this.chainId = chainId;
     this.provider = provider;
     this.eventListener = eventListener;
     this.db = db;
+    this.broker = broker;
 
     this.log = rootLogger.child({ chainId, name: "EventsLoader" });
   }
@@ -77,10 +81,43 @@ export class EventsLoader {
     if (toBlock - fromBlock >= this.blocksBuffer - 1) {
       try {
         await this.loadBlockEvents(fromBlock, toBlock);
+        await this.loadBlockTransactions(fromBlock, toBlock);
       } catch (err) {
-        this.log.error({ msg: "Error loading events", fromBlock, toBlock, blockNumber, err });
+        const errorMessage = (err as Error).message;
+        if (errorMessage.includes("not processed yet")) {
+          this.log.warn({
+            msg: "Could not load new block events, consider increasing blocks lag",
+            fromBlock,
+            toBlock,
+            blockNumber,
+            err: errorMessage,
+          });
+        } else {
+          this.log.error({
+            msg: "Unexpected error loading events !",
+            fromBlock,
+            toBlock,
+            blockNumber,
+            err: errorMessage,
+          });
+        }
       }
     }
+  }
+
+  private async loadBlockTransactions(fromBlock: number, toBlock: number): Promise<void> {
+    const blockTransactions = [];
+    for (let i = fromBlock; i <= toBlock; i++) {
+      const block = await this.provider.getBlock(i);
+      blockTransactions.push(...block.transactions);
+    }
+
+    await Promise.all(
+      blockTransactions.map(async (hash) => {
+        await this.db.saveTransaction({ chainId: this.chainId, hash });
+        await this.broker.notifyTransaction(this.chainId, hash);
+      }),
+    );
   }
 
   private async loadBlockEvents(fromBlock: number, toBlock: number): Promise<void> {
@@ -101,28 +138,28 @@ export class EventsLoader {
 
     this.log.debug({ msg: "On watched contracts", count: knownContractsEvents.length });
 
-    const knownEvents = knownContractsEvents.filter((event) => knownTopics.includes(event.topics[0]));
+    const knownEvents = knownContractsEvents
+      .filter((event) => knownTopics.includes(event.topics[0]))
+      .sort((a, b) => {
+        if (a.blockNumber < b.blockNumber) return -1;
+        if (a.blockNumber > b.blockNumber) return 1;
+        if (a.logIndex < b.logIndex) return -1;
+        if (a.logIndex > b.logIndex) return 1;
+        throw new Error(`Found duplicate event while sorting : ${JSON.stringify(a)} ${JSON.stringify(b)}`);
+      })
+      .map((log) => {
+        const contract = this.contracts[log.address];
+        const eventName = topicsMap[contract.dataType][log.topics[0]];
+        return {
+          log,
+          eventName,
+          ...contract,
+        };
+      });
 
     this.log.debug({ msg: "On watched topics", count: knownEvents.length });
 
-    for (const log of knownEvents) {
-      const { dataType, loader, iface } = this.contracts[log.address];
-
-      const eventName = topicsMap[dataType][log.topics[0]];
-
-      try {
-        await this.eventListener.queueLog(eventName, log, loader, iface);
-      } catch (err) {
-        this.log.error({
-          msg: "error queuing event",
-          address: log.address,
-          dataType,
-          eventName,
-          err,
-          log,
-        });
-      }
-    }
+    await this.eventListener.handleEvents(knownEvents);
 
     this.lastLoadedBlock = toBlock;
 

@@ -1,12 +1,13 @@
 import { Repeater } from "graphql-yoga";
-import { Logger } from "pino";
+import type { Logger } from "pino";
 import { MockLogger } from "../../../__mocks__/MockLogger";
-import { AbstractBroker } from "../../../core/AbstractBroker";
-import { AbstractDbRepository } from "../../../core/AbstractDbRepository";
+import type { AbstractBroker } from "../../../core/AbstractBroker";
+import type { AbstractDbRepository } from "../../../core/AbstractDbRepository";
 import { MockBroker } from "../../../core/__mocks__/MockBroker";
 import { MockDbRepository } from "../../../core/__mocks__/MockDbRepository";
+import type {
+  UserBalanceQueryResolver} from "../userBalance";
 import {
-  UserBalanceQueryResolver,
   UserBalanceQueryResolverFactory,
   UserBalanceSubscriptionResolverFactory,
 } from "../userBalance";
@@ -70,7 +71,7 @@ describe("User balance query resolver", () => {
     expect(db.getBalance).toBeCalledWith(chainId, address, user);
   });
 
-  it("should return empty list when address is provided and the balance haven't been loaded yet", async () => {
+  it("should return null when address is provided and the balance haven't been loaded yet", async () => {
     const loadedBalance = { chainId, user, address: "0xCT1" } as IUserBalance;
 
     db.isUserBalancesLoaded.mockResolvedValueOnce(true);
@@ -78,7 +79,7 @@ describe("User balance query resolver", () => {
 
     const result = await resolver(undefined, { chainId, user, address });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual(null);
     expect(db.isUserBalancesLoaded).toBeCalledWith(chainId, user);
     expect(db.getBalance).toBeCalledWith(chainId, address, user);
   });
@@ -88,7 +89,7 @@ describe("User balance query resolver", () => {
 
     const result = await resolver(undefined, { chainId, user, address });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual(null);
     expect(db.isUserBalancesLoaded).toBeCalledWith(chainId, user);
     expect(broker.notifyBalanceLoadingRequired).toBeCalledWith(chainId, { user, address });
   });

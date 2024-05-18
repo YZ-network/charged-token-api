@@ -26,7 +26,6 @@ export const Config: JsonConfig = {
     },
   ],
   delays: {
-    healthPublishDelayMs: 1000,
     workerRestartDelayMs: 30,
     rpcMaxParallelRequests: 4,
     rpcMaxRetryCount: 3,

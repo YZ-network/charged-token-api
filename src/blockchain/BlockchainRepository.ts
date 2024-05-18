@@ -1,11 +1,12 @@
 import { ethers } from "ethers";
-import { Logger } from "pino";
+import type { Logger } from "pino";
 import { AbstractBlockchainRepository } from "../core/AbstractBlockchainRepository";
-import { AbstractBroker } from "../core/AbstractBroker";
-import { AbstractDbRepository } from "../core/AbstractDbRepository";
-import { AbstractHandler } from "../core/AbstractHandler";
+import type { AbstractBroker } from "../core/AbstractBroker";
+import type { AbstractDbRepository } from "../core/AbstractDbRepository";
+import type { AbstractHandler } from "../core/AbstractHandler";
 import { rootLogger } from "../rootLogger";
-import { ClientSession, EMPTY_ADDRESS } from "../vendor";
+import type { ClientSession } from "../vendor";
+import { EMPTY_ADDRESS } from "../vendor";
 import { EventListener } from "./EventListener";
 import { EventsLoader } from "./EventsLoader";
 import { contracts } from "./contracts";
@@ -32,7 +33,6 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     provider: ethers.providers.JsonRpcProvider,
     db: AbstractDbRepository,
     broker: AbstractBroker,
-    startEventLoop = true,
   ) {
     super();
     this.log = rootLogger.child({ chainId, name: "Blockchain" });
@@ -41,8 +41,8 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     this.provider = provider;
     this.db = db;
     this.broker = broker;
-    this.eventListener = new EventListener(db, provider, startEventLoop);
-    this.eventsLoader = new EventsLoader(chainId, provider, this.eventListener, this.db);
+    this.eventListener = new EventListener(db, provider);
+    this.eventsLoader = new EventsLoader(chainId, provider, this.eventListener, this.db, this.broker);
   }
 
   get shutdownBlockNumber(): number {
@@ -618,7 +618,6 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
   destroy(): void {
     Object.values(this.instances).forEach((instance) => instance.removeAllListeners);
 
-    this.eventListener.destroy();
     this.eventsLoader.destroy();
   }
 }

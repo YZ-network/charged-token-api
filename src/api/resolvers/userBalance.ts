@@ -1,13 +1,13 @@
 import { Repeater } from "graphql-yoga";
-import { Logger } from "pino";
-import { AbstractBroker } from "../../core/AbstractBroker";
-import { AbstractDbRepository } from "../../core/AbstractDbRepository";
+import type { Logger } from "pino";
+import type { AbstractBroker } from "../../core/AbstractBroker";
+import type { AbstractDbRepository } from "../../core/AbstractDbRepository";
 import { validateChainId } from "./validateChainId";
 
 export type UserBalanceQueryResolver = (
   _: any,
   { chainId, user, address }: { chainId: number; user: string; address?: string },
-) => Promise<IUserBalance | IUserBalance[]>;
+) => Promise<IUserBalance | IUserBalance[] | null>;
 
 export const UserBalanceQueryResolverFactory =
   (db: AbstractDbRepository, broker: AbstractBroker, log: Logger) =>
@@ -20,8 +20,7 @@ export const UserBalanceQueryResolverFactory =
       log.info({ msg: "returning cached balances", chainId, user, address });
 
       if (address !== undefined) {
-        const balance = await db.getBalance(chainId, address, user);
-        return balance !== null ? balance : [];
+        return await db.getBalance(chainId, address, user);
       }
 
       return await db.getBalances(chainId, user);
@@ -35,7 +34,7 @@ export const UserBalanceQueryResolverFactory =
     });
     broker.notifyBalanceLoadingRequired(chainId, { user, address });
 
-    return [];
+    return address === undefined ? [] : null;
   };
 
 export const UserBalanceSubscriptionResolverFactory = (

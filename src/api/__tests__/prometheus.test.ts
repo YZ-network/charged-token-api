@@ -1,4 +1,4 @@
-import { OnRequestEventPayload } from "@whatwg-node/server";
+import type { OnRequestEventPayload } from "@whatwg-node/server";
 import { Metrics } from "../../metrics";
 import { usePrometheus } from "../prometheus";
 
