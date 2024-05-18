@@ -1,4 +1,4 @@
-import type { ClientSession} from "../../vendor";
+import type { ClientSession } from "../../vendor";
 import { BigNumber, EMPTY_ADDRESS } from "../../vendor";
 import type { AbstractBlockchainRepository } from "../AbstractBlockchainRepository";
 import { AbstractHandler } from "../AbstractHandler";
@@ -144,7 +144,7 @@ export class ChargedToken extends AbstractHandler<IChargedToken> {
       throw new Error("Interface not found !");
     }
 
-    if (lastState.projectToken !== EMPTY_ADDRESS) {
+    if (lastState.projectToken !== EMPTY_ADDRESS && !this.blockchain.isContractRegistered(lastState.projectToken)) {
       await this.blockchain.registerContract(
         "DelegableToLT",
         lastState.projectToken,
@@ -152,9 +152,14 @@ export class ChargedToken extends AbstractHandler<IChargedToken> {
         this.loaderFactory("DelegableToLT", this.chainId, lastState.projectToken, this.blockchain),
         session,
       );
-    }
 
-    await this.blockchain.setProjectTokenAddressOnBalances(this.address, lastState.projectToken, blockNumber, session);
+      await this.blockchain.setProjectTokenAddressOnBalances(
+        this.address,
+        lastState.projectToken,
+        blockNumber,
+        session,
+      );
+    }
 
     await this.applyUpdateAndNotify({ interfaceProjectToken }, blockNumber, eventName, session);
   }
