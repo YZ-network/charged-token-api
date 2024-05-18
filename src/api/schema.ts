@@ -142,6 +142,11 @@ const schemaFactory = (
     restartCount: Int!
   }
 
+  type ITransaction {
+    chainId: Int!
+    hash: String!
+  }
+
   type Query {
     version: String!
     health: [IWorkerHealth!]!
@@ -162,6 +167,7 @@ const schemaFactory = (
     InterfaceProjectToken(chainId: Int!, address: String!): IInterfaceProjectToken!
     DelegableToLT(chainId: Int!, address: String!): IDelegableToLT!
     userBalances(chainId: Int!, user: String!): [IUserBalancesEntry!]!
+    transaction(chainId: Int!, hash: String!): ITransaction!
   }
 `,
     resolvers: resolversFactory(db, broker, workerManager, pino),

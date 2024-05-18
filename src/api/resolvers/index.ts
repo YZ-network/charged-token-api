@@ -5,6 +5,7 @@ import type { AbstractWorkerManager } from "../../core/AbstractWorkerManager";
 import { DirectoryQueryResolverFactory } from "./directory";
 import { ResolverFactory } from "./factory";
 import { HealthQueryResolverFactory } from "./health";
+import { TransactionSubscriptionResolverFactory } from "./transaction";
 import { UserBalanceQueryResolverFactory, UserBalanceSubscriptionResolverFactory } from "./userBalance";
 import { VersionQueryResolver } from "./version";
 
@@ -48,6 +49,7 @@ const resolversFactory = (
       "DelegableToLT",
     ),
     userBalances: UserBalanceSubscriptionResolverFactory(db, broker, log.child({ subscription: "userBalances" })),
+    transaction: TransactionSubscriptionResolverFactory(db, broker, log.child({ subscription: "transaction" })),
   },
 });
 

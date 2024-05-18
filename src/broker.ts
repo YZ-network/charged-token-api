@@ -37,6 +37,10 @@ export class Broker extends AbstractBroker {
     this.pubSub.publish(this.getBalanceLoadingChannel(chainId), data);
   }
 
+  notifyTransaction(chainId: number, hash: string): void {
+    this.pubSub.publish(this.getTransactionChannel(chainId, hash), { chainId, hash });
+  }
+
   subscribeUpdates(dataType: DataType, chainId: number): Repeater<any> {
     return this.subscribe(this.getChannel(dataType, chainId), chainId);
   }
@@ -49,12 +53,20 @@ export class Broker extends AbstractBroker {
     return this.subscribe(this.getBalanceLoadingChannel(chainId), chainId);
   }
 
+  subscribeTransaction(chainId: number, txHash: string): Repeater<any, any, unknown> {
+    return this.subscribe(this.getTransactionChannel(chainId, txHash), chainId);
+  }
+
   private getChannel(dataType: DataType, chainId: number, address?: string): string {
     return address !== undefined ? `${dataType}.${chainId}.${address}` : `${dataType}.${chainId}`;
   }
 
   private getBalanceLoadingChannel(chainId: number): string {
     return `${"UserBalance"}.${chainId}/load`;
+  }
+
+  private getTransactionChannel(chainId: number, txHash: string): string {
+    return `Transaction.${chainId}.${txHash}`;
   }
 
   private subscribe(channel: string, chainId: number): Repeater<any, any, unknown> {

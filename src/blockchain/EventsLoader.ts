@@ -1,6 +1,7 @@
 import type { ethers } from "ethers";
 import type { Logger } from "pino";
 import { Config } from "../config";
+import type { AbstractBroker } from "../core/AbstractBroker";
 import type { AbstractDbRepository } from "../core/AbstractDbRepository";
 import type { AbstractHandler } from "../core/AbstractHandler";
 import { rootLogger } from "../rootLogger";
@@ -12,6 +13,7 @@ export class EventsLoader {
   private readonly provider: ethers.providers.JsonRpcProvider;
   private readonly eventListener: EventListener;
   private readonly db: AbstractDbRepository;
+  private readonly broker: AbstractBroker;
   private readonly log: Logger;
 
   private readonly blocksLag = Config.blocks.lag;
@@ -28,11 +30,13 @@ export class EventsLoader {
     provider: ethers.providers.JsonRpcProvider,
     eventListener: EventListener,
     db: AbstractDbRepository,
+    broker: AbstractBroker,
   ) {
     this.chainId = chainId;
     this.provider = provider;
     this.eventListener = eventListener;
     this.db = db;
+    this.broker = broker;
 
     this.log = rootLogger.child({ chainId, name: "EventsLoader" });
   }
@@ -77,6 +81,7 @@ export class EventsLoader {
     if (toBlock - fromBlock >= this.blocksBuffer - 1) {
       try {
         await this.loadBlockEvents(fromBlock, toBlock);
+        await this.loadBlockTransactions(fromBlock, toBlock);
       } catch (err) {
         const errorMessage = (err as Error).message;
         if (errorMessage.includes("not processed yet")) {
@@ -98,6 +103,21 @@ export class EventsLoader {
         }
       }
     }
+  }
+
+  private async loadBlockTransactions(fromBlock: number, toBlock: number): Promise<void> {
+    const blockTransactions = [];
+    for (let i = fromBlock; i <= toBlock; i++) {
+      const block = await this.provider.getBlock(i);
+      blockTransactions.push(...block.transactions);
+    }
+
+    await Promise.all(
+      blockTransactions.map(async (hash) => {
+        await this.db.saveTransaction({ chainId: this.chainId, hash });
+        await this.broker.notifyTransaction(this.chainId, hash);
+      }),
+    );
   }
 
   private async loadBlockEvents(fromBlock: number, toBlock: number): Promise<void> {

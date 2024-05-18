@@ -5,7 +5,7 @@ import type { AbstractBroker } from "../core/AbstractBroker";
 import type { AbstractDbRepository } from "../core/AbstractDbRepository";
 import type { AbstractHandler } from "../core/AbstractHandler";
 import { rootLogger } from "../rootLogger";
-import type { ClientSession} from "../vendor";
+import type { ClientSession } from "../vendor";
 import { EMPTY_ADDRESS } from "../vendor";
 import { EventListener } from "./EventListener";
 import { EventsLoader } from "./EventsLoader";
@@ -42,7 +42,7 @@ export class BlockchainRepository extends AbstractBlockchainRepository {
     this.db = db;
     this.broker = broker;
     this.eventListener = new EventListener(db, provider);
-    this.eventsLoader = new EventsLoader(chainId, provider, this.eventListener, this.db);
+    this.eventsLoader = new EventsLoader(chainId, provider, this.eventListener, this.db, this.broker);
   }
 
   get shutdownBlockNumber(): number {
