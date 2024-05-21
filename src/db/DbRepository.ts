@@ -260,7 +260,15 @@ export class DbRepository extends AbstractDbRepository {
 
   async saveTransactions(chainId: number, hashes: string[], session?: ClientSession): Promise<void> {
     const bulkData: ITransaction[] = hashes.map((hash) => ({ chainId, hash }));
-    await TransactionModel.insertMany(bulkData, { session });
+    const result = await TransactionModel.insertMany(bulkData, { session, ordered: false, rawResult: true });
+
+    this.log.info({ msg: "Saved transactions", savedCount: result.insertedCount });
+
+    if (result.mongoose.validationErrors) {
+      result.mongoose.validationErrors.forEach((err) => {
+        this.log.warn({ msg: "Transaction save failed", err });
+      });
+    }
   }
 
   async update<T extends IContract>(
