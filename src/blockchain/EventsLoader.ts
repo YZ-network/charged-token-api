@@ -98,7 +98,7 @@ export class EventsLoader {
             fromBlock,
             toBlock,
             blockNumber,
-            err: errorMessage,
+            err,
           });
         }
       }
