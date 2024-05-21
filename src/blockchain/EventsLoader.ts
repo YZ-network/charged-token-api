@@ -83,10 +83,12 @@ export class EventsLoader {
         const txHashes = await this.loadBlockEvents(fromBlock, toBlock);
 
         if (txHashes.length > 0) {
-          const session = await this.db.startSession();
-          session.startTransaction();
-          await this.db.saveTransactions(this.chainId, txHashes, session);
-          await session.commitTransaction();
+          try {
+            await this.db.saveTransactions(this.chainId, txHashes);
+          } catch (txErr) {
+            this.log.error({ msg: "Issue saving transactions !", fromBlock, toBlock, txHashes, txErr });
+          }
+          await Promise.all(txHashes.map((hash) => this.broker.notifyTransaction(this.chainId, hash)));
         }
       } catch (err) {
         const errorMessage = (err as Error).message;
