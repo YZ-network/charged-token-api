@@ -106,22 +106,20 @@ export class EventsLoader {
   }
 
   private async loadBlockTransactions(fromBlock: number, toBlock: number): Promise<void> {
-    const blockTransactions: { blockNumber: number; hash: string }[] = [];
+    const blockTransactions: string[] = [];
     for (let i = fromBlock; i <= toBlock; i++) {
       const block = await this.provider.getBlock(i);
-      blockTransactions.push(...block.transactions.map((hash) => ({ blockNumber: block.number, hash })));
+      blockTransactions.push(...block.transactions);
     }
 
-    await Promise.all(
-      blockTransactions.map(async ({ blockNumber, hash }) => {
-        try {
-          await this.db.saveTransaction({ chainId: this.chainId, hash });
-          await this.broker.notifyTransaction(this.chainId, hash);
-        } catch (err) {
-          this.log.warn({ msg: "Unique transaction violation detected", blockNumber, hash, err });
-        }
-      }),
-    );
+    const session = await this.db.startSession();
+    session.startTransaction();
+    await this.db.saveTransactions(this.chainId, blockTransactions, session);
+    await session.commitTransaction();
+
+    for (const hash of blockTransactions) {
+      await this.broker.notifyTransaction(this.chainId, hash);
+    }
   }
 
   private async loadBlockEvents(fromBlock: number, toBlock: number): Promise<void> {

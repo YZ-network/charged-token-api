@@ -49,7 +49,7 @@ export abstract class AbstractDbRepository {
   abstract save<T extends IContract>(dataType: DataType, data: T, session?: ClientSession): Promise<T>;
   abstract saveBalance(data: IUserBalance): Promise<void>;
   abstract saveEvent(data: IEvent, session?: ClientSession): Promise<void>;
-  abstract saveTransaction(date: ITransaction, session?: ClientSession): Promise<void>;
+  abstract saveTransactions(chainId: number, hashes: string[], session?: ClientSession): Promise<void>;
 
   abstract update<T extends IContract>(
     dataType: DataType,

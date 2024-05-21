@@ -258,8 +258,9 @@ export class DbRepository extends AbstractDbRepository {
     await new EventModel(data).save({ session });
   }
 
-  async saveTransaction(data: ITransaction, session?: ClientSession): Promise<void> {
-    await new TransactionModel(data).save({ session });
+  async saveTransactions(chainId: number, hashes: string[], session?: ClientSession): Promise<void> {
+    const bulkData: ITransaction[] = hashes.map((hash) => ({ chainId, hash }));
+    await TransactionModel.insertMany(bulkData, { session });
   }
 
   async update<T extends IContract>(
