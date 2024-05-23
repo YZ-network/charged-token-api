@@ -115,9 +115,10 @@ export class Broker extends AbstractBroker {
   }
 
   async removeSubscriptions(chainId: number) {
-    await Promise.all(this.subscriptions[chainId].map((sub) => sub.return()));
-
-    this.log.info({ chainId, msg: "closed all subscriptions", count: this.subscriptions[chainId].length });
+    if (this.subscriptions[chainId]) {
+      await Promise.all(this.subscriptions[chainId].map((sub) => sub.return()));
+      this.log.info({ chainId, msg: "closed all subscriptions", count: this.subscriptions[chainId].length });
+    }
 
     this.subscriptions[chainId] = [];
     this.updateSubscriptionsCount(chainId);
