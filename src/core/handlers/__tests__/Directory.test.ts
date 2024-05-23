@@ -156,6 +156,7 @@ describe("Directory loader", () => {
       CONTRACT,
       BLOCK_NUMBER,
       expect.any(ChargedToken),
+      session,
     );
     expect(loaderFactory).toHaveBeenCalledWith("ChargedToken", CHAIN_ID, CONTRACT, blockchain);
 

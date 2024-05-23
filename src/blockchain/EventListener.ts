@@ -42,9 +42,7 @@ export class EventListener {
 
     for (const log of logs) {
       try {
-        await session.startTransaction();
         await this.handleEvent(log.loader, log.iface, log.eventName, log.log, session);
-        await session.commitTransaction();
       } catch (err) {
         this.log.error({
           msg: "error handling event",
