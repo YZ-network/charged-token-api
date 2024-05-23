@@ -9,7 +9,6 @@ import { DirectoryModel } from "./models/Directory";
 import { EventModel } from "./models/Event";
 import { InterfaceProjectTokenModel } from "./models/InterfaceProjectToken";
 import { ParsedBlockModel } from "./models/ParsedBlock";
-import { TransactionModel } from "./models/Transaction";
 import { UserBalanceModel } from "./models/UserBalances";
 
 export class DbRepository extends AbstractDbRepository {
@@ -228,11 +227,6 @@ export class DbRepository extends AbstractDbRepository {
     return result.map((doc: any) => doc.toJSON());
   }
 
-  async getTransaction(chainId: number, hash: string): Promise<ITransaction | null> {
-    const tx = await TransactionModel.findOne({ chainId, hash });
-    return tx !== null ? tx.toJSON() : null;
-  }
-
   async isDelegableStillReferenced(chainId: number, address: string): Promise<boolean> {
     return (await InterfaceProjectTokenModel.exists({ chainId, projectToken: address })) !== null;
   }
@@ -259,19 +253,6 @@ export class DbRepository extends AbstractDbRepository {
 
   async saveEvent(data: IEvent, session?: ClientSession): Promise<void> {
     await new EventModel(data).save({ session });
-  }
-
-  async saveTransactions(chainId: number, hashes: string[], session?: ClientSession): Promise<void> {
-    const bulkData: ITransaction[] = hashes.map((hash) => ({ chainId, hash }));
-
-    const result = await TransactionModel.insertMany(bulkData, { session, ordered: false, rawResult: true });
-
-    this.log.info({ msg: "Saved transactions", savedCount: result.insertedCount, expectedCount: hashes.length });
-    if (result.mongoose.validationErrors.length > 0) {
-      result.mongoose.validationErrors.forEach((err) => {
-        this.log.warn({ msg: "Transaction save failed", err });
-      });
-    }
   }
 
   async update<T extends IContract>(

@@ -3,18 +3,7 @@ import { type Logger } from "pino";
 import type { AbstractDbRepository } from "../core/AbstractDbRepository";
 import { type AbstractHandler } from "../core/AbstractHandler";
 import { rootLogger } from "../rootLogger";
-import type { ClientSession } from "../vendor";
 import { getBlockDate } from "./functions";
-
-type EventQueue = Array<{
-  eventName: string;
-  block: number;
-  tx: number;
-  ev: number;
-  log: ethers.providers.Log;
-  loader: AbstractHandler<any>;
-  iface: ethers.utils.Interface;
-}>;
 
 export class EventListener {
   private readonly db: AbstractDbRepository;
@@ -38,11 +27,9 @@ export class EventListener {
       iface: ethers.utils.Interface;
     }[],
   ): Promise<void> {
-    const session = await this.db.startSession();
-
     for (const log of logs) {
       try {
-        await this.handleEvent(log.loader, log.iface, log.eventName, log.log, session);
+        await this.handleEvent(log.loader, log.iface, log.eventName, log.log);
       } catch (err) {
         this.log.error({
           msg: "error handling event",
@@ -50,12 +37,10 @@ export class EventListener {
           dataType: log.dataType,
           eventName: log.eventName,
           err,
-          log,
+          log: log.log,
         });
       }
     }
-
-    await session.endSession();
   }
 
   async handleEvent(
@@ -63,36 +48,34 @@ export class EventListener {
     iface: ethers.utils.Interface,
     eventName: string,
     log: ethers.providers.Log,
-    session: ClientSession,
   ): Promise<void> {
-    await session.startTransaction();
-
     const decodedLog = iface.parseLog(log);
     const args = [...decodedLog.args.values()];
     const blockDate = await getBlockDate(log.blockNumber, this.provider);
 
+    await this.db.saveEvent({
+      status: "QUEUED",
+      chainId: loader.chainId,
+      address: log.address,
+      blockNumber: log.blockNumber,
+      blockDate,
+      txHash: log.transactionHash,
+      txIndex: log.transactionIndex,
+      logIndex: log.logIndex,
+      name: eventName,
+      contract: loader.dataType,
+      topics: log.topics,
+      args,
+    });
+
+    const session = await this.db.startSession();
+
     try {
-      await this.db.saveEvent(
-        {
-          status: "QUEUED",
-          chainId: loader.chainId,
-          address: log.address,
-          blockNumber: log.blockNumber,
-          blockDate,
-          txHash: log.transactionHash,
-          txIndex: log.transactionIndex,
-          logIndex: log.logIndex,
-          name: eventName,
-          contract: loader.dataType,
-          topics: log.topics,
-          args,
-        },
-        session,
-      );
-
+      await session.startTransaction();
       await loader.onEvent(session, eventName, args, log.blockNumber, log);
+      await session.commitTransaction();
 
-      await this.updateEventStatus(session, log, loader.chainId, "SUCCESS");
+      await this.updateEventStatus(log, loader.chainId, "SUCCESS");
     } catch (err) {
       this.log.error({
         chainId: loader.chainId,
@@ -107,18 +90,14 @@ export class EventListener {
         logIndex: log.logIndex,
       });
 
-      await this.updateEventStatus(session, log, loader.chainId, "FAILURE");
+      await session.abortTransaction();
+      await this.updateEventStatus(log, loader.chainId, "FAILURE");
     }
 
-    await session.commitTransaction();
+    await session.endSession();
   }
 
-  private async updateEventStatus(
-    session: ClientSession,
-    log: ethers.providers.Log,
-    chainId: number,
-    status: EventHandlerStatus,
-  ) {
+  private async updateEventStatus(log: ethers.providers.Log, chainId: number, status: EventHandlerStatus) {
     await this.db.updateEventStatus(
       {
         chainId,
@@ -128,7 +107,6 @@ export class EventListener {
         logIndex: log.logIndex,
       },
       status,
-      session,
     );
   }
 }

@@ -38,6 +38,7 @@ export class Broker extends AbstractBroker {
   }
 
   notifyTransaction(chainId: number, hash: string): void {
+    this.log.info({ chainId, msg: "Notifying transaction mined", hash });
     this.pubSub.publish(this.getTransactionChannel(chainId, hash), { chainId, hash });
   }
 

@@ -70,23 +70,20 @@ describe("EventListener", () => {
     expect(db.startSession).toBeCalledTimes(1);
     expect(mockSession.startTransaction).toBeCalledTimes(1);
 
-    expect(db.saveEvent).toBeCalledWith(
-      {
-        status: "QUEUED",
-        chainId: mockAbstractHandler.chainId,
-        address: log.address,
-        contract: "ChargedToken",
-        blockNumber: log.blockNumber,
-        blockDate: new Date("1970-01-01T00:00:00.000Z"),
-        txHash: "0xtx_hash",
-        txIndex: log.transactionIndex,
-        logIndex: log.logIndex,
-        name: "SampleEvent",
-        args: ["b"],
-        topics: [],
-      },
-      mockSession,
-    );
+    expect(db.saveEvent).toBeCalledWith({
+      status: "QUEUED",
+      chainId: mockAbstractHandler.chainId,
+      address: log.address,
+      contract: "ChargedToken",
+      blockNumber: log.blockNumber,
+      blockDate: new Date("1970-01-01T00:00:00.000Z"),
+      txHash: "0xtx_hash",
+      txIndex: log.transactionIndex,
+      logIndex: log.logIndex,
+      name: "SampleEvent",
+      args: ["b"],
+      topics: [],
+    });
 
     expect(mockAbstractHandler.onEvent).toBeCalledWith(mockSession, "SampleEvent", ["b"], log.blockNumber, log);
 
@@ -99,7 +96,6 @@ describe("EventListener", () => {
         logIndex: log.logIndex,
       },
       "SUCCESS",
-      mockSession,
     );
 
     expect(mockSession.commitTransaction).toBeCalledTimes(1);
@@ -158,8 +154,8 @@ describe("EventListener", () => {
     );
     expect(loggerErrorMock).toBeCalledTimes(1);
 
-    expect(mockSession.abortTransaction).toBeCalledTimes(0);
-    expect(mockSession.commitTransaction).toBeCalledTimes(1);
+    expect(mockSession.abortTransaction).toBeCalledTimes(1);
+    expect(mockSession.commitTransaction).toBeCalledTimes(0);
     expect(db.updateEventStatus).toHaveBeenCalledWith(
       {
         chainId: mockAbstractHandler.chainId,
@@ -169,7 +165,6 @@ describe("EventListener", () => {
         logIndex: log.logIndex,
       },
       "FAILURE",
-      mockSession,
     );
     expect(mockSession.endSession).toBeCalledTimes(1);
   });
