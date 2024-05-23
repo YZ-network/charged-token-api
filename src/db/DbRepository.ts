@@ -62,9 +62,12 @@ export class DbRepository extends AbstractDbRepository {
   }
 
   async isUserBalancesLoaded(chainId: number, user: string): Promise<boolean> {
-    const contractsCount = await ChargedTokenModel.count({ chainId });
-    const balancesCount = await UserBalanceModel.count({ chainId, user });
-    return contractsCount === balancesCount;
+    const contractsAddresses = (await ChargedTokenModel.find({ chainId })).map((ct) => ct.address).sort();
+    const balancesAddresses = (await UserBalanceModel.find({ chainId, user })).map((balance) => balance.address).sort();
+    return (
+      contractsAddresses.length === balancesAddresses.length &&
+      balancesAddresses.reduce((acc, address) => acc && contractsAddresses.includes(address), true)
+    );
   }
 
   async countEvents(chainId: number): Promise<number> {

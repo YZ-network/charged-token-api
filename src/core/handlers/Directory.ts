@@ -64,6 +64,7 @@ export class Directory extends AbstractHandler<IDirectory> {
       contract,
       blockNumber,
       this.loaderFactory("ChargedToken", this.chainId, contract, this.blockchain),
+      session,
     );
 
     await this.applyUpdateAndNotify(updates, blockNumber, eventName, session);
