@@ -129,7 +129,7 @@ describe("ChainWorker", () => {
     expect(worker.provider).toBeDefined();
     expect(worker.provider?.on).toHaveBeenNthCalledWith(1, "error", expect.anything());
     expect(worker.wsWatch).toBeDefined();
-    expect(worker.worker).toBeDefined();
+    expect(worker.workerPromise).toBeDefined();
 
     expect(worker.status()).toEqual({
       index: 0,
@@ -197,7 +197,7 @@ describe("ChainWorker", () => {
     expect(worker.provider).toBeDefined();
     expect(worker.provider?.on).toHaveBeenNthCalledWith(1, "error", expect.anything());
     expect(worker.wsWatch).toBeDefined();
-    expect(worker.worker).toBeDefined();
+    expect(worker.workerPromise).toBeDefined();
 
     expect(Metrics.connectionFailedCounterPerNetId[CHAIN_ID]).toBe(0);
     expect(Metrics.workerStateGaugePerNetId[CHAIN_ID]).toBe(0);
@@ -217,7 +217,7 @@ describe("ChainWorker", () => {
     expect(broker.removeSubscriptions).toBeCalledWith(CHAIN_ID);
     expect(worker.provider).toBeUndefined();
     expect(worker.blockchain).toBeUndefined();
-    expect(worker.worker).toBeUndefined();
+    expect(worker.workerPromise).toBeUndefined();
     expect(worker.wsWatch).toBeUndefined();
   });
 
@@ -230,7 +230,7 @@ describe("ChainWorker", () => {
     expect(worker.provider).toBeDefined();
     expect(worker.provider?.on).toHaveBeenNthCalledWith(1, "error", expect.anything());
     expect(worker.wsWatch).toBeDefined();
-    expect(worker.worker).toBeDefined();
+    expect(worker.workerPromise).toBeDefined();
 
     expect(Metrics.connectionFailedCounterPerNetId[CHAIN_ID]).toBe(0);
     expect(Metrics.workerStateGaugePerNetId[CHAIN_ID]).toBe(0);
@@ -254,7 +254,7 @@ describe("ChainWorker", () => {
     expect(broker.removeSubscriptions).toBeCalledWith(CHAIN_ID);
     expect(worker.provider).toBeUndefined();
     expect(worker.blockchain).toBeUndefined();
-    expect(worker.worker).toBeUndefined();
+    expect(worker.workerPromise).toBeUndefined();
     expect(worker.wsWatch).toBeUndefined();
   });
 
