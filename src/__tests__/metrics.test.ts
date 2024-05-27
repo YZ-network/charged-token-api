@@ -187,9 +187,11 @@ describe("Metrics", () => {
     Metrics.eventReceived(chainId);
 
     Metrics.setSubscriptionCount(chainId, 5);
+    Metrics.setGqlSubscriptionCount(chainId, 6);
+    Metrics.setPendingRequestsGauge(chainId, 7);
 
     expect(Metrics.dumpMetrics()).toBe(
-      '# TYPE connectionState gauge\nconnectionState {chainId="1337"} 0\n# TYPE connectionLoss counter\nconnectionLoss {chainId="1337"} 1\n# TYPE connectionFailed counter\nconnectionFailed {chainId="1337"} 2\n# TYPE workerState gauge\nworkerState {chainId="1337"} 0\n# TYPE requestSent counter\nrequestSent {chainId="1337"} 2\n# TYPE requestReplied counter\nrequestReplied {chainId="1337"} 3\n# TYPE requestFailed counter\nrequestFailed {chainId="1337"} 1\n# TYPE eventsReceived counter\neventsReceived {chainId="1337"} 4\n# TYPE subscriptions gauge\nsubscriptions {chainId="1337"} 5\n# TYPE gqlSubscriptions gauge\ngqlSubscriptions {chainId="0"} 0\ngqlSubscriptions {chainId="1337"} 0\n',
+      '# TYPE connectionState gauge\nconnectionState {chainId="1337"} 0\n# TYPE connectionLoss counter\nconnectionLoss {chainId="1337"} 1\n# TYPE connectionFailed counter\nconnectionFailed {chainId="1337"} 2\n# TYPE workerState gauge\nworkerState {chainId="1337"} 0\n# TYPE requestSent counter\nrequestSent {chainId="1337"} 2\n# TYPE requestReplied counter\nrequestReplied {chainId="1337"} 3\n# TYPE requestFailed counter\nrequestFailed {chainId="1337"} 1\n# TYPE eventsReceived counter\neventsReceived {chainId="1337"} 4\n# TYPE subscriptions gauge\nsubscriptions {chainId="1337"} 5\n# TYPE gqlSubscriptions gauge\ngqlSubscriptions {chainId="0"} 0\ngqlSubscriptions {chainId="1337"} 6\n# TYPE pendingRequests gauge\npendingRequests {chainId="1337"} 7\n',
     );
   });
 });

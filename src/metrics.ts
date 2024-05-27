@@ -9,6 +9,7 @@ class MetricsClass {
   readonly eventCounterPerNetId: Record<number, number> = {};
   readonly subscriptionGaugePerNetId: Record<number, number> = {};
   readonly gqlSubscriptionGaugePerNetId: Record<number, number> = {};
+  readonly pendingRequestsGaugePerNetId: Record<number, number> = {};
 
   constructor() {
     this.gqlSubscriptionGaugePerNetId[0] = 0;
@@ -25,6 +26,7 @@ class MetricsClass {
     this.clearRecord(this.eventCounterPerNetId);
     this.clearRecord(this.subscriptionGaugePerNetId);
     this.clearRecord(this.gqlSubscriptionGaugePerNetId);
+    this.clearRecord(this.pendingRequestsGaugePerNetId);
     this.gqlSubscriptionGaugePerNetId[0] = 0;
   }
 
@@ -59,6 +61,7 @@ class MetricsClass {
     }
     this.subscriptionGaugePerNetId[chainId] = 0;
     this.gqlSubscriptionGaugePerNetId[chainId] = 0;
+    this.pendingRequestsGaugePerNetId[chainId] = 0;
   }
 
   connected(chainId: number) {
@@ -122,6 +125,10 @@ class MetricsClass {
     this.gqlSubscriptionGaugePerNetId[chainId] = count;
   }
 
+  setPendingRequestsGauge(chainId: number, count: number) {
+    this.pendingRequestsGaugePerNetId[chainId] = count;
+  }
+
   dumpMetrics(): string {
     let result = "";
     result += this.formatGauge("connectionState", this.connectionStateGaugePerNetId);
@@ -134,6 +141,7 @@ class MetricsClass {
     result += this.formatCounter("eventsReceived", this.eventCounterPerNetId);
     result += this.formatGauge("subscriptions", this.subscriptionGaugePerNetId);
     result += this.formatGauge("gqlSubscriptions", this.gqlSubscriptionGaugePerNetId);
+    result += this.formatGauge("pendingRequests", this.pendingRequestsGaugePerNetId);
     return result;
   }
 

@@ -13,7 +13,7 @@ import { type Event } from "@ethersproject/providers/lib/base-provider";
 import { type InflightRequest, type Subscription } from "@ethersproject/providers/lib/websocket-provider";
 import { ethers } from "ethers";
 import type { Logger } from "pino";
-import type { ErrorEvent, MessageEvent} from "ws";
+import type { ErrorEvent, MessageEvent } from "ws";
 import { WebSocket } from "ws";
 import { Metrics } from "../metrics";
 import { rootLogger } from "../rootLogger";
@@ -192,6 +192,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
 
   _onRequestResponse(data: string, result: any) {
     const request = this._requests.shift()!;
+    Metrics.setPendingRequestsGauge(this.chainId, this._requests.length);
 
     if (result.result !== undefined) {
       Metrics.requestReplied(this.chainId);
@@ -318,6 +319,7 @@ export class AutoWebSocketProvider extends ethers.providers.JsonRpcProvider {
       });
 
       this._requests.push({ id, callback, payload });
+      Metrics.setPendingRequestsGauge(this.chainId, this._requests.length);
 
       if (this._requests.length === 1) {
         this._sendLastRequest();
