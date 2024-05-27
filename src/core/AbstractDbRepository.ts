@@ -73,10 +73,11 @@ export abstract class AbstractDbRepository {
     session?: ClientSession,
   ): Promise<void>;
 
-  abstract delete<T extends IContract>(
+  abstract delete(
     dataType: DataType,
     chainId: number,
     address: string | string[],
     session?: ClientSession,
   ): Promise<void>;
+  abstract resetChainData(chainId: number): Promise<void>;
 }

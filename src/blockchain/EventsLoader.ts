@@ -5,6 +5,7 @@ import type { AbstractBroker } from "../core/AbstractBroker";
 import type { AbstractDbRepository } from "../core/AbstractDbRepository";
 import type { AbstractHandler } from "../core/AbstractHandler";
 import { rootLogger } from "../rootLogger";
+import type { AutoWebSocketProvider } from "./AutoWebSocketProvider";
 import type { EventListener } from "./EventListener";
 import topicsMap from "./topics";
 
@@ -103,6 +104,12 @@ export class EventsLoader {
             blockNumber,
             err,
           });
+
+          if ((err as Error).message.includes("Log response size exceeded")) {
+            await this.db.resetChainData(this.chainId);
+            this.log.warn("Blockchain reset ! Worker restart needed.");
+            await (this.provider as AutoWebSocketProvider).destroy();
+          }
         }
       }
     }

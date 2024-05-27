@@ -313,7 +313,7 @@ export class DbRepository extends AbstractDbRepository {
     }).session(session);
   }
 
-  async delete<T extends IContract>(
+  async delete(
     dataType: DataType,
     chainId: number,
     address: string | string[],
@@ -325,6 +325,20 @@ export class DbRepository extends AbstractDbRepository {
       await model.deleteOne({ chainId, address }, { session });
     } else {
       await model.deleteMany({ chainId, address: { $in: address } }, { session });
+    }
+  }
+
+  async resetChainData(chainId: number): Promise<void> {
+    try {
+      await DirectoryModel.deleteOne({ chainId });
+      await ChargedTokenModel.deleteMany({ chainId });
+      await InterfaceProjectTokenModel.deleteMany({ chainId });
+      await DelegableToLTModel.deleteMany({ chainId });
+      await UserBalanceModel.deleteMany({ chainId });
+      await EventModel.deleteMany({ chainId });
+      await ParsedBlockModel.deleteMany({ chainId });
+    } catch (err) {
+      this.log.error({ chainId, msg: "Error happened while removing blockchain data" });
     }
   }
 
