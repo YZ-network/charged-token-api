@@ -4,6 +4,7 @@ import { Config } from "../config";
 import type { AbstractBroker } from "../core/AbstractBroker";
 import type { AbstractDbRepository } from "../core/AbstractDbRepository";
 import type { AbstractHandler } from "../core/AbstractHandler";
+import { Metrics } from "../metrics";
 import { rootLogger } from "../rootLogger";
 import type { AutoWebSocketProvider } from "./AutoWebSocketProvider";
 import type { EventListener } from "./EventListener";
@@ -66,11 +67,14 @@ export class EventsLoader {
   }
 
   destroy() {
+    Metrics.setBlocksDelta(this.chainId, 0);
     this.provider.off("block");
     this.contracts = {};
   }
 
   private async onNewBlock(blockNumber: number) {
+    Metrics.setBlocksDelta(this.chainId, blockNumber - this.lastLoadedBlock);
+
     this.log.debug({
       msg: "New block header",
       blockNumber,
@@ -82,6 +86,9 @@ export class EventsLoader {
     if (toBlock - fromBlock >= this.blocksBuffer - 1) {
       try {
         const txHashes = await this.loadBlockEvents(fromBlock, toBlock);
+
+        this.lastLoadedBlock = toBlock;
+        Metrics.setBlocksDelta(this.chainId, blockNumber - this.lastLoadedBlock);
 
         if (txHashes.length > 0) {
           await Promise.all(txHashes.map((hash) => this.broker.notifyTransaction(this.chainId, hash)));
@@ -157,8 +164,6 @@ export class EventsLoader {
     this.log.debug({ msg: "On watched topics", count: knownEvents.length });
 
     await this.eventListener.handleEvents(knownEvents);
-
-    this.lastLoadedBlock = toBlock;
 
     try {
       await this.db.setLastUpdateBlock(this.chainId, toBlock);

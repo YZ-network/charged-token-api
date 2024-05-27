@@ -10,6 +10,7 @@ class MetricsClass {
   readonly subscriptionGaugePerNetId: Record<number, number> = {};
   readonly gqlSubscriptionGaugePerNetId: Record<number, number> = {};
   readonly pendingRequestsGaugePerNetId: Record<number, number> = {};
+  readonly blocksDeltaGaugePerNetId: Record<number, number> = {};
 
   constructor() {
     this.gqlSubscriptionGaugePerNetId[0] = 0;
@@ -27,6 +28,7 @@ class MetricsClass {
     this.clearRecord(this.subscriptionGaugePerNetId);
     this.clearRecord(this.gqlSubscriptionGaugePerNetId);
     this.clearRecord(this.pendingRequestsGaugePerNetId);
+    this.clearRecord(this.blocksDeltaGaugePerNetId);
     this.gqlSubscriptionGaugePerNetId[0] = 0;
   }
 
@@ -62,6 +64,7 @@ class MetricsClass {
     this.subscriptionGaugePerNetId[chainId] = 0;
     this.gqlSubscriptionGaugePerNetId[chainId] = 0;
     this.pendingRequestsGaugePerNetId[chainId] = 0;
+    this.blocksDeltaGaugePerNetId[chainId] = 0;
   }
 
   connected(chainId: number) {
@@ -129,6 +132,10 @@ class MetricsClass {
     this.pendingRequestsGaugePerNetId[chainId] = count;
   }
 
+  setBlocksDelta(chainId: number, delta: number) {
+    this.blocksDeltaGaugePerNetId[chainId] = delta;
+  }
+
   dumpMetrics(): string {
     let result = "";
     result += this.formatGauge("connectionState", this.connectionStateGaugePerNetId);
@@ -142,6 +149,7 @@ class MetricsClass {
     result += this.formatGauge("subscriptions", this.subscriptionGaugePerNetId);
     result += this.formatGauge("gqlSubscriptions", this.gqlSubscriptionGaugePerNetId);
     result += this.formatGauge("pendingRequests", this.pendingRequestsGaugePerNetId);
+    result += this.formatGauge("blocksDelta", this.blocksDeltaGaugePerNetId);
     return result;
   }
 
