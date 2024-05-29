@@ -4,7 +4,9 @@ import { Config } from "../config";
 import type { AbstractBroker } from "../core/AbstractBroker";
 import type { AbstractDbRepository } from "../core/AbstractDbRepository";
 import type { AbstractHandler } from "../core/AbstractHandler";
+import { Metrics } from "../metrics";
 import { rootLogger } from "../rootLogger";
+import type { AutoWebSocketProvider } from "./AutoWebSocketProvider";
 import type { EventListener } from "./EventListener";
 import topicsMap from "./topics";
 
@@ -65,11 +67,14 @@ export class EventsLoader {
   }
 
   destroy() {
+    Metrics.setBlocksDelta(this.chainId, 0);
     this.provider.off("block");
     this.contracts = {};
   }
 
   private async onNewBlock(blockNumber: number) {
+    Metrics.setBlocksDelta(this.chainId, blockNumber - this.lastLoadedBlock);
+
     this.log.debug({
       msg: "New block header",
       blockNumber,
@@ -80,8 +85,14 @@ export class EventsLoader {
     const toBlock = blockNumber - this.blocksLag;
     if (toBlock - fromBlock >= this.blocksBuffer - 1) {
       try {
-        await this.loadBlockEvents(fromBlock, toBlock);
-        await this.loadBlockTransactions(fromBlock, toBlock);
+        const txHashes = await this.loadBlockEvents(fromBlock, toBlock);
+
+        this.lastLoadedBlock = toBlock;
+        Metrics.setBlocksDelta(this.chainId, blockNumber - this.lastLoadedBlock);
+
+        if (txHashes.length > 0) {
+          await Promise.all(txHashes.map((hash) => this.broker.notifyTransaction(this.chainId, hash)));
+        }
       } catch (err) {
         const errorMessage = (err as Error).message;
         if (errorMessage.includes("not processed yet")) {
@@ -98,29 +109,21 @@ export class EventsLoader {
             fromBlock,
             toBlock,
             blockNumber,
-            err: errorMessage,
+            err,
           });
+
+          if ((err as Error).message.includes("Log response size exceeded")) {
+            await this.db.resetChainData(this.chainId);
+            this.log.warn("Blockchain reset ! Worker restart needed.");
+            await (this.provider as AutoWebSocketProvider).destroy();
+          }
         }
       }
     }
   }
 
-  private async loadBlockTransactions(fromBlock: number, toBlock: number): Promise<void> {
-    const blockTransactions = [];
-    for (let i = fromBlock; i <= toBlock; i++) {
-      const block = await this.provider.getBlock(i);
-      blockTransactions.push(...block.transactions);
-    }
-
-    await Promise.all(
-      blockTransactions.map(async (hash) => {
-        await this.db.saveTransaction({ chainId: this.chainId, hash });
-        await this.broker.notifyTransaction(this.chainId, hash);
-      }),
-    );
-  }
-
-  private async loadBlockEvents(fromBlock: number, toBlock: number): Promise<void> {
+  private async loadBlockEvents(fromBlock: number, toBlock: number): Promise<string[]> {
+    const txHashes = new Set<string>();
     const knownTopics = Object.values(topicsMap).flatMap((topics) => Object.keys(topics));
 
     const eventFilter = {
@@ -148,6 +151,7 @@ export class EventsLoader {
         throw new Error(`Found duplicate event while sorting : ${JSON.stringify(a)} ${JSON.stringify(b)}`);
       })
       .map((log) => {
+        txHashes.add(log.transactionHash);
         const contract = this.contracts[log.address];
         const eventName = topicsMap[contract.dataType][log.topics[0]];
         return {
@@ -161,12 +165,12 @@ export class EventsLoader {
 
     await this.eventListener.handleEvents(knownEvents);
 
-    this.lastLoadedBlock = toBlock;
-
     try {
       await this.db.setLastUpdateBlock(this.chainId, toBlock);
     } catch (err) {
       this.log.error({ msg: "Failed setting last update block", lastUpdateBlock: toBlock, err });
     }
+
+    return [...txHashes.values()];
   }
 }

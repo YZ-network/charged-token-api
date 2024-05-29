@@ -9,7 +9,6 @@ import { DirectoryModel } from "./models/Directory";
 import { EventModel } from "./models/Event";
 import { InterfaceProjectTokenModel } from "./models/InterfaceProjectToken";
 import { ParsedBlockModel } from "./models/ParsedBlock";
-import { TransactionModel } from "./models/Transaction";
 import { UserBalanceModel } from "./models/UserBalances";
 
 export class DbRepository extends AbstractDbRepository {
@@ -62,9 +61,12 @@ export class DbRepository extends AbstractDbRepository {
   }
 
   async isUserBalancesLoaded(chainId: number, user: string): Promise<boolean> {
-    const contractsCount = await ChargedTokenModel.count({ chainId });
-    const balancesCount = await UserBalanceModel.count({ chainId, user });
-    return contractsCount === balancesCount;
+    const contractsAddresses = (await ChargedTokenModel.find({ chainId })).map((ct) => ct.address).sort();
+    const balancesAddresses = (await UserBalanceModel.find({ chainId, user })).map((balance) => balance.address).sort();
+    return (
+      contractsAddresses.length === balancesAddresses.length &&
+      balancesAddresses.reduce((acc, address) => acc && contractsAddresses.includes(address), true)
+    );
   }
 
   async countEvents(chainId: number): Promise<number> {
@@ -225,11 +227,6 @@ export class DbRepository extends AbstractDbRepository {
     return result.map((doc: any) => doc.toJSON());
   }
 
-  async getTransaction(chainId: number, hash: string): Promise<ITransaction | null> {
-    const tx = await TransactionModel.findOne({ chainId, hash });
-    return tx !== null ? tx.toJSON() : null;
-  }
-
   async isDelegableStillReferenced(chainId: number, address: string): Promise<boolean> {
     return (await InterfaceProjectTokenModel.exists({ chainId, projectToken: address })) !== null;
   }
@@ -256,10 +253,6 @@ export class DbRepository extends AbstractDbRepository {
 
   async saveEvent(data: IEvent, session?: ClientSession): Promise<void> {
     await new EventModel(data).save({ session });
-  }
-
-  async saveTransaction(data: ITransaction, session?: ClientSession): Promise<void> {
-    await new TransactionModel(data).save({ session });
   }
 
   async update<T extends IContract>(
@@ -320,7 +313,7 @@ export class DbRepository extends AbstractDbRepository {
     }).session(session);
   }
 
-  async delete<T extends IContract>(
+  async delete(
     dataType: DataType,
     chainId: number,
     address: string | string[],
@@ -332,6 +325,20 @@ export class DbRepository extends AbstractDbRepository {
       await model.deleteOne({ chainId, address }, { session });
     } else {
       await model.deleteMany({ chainId, address: { $in: address } }, { session });
+    }
+  }
+
+  async resetChainData(chainId: number): Promise<void> {
+    try {
+      await DirectoryModel.deleteOne({ chainId });
+      await ChargedTokenModel.deleteMany({ chainId });
+      await InterfaceProjectTokenModel.deleteMany({ chainId });
+      await DelegableToLTModel.deleteMany({ chainId });
+      await UserBalanceModel.deleteMany({ chainId });
+      await EventModel.deleteMany({ chainId });
+      await ParsedBlockModel.deleteMany({ chainId });
+    } catch (err) {
+      this.log.error({ chainId, msg: "Error happened while removing blockchain data" });
     }
   }
 

@@ -30,7 +30,7 @@ export class ChainWorker {
 
   providerIndex: number = 0;
   provider: AutoWebSocketProvider | undefined;
-  worker: Promise<void> | undefined;
+  workerPromise: Promise<void> | undefined;
 
   providerStatus: ProviderStatus = "STARTING";
   wsStatus: string = "STARTING";
@@ -235,6 +235,7 @@ export class ChainWorker {
           this.log.warn({
             msg: "Websocket crashed",
             network: this.name,
+            providerStatus: this.providerStatus,
             wsStatus: this.wsStatus,
             prevWsStatus: memoizedPrevWsStatus,
             readyState: this.provider.websocket.readyState,
@@ -245,6 +246,7 @@ export class ChainWorker {
           this.log.info({
             msg: "Websocket connecting",
             network: this.name,
+            providerStatus: this.providerStatus,
             wsStatus: this.wsStatus,
             prevWsStatus: memoizedPrevWsStatus,
             readyState: this.provider.websocket.readyState,
@@ -254,6 +256,7 @@ export class ChainWorker {
           this.log.info({
             msg: "Websocket connected",
             network: this.name,
+            providerStatus: this.providerStatus,
             wsStatus: this.wsStatus,
             prevWsStatus: memoizedPrevWsStatus,
             readyState: this.provider.websocket.readyState,
@@ -299,7 +302,7 @@ export class ChainWorker {
       throw new Error("No provider to create worker !");
     }
 
-    this.worker = this.provider.ready
+    this.workerPromise = this.provider.ready
       .then(async () => {
         await this.run()
           .then(() => {
@@ -391,28 +394,43 @@ export class ChainWorker {
 
     Metrics.workerStopped(this.chainId);
 
-    await this.contractsRegistry?.unregisterDirectory(this.directoryAddress);
+    try {
+      await this.contractsRegistry?.unregisterDirectory(this.directoryAddress);
 
-    this.blockchain?.destroy();
-    this.blockchain = undefined;
-
-    this.log.info({ msg: "Destroying provider", providerIndex: this.providerIndex });
-    this.provider?.removeAllListeners();
-    await this.provider?.destroy();
-    this.provider = undefined;
-    this.worker = undefined;
-
-    this.providerStatus = "DISCONNECTED";
-
-    if (this.wsWatch !== undefined) {
-      this.log.info({ msg: "Stopping websocket watch", providerIndex: this.providerIndex });
-
-      clearInterval(this.wsWatch);
-      this.wsWatch = undefined;
+      this.blockchain?.destroy();
+      this.blockchain = undefined;
+    } catch (err) {
+      this.log.error({ msg: "Error happened while unregistering contracts", err });
     }
 
-    await this.broker.removeSubscriptions(this.chainId);
+    try {
+      await this.broker.removeSubscriptions(this.chainId);
+    } catch (err) {
+      this.log.error({ msg: "Error happened while removing broker subscriptions", err });
+    }
 
+    try {
+      this.log.info({ msg: "Destroying provider", providerIndex: this.providerIndex });
+      this.provider?.removeAllListeners();
+      await this.provider?.destroy();
+      this.provider = undefined;
+      this.workerPromise = undefined;
+    } catch (err) {
+      this.log.error({ msg: "Error happened while destroying provider", err });
+    }
+
+    try {
+      if (this.wsWatch !== undefined) {
+        this.log.info({ msg: "Stopping websocket watch", providerIndex: this.providerIndex });
+
+        clearInterval(this.wsWatch);
+        this.wsWatch = undefined;
+      }
+    } catch (err) {
+      this.log.error({ msg: "Error happened while clearing websocket watch", err });
+    }
+
+    this.providerStatus = "DISCONNECTED";
     this.workerStatus = "DEAD";
 
     this.stopping = false;

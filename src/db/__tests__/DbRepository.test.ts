@@ -84,22 +84,35 @@ describe("DbRepository", () => {
     expect(UserBalanceModel.exists).toBeCalledWith({ chainId: CHAIN_ID, address: ADDRESS, user: "0xUSER" });
   });
 
-  it("should check user balances in db and return true if he has balances for every charged token", async () => {
-    (ChargedTokenModel.count as jest.Mock).mockResolvedValueOnce(10);
-    (UserBalanceModel.count as jest.Mock).mockResolvedValueOnce(9);
+  it("should check user balances in db and return false if he has not balances for every charged token", async () => {
+    (ChargedTokenModel.find as jest.Mock).mockResolvedValueOnce([{ address: "0xCT1" }, { address: "0xCT2" }]);
+    (UserBalanceModel.find as jest.Mock).mockResolvedValueOnce([{ address: "0xCT1" }]);
 
     expect(await db.isUserBalancesLoaded(CHAIN_ID, "0xUSER")).toBe(false);
 
-    expect(ChargedTokenModel.count).toBeCalledWith({ chainId: CHAIN_ID });
-    expect(UserBalanceModel.count).toBeCalledWith({
+    expect(ChargedTokenModel.find).toBeCalledWith({ chainId: CHAIN_ID });
+    expect(UserBalanceModel.find).toBeCalledWith({
+      chainId: CHAIN_ID,
+      user: "0xUSER",
+    });
+  });
+
+  it("should check user balances in db and return false if he has not balances for every charged token", async () => {
+    (ChargedTokenModel.find as jest.Mock).mockResolvedValueOnce([{ address: "0xCT1" }]);
+    (UserBalanceModel.find as jest.Mock).mockResolvedValueOnce([{ address: "0xCT2" }]);
+
+    expect(await db.isUserBalancesLoaded(CHAIN_ID, "0xUSER")).toBe(false);
+
+    expect(ChargedTokenModel.find).toBeCalledWith({ chainId: CHAIN_ID });
+    expect(UserBalanceModel.find).toBeCalledWith({
       chainId: CHAIN_ID,
       user: "0xUSER",
     });
   });
 
   it("should check user balances in db and return true if he has balances for every charged token", async () => {
-    (ChargedTokenModel.count as jest.Mock).mockResolvedValueOnce(10);
-    (UserBalanceModel.count as jest.Mock).mockResolvedValueOnce(10);
+    (ChargedTokenModel.find as jest.Mock).mockResolvedValueOnce([{ address: "0xCT1" }, { address: "0xCT2" }]);
+    (UserBalanceModel.find as jest.Mock).mockResolvedValueOnce([{ address: "0xCT1" }, { address: "0xCT2" }]);
 
     expect(await db.isUserBalancesLoaded(CHAIN_ID, "0xUSER")).toBe(true);
   });

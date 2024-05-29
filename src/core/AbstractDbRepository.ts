@@ -42,14 +42,12 @@ export abstract class AbstractDbRepository {
   ): Promise<IUserBalance[]>;
   abstract getAllEvents(): Promise<IEvent[]>;
   abstract getEventsPaginated(chainId: number, count: number, offset: number): Promise<IEvent[]>;
-  abstract getTransaction(chainId: number, hash: string): Promise<ITransaction | null>;
 
   abstract isDelegableStillReferenced(chainId: number, address: string): Promise<boolean>;
 
   abstract save<T extends IContract>(dataType: DataType, data: T, session?: ClientSession): Promise<T>;
   abstract saveBalance(data: IUserBalance): Promise<void>;
   abstract saveEvent(data: IEvent, session?: ClientSession): Promise<void>;
-  abstract saveTransaction(date: ITransaction, session?: ClientSession): Promise<void>;
 
   abstract update<T extends IContract>(
     dataType: DataType,
@@ -75,10 +73,11 @@ export abstract class AbstractDbRepository {
     session?: ClientSession,
   ): Promise<void>;
 
-  abstract delete<T extends IContract>(
+  abstract delete(
     dataType: DataType,
     chainId: number,
     address: string | string[],
     session?: ClientSession,
   ): Promise<void>;
+  abstract resetChainData(chainId: number): Promise<void>;
 }

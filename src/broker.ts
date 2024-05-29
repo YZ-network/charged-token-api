@@ -38,6 +38,7 @@ export class Broker extends AbstractBroker {
   }
 
   notifyTransaction(chainId: number, hash: string): void {
+    this.log.info({ chainId, msg: "Notifying transaction mined", hash });
     this.pubSub.publish(this.getTransactionChannel(chainId, hash), { chainId, hash });
   }
 
@@ -115,9 +116,10 @@ export class Broker extends AbstractBroker {
   }
 
   async removeSubscriptions(chainId: number) {
-    await Promise.all(this.subscriptions[chainId].map((sub) => sub.return()));
-
-    this.log.info({ chainId, msg: "closed all subscriptions", count: this.subscriptions[chainId].length });
+    if (this.subscriptions[chainId]) {
+      await Promise.all(this.subscriptions[chainId].map((sub) => sub.return()));
+      this.log.info({ chainId, msg: "closed all subscriptions", count: this.subscriptions[chainId].length });
+    }
 
     this.subscriptions[chainId] = [];
     this.updateSubscriptionsCount(chainId);

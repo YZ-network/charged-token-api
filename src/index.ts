@@ -37,6 +37,4 @@ export async function start() {
   });
 }
 
-start()
-  .then(() => log.info("API server stopped"))
-  .catch((err) => log.error({ msg: "API server crashed", err }));
+start().catch((err) => log.error({ msg: "API server crashed", err }));

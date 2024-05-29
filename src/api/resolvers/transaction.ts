@@ -26,19 +26,12 @@ export const TransactionSubscriptionResolverFactory = (
       });
 
       try {
-        let tx = await db.getTransaction(chainId, hash);
-        if (tx === null) {
-          for await (const value of sub) {
-            tx = value;
-            log.info({ msg: "pushing transaction mined from channel", tx });
-            await sub.return();
-          }
-        } else {
-          log.info({ msg: "pushing transaction mined from db", tx });
+        for await (const value of sub) {
+          log.info({ msg: "pushing transaction mined from channel", tx: value });
+          await push(value);
+          await stop();
+          await sub.return();
         }
-
-        await push(tx);
-        await stop();
       } catch (err) {
         log.error({
           msg: "transaction subscription stopped with error",
