@@ -124,12 +124,12 @@ export class EventsLoader {
 
   private async loadBlockEvents(fromBlock: number, toBlock: number): Promise<string[]> {
     const txHashes = new Set<string>();
-    const knownTopics = Object.values(topicsMap).flatMap((topics) => Object.keys(topics));
+    const knownTopics = new Set(Object.values(topicsMap).flatMap((topics) => Object.keys(topics)));
 
     const eventFilter = {
       fromBlock,
       toBlock,
-      topics: [knownTopics],
+      topics: [...knownTopics],
     };
 
     this.log.debug({ msg: "Loading events", eventFilter });
@@ -143,7 +143,7 @@ export class EventsLoader {
     this.log.debug({ msg: "On watched contracts", count: knownContractsEvents.length });
 
     const knownEvents = knownContractsEvents
-      .filter((event) => knownTopics.includes(event.topics[0]))
+      .filter((event) => knownTopics.has(event.topics[0]))
       .sort((a, b) => {
         if (a.blockNumber < b.blockNumber) return -1;
         if (a.blockNumber > b.blockNumber) return 1;
