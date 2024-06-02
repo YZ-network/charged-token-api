@@ -129,6 +129,7 @@ export class EventsLoader {
     const eventFilter = {
       fromBlock,
       toBlock,
+      topics: [knownTopics],
     };
 
     this.log.debug({ msg: "Loading events", eventFilter });
