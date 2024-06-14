@@ -83,6 +83,14 @@ export class EventsLoader {
 
     const fromBlock = this.lastLoadedBlock + 1;
     const toBlock = blockNumber - this.blocksLag;
+
+    if (toBlock - fromBlock >= 1000) {
+      await this.db.resetChainData(this.chainId);
+      this.log.warn("Blocks delta threshold exceeded ! Blockchain reset ! Worker restart needed.");
+      await (this.provider as AutoWebSocketProvider).destroy();
+      return;
+    }
+
     if (toBlock - fromBlock >= this.blocksBuffer - 1) {
       try {
         const txHashes = await this.loadBlockEvents(fromBlock, toBlock);
