@@ -141,10 +141,10 @@ export class EventsLoader {
       const eventFilter = {
         fromBlock,
         toBlock,
-        topics: knownTopics.slice(i, i+4),
+        topics: knownTopics.slice(i, i + 4),
       };
 
-      events.push(...(await this.provider.getLogs(eventFilter));
+      events.push(...(await this.provider.getLogs(eventFilter)));
     }
 
     this.log.debug({ msg: "Found events", count: events.length });
