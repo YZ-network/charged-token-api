@@ -85,8 +85,8 @@ export class EventsLoader {
     const toBlock = blockNumber - this.blocksLag;
 
     if (toBlock - fromBlock >= 1000) {
-      await this.db.resetChainData(this.chainId);
       this.log.warn("Blocks delta threshold exceeded ! Blockchain reset ! Worker restart needed.");
+      await this.db.resetChainData(this.chainId);
       await (this.provider as AutoWebSocketProvider).destroy();
       return;
     }
@@ -121,8 +121,8 @@ export class EventsLoader {
           });
 
           if ((err as Error).message.includes("Log response size exceeded")) {
-            await this.db.resetChainData(this.chainId);
             this.log.warn("Blockchain reset ! Worker restart needed.");
+            await this.db.resetChainData(this.chainId);
             await (this.provider as AutoWebSocketProvider).destroy();
           }
         }
