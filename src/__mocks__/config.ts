@@ -37,5 +37,6 @@ export const Config: JsonConfig = {
   blocks: {
     lag: 3,
     buffer: 2,
+    maxTopics: 8,
   },
 };

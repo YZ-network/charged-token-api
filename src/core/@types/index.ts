@@ -180,6 +180,7 @@ interface JsonDelaysConfig {
 interface JsonBlocksConfig {
   lag: number;
   buffer: number;
+  maxTopics: number;
 }
 
 interface JsonConfig {

@@ -137,11 +137,11 @@ export class EventsLoader {
     this.log.debug({ msg: "Loading events", fromBlock, toBlock });
 
     const events = [];
-    for (let i = 0; i < knownTopics.length; i += 4) {
+    for (let i = 0; i < knownTopics.length; i += Config.blocks.maxTopics) {
       const eventFilter = {
         fromBlock,
         toBlock,
-        topics: knownTopics.slice(i, i + 4),
+        topics: knownTopics.slice(i, i + Config.blocks.maxTopics),
       };
 
       events.push(...(await this.provider.getLogs(eventFilter)));
