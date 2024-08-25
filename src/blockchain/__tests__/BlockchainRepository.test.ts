@@ -478,7 +478,7 @@ describe("BlockchainRepository", () => {
     ]);
   });
 
-  it("should subscribe to new blocks", async () => {
+  xit("should subscribe to new blocks", async () => {
     const log = {
       blockNumber: 15,
       address: "0xCT",

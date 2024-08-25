@@ -83,6 +83,14 @@ export class EventsLoader {
 
     const fromBlock = this.lastLoadedBlock + 1;
     const toBlock = blockNumber - this.blocksLag;
+
+    if (toBlock - fromBlock >= 1000) {
+      this.log.warn("Blocks delta threshold exceeded ! Blockchain reset ! Worker restart needed.");
+      await this.db.resetChainData(this.chainId);
+      await (this.provider as AutoWebSocketProvider).destroy();
+      return;
+    }
+
     if (toBlock - fromBlock >= this.blocksBuffer - 1) {
       try {
         const txHashes = await this.loadBlockEvents(fromBlock, toBlock);
@@ -113,8 +121,8 @@ export class EventsLoader {
           });
 
           if ((err as Error).message.includes("Log response size exceeded")) {
-            await this.db.resetChainData(this.chainId);
             this.log.warn("Blockchain reset ! Worker restart needed.");
+            await this.db.resetChainData(this.chainId);
             await (this.provider as AutoWebSocketProvider).destroy();
           }
         }
@@ -124,16 +132,20 @@ export class EventsLoader {
 
   private async loadBlockEvents(fromBlock: number, toBlock: number): Promise<string[]> {
     const txHashes = new Set<string>();
-    const knownTopics = Object.values(topicsMap).flatMap((topics) => Object.keys(topics));
+    const knownTopics = [...new Set(Object.values(topicsMap).flatMap((topics) => Object.keys(topics)))];
 
-    const eventFilter = {
-      fromBlock,
-      toBlock,
-    };
+    this.log.debug({ msg: "Loading events", fromBlock, toBlock });
 
-    this.log.debug({ msg: "Loading events", eventFilter });
+    const events = [];
+    for (let i = 0; i < knownTopics.length; i += Config.blocks.maxTopics) {
+      const eventFilter = {
+        fromBlock,
+        toBlock,
+        topics: knownTopics.slice(i, i + Config.blocks.maxTopics),
+      };
 
-    const events = await this.provider.getLogs(eventFilter);
+      events.push(...(await this.provider.getLogs(eventFilter)));
+    }
 
     this.log.debug({ msg: "Found events", count: events.length });
 
@@ -142,7 +154,6 @@ export class EventsLoader {
     this.log.debug({ msg: "On watched contracts", count: knownContractsEvents.length });
 
     const knownEvents = knownContractsEvents
-      .filter((event) => knownTopics.includes(event.topics[0]))
       .sort((a, b) => {
         if (a.blockNumber < b.blockNumber) return -1;
         if (a.blockNumber > b.blockNumber) return 1;

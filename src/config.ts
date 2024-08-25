@@ -28,7 +28,8 @@ const configDefaults: JsonConfig = {
   },
   blocks: {
     lag: 4,
-    buffer: 2,
+    buffer: 20,
+    maxTopics: 8,
   },
 };
 
